@@ -330,8 +330,8 @@ import {
 } from './world'
 
 const HUNGER_MAX = 6
-/** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~3 jours-sim plein→vide. */
-const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 3)
+/** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~3.75 jours-sim plein→vide. */
+const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 3.75)
 /** ~2 sim-days after hunger hits 0 before death. */
 const STARVE_DEATH_TICKS = Math.round(TICKS_PER_DAY * 2)
 const HEAL_TICKS = 120

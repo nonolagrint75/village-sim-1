@@ -392,11 +392,11 @@ export function ageYearsFromTicks(ageTicks: number): number {
 }
 
 /**
- * Ancre jouabilité : estomac plein → vide en ~3 jours-sim (voir behaviors HUNGER_DECAY).
+ * Ancre jouabilité : estomac plein → vide en ~3.75 jours-sim (voir behaviors HUNGER_DECAY).
  * Le BMR / MET / thermique *modulent* autour de cette base — ils ne la multiplient
  * pas en pile (sinon labour + chaleur ≈ vide en ~1 jour → wipe de départ).
  */
-export const HUNGER_DECAY_PLAY = 4 / (TICKS_PER_DAY * 3)
+export const HUNGER_DECAY_PLAY = 4 / (TICKS_PER_DAY * 3.75)
 
 /**
  * MET déjà « cuit » dans HUNGER_DECAY_PLAY (journée moyenne : marche / tâches légères).
