@@ -26,6 +26,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   buildWorkbench: 'Installe son établi',
   buildChest: 'Fabrique un coffre',
   buildBed: 'Fabrique un lit',
+  buildTable: 'Dresse une table',
   buildPen: 'Monte un enclos',
   buildWall: "Élève l'enceinte",
   buildBridge: 'Construit un pont',

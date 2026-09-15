@@ -892,6 +892,10 @@ export function seedStarterKit(v: Villager, wealth01: number, role: Profession, 
   if ((role === 'guard' || role === 'blacksmith') && wealth01 > 0.3 && !eq.mainHand) {
     eq.mainHand = role === 'guard' ? 'iron_dagger' : 'wood_axe'
   }
+  // Most founders get a wood tool so gather/build isn't stuck behind craftSpear every time.
+  if (!eq.mainHand && (wealth01 > 0.18 || rng() < 0.65)) {
+    eq.mainHand = 'wood_axe'
+  }
   if (role === 'trader' && !eq.belt) eq.belt = 'leather_satchel'
   if (role === 'weaver' && !eq.outer && wealth01 > 0.2) eq.outer = 'wool_cloak'
   syncToolTierFromEquipment(v)

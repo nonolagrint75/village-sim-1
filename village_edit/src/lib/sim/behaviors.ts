@@ -18,6 +18,28 @@ import {
   reinforceStyle,
   type HouseFootprint,
 } from './architecture'
+import {
+  craftSpot,
+  eatSpot,
+  FURNITURE_DEFS,
+  furnitureLabelFr,
+  markFurnitureDone,
+  nextFurnitureJob,
+  planFurnitureJobs,
+  sleepSpot,
+  storeSpot,
+  woodCostOf,
+  type FurnitureJob,
+  type FurnitureKind,
+} from './furniture'
+import {
+  buildHouseLayout,
+  describeLayoutFr,
+  expandRoomKinds,
+  ROOM_LABEL_FR,
+  roomCountToSpan,
+  type HouseLayout,
+} from './rooms'
 import { getSimConfig } from './simConfig'
 import {
   applyConstructionStep,
@@ -212,6 +234,7 @@ import {
   ROAD,
   SAND,
   STONE,
+  TABLE,
   TRAIL,
   TREE,
   TUNNEL,
@@ -294,6 +317,7 @@ const IRON_TOOL_COST = 4
 const WORKBENCH_COST = 4
 const CHEST_COST = 5
 const BED_COST = 3
+const TABLE_COST = 4
 const TILE_COST = 1
 const WALL_SEGMENT_COST = 1
 const BRIDGE_COST = 2
@@ -3575,8 +3599,8 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  // Survie : ne pas rester coincé sur un craft/build pendant que la faim tombe à 0
-  // (sinon mort de faim avec de la nourriture encore dans le sac).
+  // Survie : n'interrompre le travail que quand la faim est réelle
+  // (seuil 2.2 annulait craft/build en boucle dès que le sac avait de la nourriture).
   if (
     v.task &&
     v.task.kind !== 'eat' &&
@@ -3587,12 +3611,12 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'fish' &&
     v.task.kind !== 'harvestWheat'
   ) {
-    if (v.hunger < 2.2 && bestEdible(v)) {
+    if (v.hunger < 1.15 && bestEdible(v)) {
       stashInterruptedTask(v)
       setTask(v, 'eat', v.x, v.y)
       noteChosenAction(v, 'eat', 'faim — interruption')
     } else if (
-      v.hunger < 1.4 &&
+      v.hunger < 0.95 &&
       v.hasChest &&
       v.chestInventory &&
       edibleValue(v.chestInventory) > 0
@@ -3600,7 +3624,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       setTask(v, 'takeFromChest', v.chestX, v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
-    } else if (v.hunger < 0.75 || v.starveTimer > 12) {
+    } else if (v.hunger < 0.55 || v.starveTimer > 12) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
       stashInterruptedTask(v)
       v.task = null
@@ -3641,23 +3665,31 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
     tickCognition(state, v, rng, depth)
     chooseTask(state, v, rng)
-    v.nextThinkTick = state.tick + THINK_COOLDOWN
+    // Cooldown applied when the task ends — not here — so micro-tasks don't strand agents as null.
   }
   const active = v.task
   const continued = executeTask(state, v, rng)
   if (active && !continued) {
     const stuck = active.stuckTicks >= STUCK_LIMIT
-    const failed =
-      stuck || active.ageTicks > (active.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE)
-    recordTaskOutcome(
-      v,
-      active.kind,
-      !failed && (active.ageTicks > 1 || active.work > 0 || active.kind === 'eat'),
-      stuck ? 'stuck' : 'generic',
-    )
+    const timedOut = active.ageTicks > (active.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE)
+    const failed = stuck || timedOut
+    // Voluntary completion (incl. 1-tick socialise/eat) is success — ageTicks>1 marked them as failures and thrashed plans.
+    recordTaskOutcome(v, active.kind, !failed, stuck ? 'stuck' : 'generic')
     if (!failed) noteActivityPractice(v, active.kind, 1)
+
+    const wasSurvivalBite = active.kind === 'eat' || active.kind === 'takeFromChest'
+    v.task = null
+    if (wasSurvivalBite && restoreInterruptedTask(v)) {
+      noteChosenAction(v, v.task!.kind, 'reprise après repas')
+      v.nextThinkTick = state.tick + 1
+    } else {
+      // Micro acts rethink next tick; lasting work keeps a short settle so cognition can breathe.
+      const micro = active.ageTicks <= 2 && active.work <= 0
+      v.nextThinkTick = state.tick + (micro ? 0 : THINK_COOLDOWN)
+    }
+  } else if (!continued) {
+    v.task = null
   }
-  if (!continued) v.task = null
 }
 
 export function tickFields(state: SimState) {

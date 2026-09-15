@@ -292,6 +292,7 @@ export const CROP_DEFS: CropDef[] = [
   { id: 18, resource: 'woad', labelFr: 'pastel', weight: 2, yieldMul: 0.7 },
   { id: 19, resource: 'madder', labelFr: 'garance', weight: 2, yieldMul: 0.7 },
   { id: 20, resource: 'lavender', labelFr: 'lavande', weight: 2, yieldMul: 0.65 },
+  { id: 21, resource: 'sage', labelFr: 'sauge', weight: 2, yieldMul: 0.6 },
   { id: 22, resource: 'pear', labelFr: 'poires', weight: 2, yieldMul: 0.85 },
   { id: 23, resource: 'plum', labelFr: 'prunes', weight: 2, yieldMul: 0.8 },
   { id: 24, resource: 'mint', labelFr: 'menthe', weight: 2, yieldMul: 0.6 },
