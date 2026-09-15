@@ -147,6 +147,7 @@ import {
   doCounsel,
   doEntertain,
   doGiveFood,
+  doRitual,
   doSocialise,
   doSteal,
   doTeachCraft,
@@ -160,6 +161,7 @@ import {
   ironToolCostFor,
   livelihoodTaskBonus,
   noteActivityPractice,
+  noteRecognition,
   serviceUrge,
   tickLivelihood,
 } from './livelihood'
@@ -202,9 +204,12 @@ import {
 import {
   applyExperiment,
   experimentUrge,
+  hasKnowledge,
   inheritKnowledge,
   knowsBlastMining,
   knowsTemperIron,
+  knowsStackStone,
+  knowsMetalworkPath,
   noteMiningInsight,
   techCombatBonus,
 } from './technology'
@@ -415,7 +420,10 @@ const WOLF_BREED_COOLDOWN = 500
 const MAX_WOLVES = 10
 
 const PEN_RADIUS = 3
-const FIELD_RADIUS = 2
+/** Plot half-width — was 2 (tiny forest hole); 3 opens a visible farm ring. */
+const FIELD_RADIUS = 3
+/** Trees/bushes inside this radius of the village centre are cleared for fields/roads/expansion. */
+const VILLAGE_CLEAR_RADIUS = 18
 export const WHEAT_RIPE = 220
 const WHEAT_SPROUT = 80
 const WHEAT_GREEN = 150
@@ -804,6 +812,8 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
     else if (v.toolTier === 'stone') base = 0.58
     else base = 0.78
     if (v.profession === 'lumberjack') base += 0.12
+    // Plot/road clearing is high-priority community labor — finish chops faster than casual fuel cuts.
+    if (kind === 'clearLand') base += 0.1
   } else if (kind === 'gatherStone' || kind === 'gatherIron' || kind === 'mineTunnel' || kind === 'mineGold') {
     if (v.toolTier === 'none') base = 0.08
     else if (v.toolTier === 'wood') base = 0.22
@@ -1470,6 +1480,8 @@ function findOrCreateVillage(state: SimState, x: number, y: number, joinRadius: 
     shrineLabel: null,
     shrineCreed: null,
     lastShrineRiteTick: 0,
+    sacredTier: 'none',
+    shrineRiteCount: 0,
     development: 0.2,
     standardOfLiving: 0.35,
     laborBalance: 0,
@@ -1618,6 +1630,23 @@ function assignProfession(state: SimState, v: Villager): Profession {
     if (key === 'none') continue
     scores[key] += professionSkillPrefScore(mind.skills, mind.preferences, key)
   }
+  // Practice mix (livelihood) strongly pulls specialization once a craft crystallizes.
+  const mix = mind.livelihood?.mix
+  if (mix) {
+    scores.lumberjack += mix.gather * 28 + mix.build * 8
+    scores.farmer += mix.farm * 42
+    scores.fisher += mix.fish * 42
+    scores.builder += mix.build * 40 + mix.craft * 8
+    scores.mason += mix.mine * 18 + mix.build * 22
+    scores.miner += mix.mine * 45
+    scores.blacksmith += mix.craft * 36 + mix.mine * 12
+    scores.weaver += mix.craft * 28 + mix.farm * 10
+    scores.trader += mix.trade * 48 + mix.social * 10
+    scores.guard += mix.fight * 42
+    scores.herder += mix.farm * 16 + mix.care * 18
+    scores.miller += mix.farm * 14 + mix.craft * 10
+    scores.forager += mix.gather * 12
+  }
 
   let best: Profession = 'forager'
   let bestScore = -Infinity
@@ -1643,7 +1672,12 @@ function jobBonus(v: Villager, kind: TaskKind): number {
             : 1
       break
     case 'farmer':
-      base = kind === 'sowField' || kind === 'harvestWheat' ? 2.35 : 1
+      base =
+        kind === 'sowField' || kind === 'harvestWheat'
+          ? 2.35
+          : kind === 'clearLand'
+            ? 2.15
+            : 1
       break
     case 'fisher':
       base =
@@ -1662,7 +1696,7 @@ function jobBonus(v: Villager, kind: TaskKind): number {
             : 1
       break
     case 'mason':
-      base = kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' ? 2.0 : 1
+      base = kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' || kind === 'experiment' ? 2.0 : 1
       break
     case 'guard':
       base =
@@ -1704,7 +1738,7 @@ function jobBonus(v: Villager, kind: TaskKind): number {
       base = kind === 'weaveCloth' || kind === 'sewClothing' || kind === 'craftGear' ? 2.5 : 1
       break
     case 'blacksmith':
-      base = kind === 'gatherIron' || kind === 'craftIronTool' || kind === 'mineTunnel' || kind === 'makeCharcoal' || kind === 'craftGear' ? 2.5 : 1
+      base = kind === 'gatherIron' || kind === 'craftIronTool' || kind === 'mineTunnel' || kind === 'makeCharcoal' || kind === 'craftGear' || kind === 'experiment' ? 2.5 : 1
       break
     case 'miner':
       base = kind === 'mineTunnel' || kind === 'gatherIron' || kind === 'gatherStone' ? 2.6 : 1
@@ -1945,7 +1979,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     // Hard gate: talk/spectacle/counsel never compete while hungry or under famine.
     // Soft dampers still let sociability dominate gather/farm under softmax.
     if (
-      (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') &&
+      (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'ritual' || kind === 'teachCraft') &&
       (famine || v.hunger < 2.35)
     ) {
       return
@@ -2040,6 +2074,20 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const larder = edibleValue(v.inventory)
   const starving = (1 - v.hunger / HUNGER_MAX) * (1 - v.hunger / HUNGER_MAX)
   const village = state.villages.find((vg) => vg.id === v.villageId)
+  /** Near home/village, woodcutting is land-clearing — open dirt for fields/roads, not a forest hole. */
+  const settlementClearR = earlyFoundingWeeks(state) ? VILLAGE_CLEAR_RADIUS + 6 : VILLAGE_CLEAR_RADIUS
+  const nearSettlement = (x: number, y: number) => {
+    if (village && distance(x, y, village.centerX, village.centerY) <= settlementClearR) return true
+    if (v.hasHome && v.homeX >= 0 && distance(x, y, v.homeX, v.homeY) <= 14) return true
+    return false
+  }
+  const chopWood = (x: number, y: number, score: number) => {
+    if (nearSettlement(x, y) && !alreadyClearing(state, x, y, v.id)) {
+      add('clearLand', x, y, score * 1.3)
+    } else {
+      add('gatherWood', x, y, score)
+    }
+  }
   // Use ramped pantry target — earlyFoundingWeeks alone cliffed gather at day 14.
   const stockTarget = foodStockTarget(state, season)
   // Village granary pressure: low food surplus → stash harder before winter.
@@ -2256,7 +2304,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   if (v.hasHome && v.homeOwnerId === v.id && v.horseId !== null && !v.hasCart) {
     const cartUrge = 28 + p.ambition * 28 + (v.profession === 'trader' ? 35 : 0)
     if (wood >= CART_WOOD_COST && stone >= CART_STONE_COST) add('buildCart', v.homeX, v.homeY, cartUrge * reach(v, v.homeX, v.homeY))
-    else if (tree) add('gatherWood', tree.x, tree.y, cartUrge * 0.6 * woodKnowMul * reach(v, tree.x, tree.y))
+    else if (tree) chopWood(tree.x, tree.y, cartUrge * 0.6 * woodKnowMul * reach(v, tree.x, tree.y))
   }
 
   // Dock search must reach nearby shores — short radius left water-adjacent homes boatless.
@@ -2291,7 +2339,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         // Ready to launch — outrank socialise/entertain soft loops.
         add('buildBoat', dock.x, dock.y, (boatUrge + 200) * reach(v, dock.x, dock.y))
       } else if (poolWood < needWood && tree) {
-        add('gatherWood', tree.x, tree.y, (boatUrge + 140) * woodKnowMul * reach(v, tree.x, tree.y))
+        chopWood(tree.x, tree.y, (boatUrge + 140) * woodKnowMul * reach(v, tree.x, tree.y))
       } else if (poolStone < needStone) {
         const rock = findNearbyTerrain(grid, v.x, v.y, searchR, STONE)
         if (rock) add('gatherStone', rock.x, rock.y, (boatUrge + 90) * reach(v, rock.x, rock.y))
@@ -2331,7 +2379,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const portUrge = 70 + p.ambition * 30 + p.sociability * 18 + (v.profession === 'builder' || v.profession === 'trader' ? 25 : 0)
       if (needsClearing(grid, village.portX, village.portY)) add('clearLand', village.portX, village.portY, portUrge * 0.85 * reach(v, village.portX, village.portY))
       else if (wood >= PORT_WOOD_COST && stone >= PORT_STONE_COST) add('buildPort', village.portX, village.portY, portUrge * reach(v, village.portX, village.portY))
-      else if (wood < PORT_WOOD_COST && tree) add('gatherWood', tree.x, tree.y, portUrge * 0.5 * reach(v, tree.x, tree.y))
+      else if (wood < PORT_WOOD_COST && tree) chopWood(tree.x, tree.y, portUrge * 0.5 * reach(v, tree.x, tree.y))
       else if (rock) add('gatherStone', rock.x, rock.y, portUrge * 0.5 * reach(v, rock.x, rock.y))
     }
   }
@@ -2524,6 +2572,34 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     if (canServe && urge.counsel > 26 && serviceTarget) {
       add('counsel', serviceTarget.x, serviceTarget.y, urge.counsel * reach(v, serviceTarget.x, serviceTarget.y), serviceTarget.id)
     }
+    // Ritual at sacred site / shrine / chapel / temple.
+    {
+      const mind = mindOf(v)
+      const vg = village
+      const sx =
+        vg && vg.hasShrine && vg.shrineX >= 0 ? vg.shrineX : mind.sacredConf > 0.2 ? mind.sacredX : null
+      const sy =
+        vg && vg.hasShrine && vg.shrineY >= 0 ? vg.shrineY : mind.sacredConf > 0.2 ? mind.sacredY : null
+      if (
+        canServe &&
+        sx !== null &&
+        sy !== null &&
+        (pol.beliefs.piety > 0.4 || mind.sacredConf > 0.28 || pol.creed !== null) &&
+        (urge.counsel > 18 || mind.needs.piety > 0.35 || mind.sacredConf > 0.4)
+      ) {
+        const roleBoost =
+          mind.livelihood?.roleTag === 'gourou' || mind.livelihood?.roleTag === 'pretre' ? 1.35 : 1
+        const riteUrge =
+          (22 +
+            pol.beliefs.piety * 55 +
+            mind.sacredConf * 40 +
+            mind.needs.piety * 35 +
+            (vg?.sacredTier === 'temple' ? 18 : vg?.sacredTier === 'chapel' ? 12 : 0)) *
+          roleBoost *
+          reach(v, sx, sy)
+        if (riteUrge > 20) add('ritual', sx, sy, riteUrge)
+      }
+    }
     if (canServe && urge.teach > 24) {
       const pupil = youthTarget ?? serviceTarget
       if (pupil) add('teachCraft', pupil.x, pupil.y, urge.teach * reach(v, pupil.x, pupil.y), pupil.id)
@@ -2558,7 +2634,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const craftX = v.hasWorkbench ? v.workbenchX : v.x
     const craftY = v.hasWorkbench ? v.workbenchY : v.y
     if (wood >= SPEAR_WOOD_COST) add('craftSpear', craftX, craftY, armUrge * (v.hasWorkbench ? reach(v, craftX, craftY) : 1))
-    else if (tree) add('gatherWood', tree.x, tree.y, armUrge * 0.85 * reach(v, tree.x, tree.y))
+    else if (tree) chopWood(tree.x, tree.y, armUrge * 0.85 * reach(v, tree.x, tree.y))
   }
 
   if (!v.hasHome) {
@@ -2574,7 +2650,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       if (gap && wood >= TILE_COST && gapClear) add('buildHouse', gap.x, gap.y, shelterUrge * reach(v, gap.x, gap.y))
       else if (veg) add('clearLand', veg.x, veg.y, shelterUrge * 1.15 * reach(v, veg.x, veg.y))
       else if (gap && wood >= TILE_COST) add('buildHouse', gap.x, gap.y, shelterUrge * reach(v, gap.x, gap.y))
-      else if (gap && tree) add('gatherWood', tree.x, tree.y, shelterUrge * 0.8 * reach(v, tree.x, tree.y))
+      else if (gap && tree) chopWood(tree.x, tree.y, shelterUrge * 0.8 * reach(v, tree.x, tree.y))
       if (v.hasChest && wood >= woodCap(v)) {
         add('storeChest', v.chestX, v.chestY, shelterUrge * 0.5 * reach(v, v.chestX, v.chestY))
       }
@@ -2602,7 +2678,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       } else if (wood >= TILE_COST) {
         add('buildHouse', wallGap.x, wallGap.y, expandUrge * reach(v, wallGap.x, wallGap.y))
       } else if (tree) {
-        add('gatherWood', tree.x, tree.y, expandUrge * 0.75 * reach(v, tree.x, tree.y))
+        chopWood(tree.x, tree.y, expandUrge * 0.75 * reach(v, tree.x, tree.y))
       }
     }
 
@@ -2624,10 +2700,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         add(taskKind, job.x, job.y, drive * reach(v, job.x, job.y))
       } else {
         const missing = missingFurnitureResource(v.inventory, job.kind)
-        if (missing === 'wood' && tree) add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+        if (missing === 'wood' && tree) chopWood(tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
         else if (missing === 'stone' && rock) add('gatherStone', rock.x, rock.y, drive * 0.75 * reach(v, rock.x, rock.y))
         else if (missing === 'iron' && ironOre) add('gatherIron', ironOre.x, ironOre.y, drive * 0.7 * reach(v, ironOre.x, ironOre.y))
-        else if (tree && woodCostOf(job.kind) > 0) add('gatherWood', tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
+        else if (tree && woodCostOf(job.kind) > 0) chopWood(tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
       }
     } else if (!job) {
       // Legacy fallback if queue empty — keep old slot logic for partial homes.
@@ -2636,31 +2712,32 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const maxBeds = v.house ? v.house.bedSlots : 2
       if (!v.hasWorkbench) {
         if (wood >= WORKBENCH_COST) add('buildWorkbench', slots.workbench.x, slots.workbench.y, drive * reach(v, slots.workbench.x, slots.workbench.y))
-        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+        else if (tree) chopWood(tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
       } else if (!v.hasChest) {
         if (wood >= CHEST_COST) add('buildChest', slots.chest.x, slots.chest.y, drive * 0.9 * reach(v, slots.chest.x, slots.chest.y))
-        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.7 * reach(v, tree.x, tree.y))
+        else if (tree) chopWood(tree.x, tree.y, drive * 0.7 * reach(v, tree.x, tree.y))
       } else if (v.bedCount < maxBeds && slots.beds[v.bedCount]) {
         const spot = slots.beds[v.bedCount]
         const familyDrive = drive * (v.bedCount === 0 ? 1 : 0.55)
         if (wood >= BED_COST) add('buildBed', spot.x, spot.y, familyDrive * reach(v, spot.x, spot.y))
-        else if (tree) add('gatherWood', tree.x, tree.y, familyDrive * 0.7 * reach(v, tree.x, tree.y))
+        else if (tree) chopWood(tree.x, tree.y, familyDrive * 0.7 * reach(v, tree.x, tree.y))
       } else if (!v.hasTable) {
         const eat = eatSpot(v.furnitureQueue, v.homeLayout) ?? slots.workbench
         if (wood >= TABLE_COST) add('buildTable', eat.x, eat.y, drive * 0.85 * reach(v, eat.x, eat.y))
-        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
+        else if (tree) chopWood(tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
       }
     }
   }
 
   if (v.hasWorkbench && v.toolTier === 'wood') {
-    const upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
+    let upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
+    if (knowsStackStone(v, village) || hasKnowledge(v.knowledge, 'grind_stone', 0.25)) upgrade *= 1.25
     if (stone >= STONE_SPEAR_COST) add('craftStoneSpear', v.x, v.y, upgrade)
     else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 1.05 * reach(v, rock.x, rock.y))
   }
 
-  if (v.hasWorkbench && v.toolTier === 'stone' && canPracticeCraft(v, 'iron')) {
-    const upgradeIron = 34 + p.ambition * 30 + danger * 20
+  if (v.hasWorkbench && v.toolTier === 'stone' && canPracticeCraft(v, 'iron') && knowsMetalworkPath(v, village)) {
+    const upgradeIron = 58 + p.ambition * 35 + danger * 22 + (knowsTemperIron(v, village) ? 28 : 12)
     const vgKnow = village?.knowledge
     const ironNeed = ironToolCostFor(v, IRON_TOOL_COST, vgKnow)
     if (iron >= ironNeed) add('craftIronTool', v.x, v.y, upgradeIron)
@@ -2707,7 +2784,11 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const claimT = sampleTempC(state.climate, v.homeX >= 0 ? v.homeX : v.x, v.homeY >= 0 ? v.homeY : v.y)
     const farmableHere = cropTempFactor(claimT) >= 0.22
     if (v.fieldX === -1 && farmableHere) {
-      const site = findBuildSite(grid, v.homeX - 9, v.homeY, FIELD_RADIUS, 25, 3)
+      // Allow more vegetation on candidate plots — clearLand opens them; don't stay trapped in clearings.
+      const site =
+        findBuildSite(grid, v.homeX - 10, v.homeY, FIELD_RADIUS, 32, 8) ??
+        findBuildSite(grid, v.homeX + 10, v.homeY + 2, FIELD_RADIUS, 28, 8) ??
+        findBuildSite(grid, v.homeX, v.homeY + 10, FIELD_RADIUS, 28, 8)
       if (site) {
         v.fieldX = site.x
         v.fieldY = site.y
@@ -2718,7 +2799,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     if (v.fieldX !== -1 && sowingSeason(season, sampleTempC(state.climate, v.fieldX, v.fieldY))) {
       const veg = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => needsClearing(grid, c.x, c.y))
       const bare = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => isBuildableGround(grid, c.x, c.y))
-      if (veg) add('clearLand', veg.x, veg.y, (36 + p.ambition * 12) * reach(v, veg.x, veg.y))
+      if (veg) add('clearLand', veg.x, veg.y, (110 + p.ambition * 20 + starving * 30) * reach(v, veg.x, veg.y))
       else if (bare) {
         const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
         // Keep sow pressure through day 40 — fortnight cliff left fallow plots after pantry ran out.
@@ -2726,7 +2807,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         const earlySow = day < 14 ? 1.85 : day < 40 ? 1.45 : 1.15
         const pantrySow = larder < stockTarget ? 1.35 : 1
         const sowUrge =
-          (120 + (season === 'spring' ? 90 : 40) + p.ambition * 25 + (famine ? 50 : 0) + starving * 60) *
+          (150 + (season === 'spring' ? 100 : 50) + p.ambition * 28 + (famine ? 50 : 0) + starving * 60) *
           Math.max(0.5, tFac) *
           earlySow *
           pantrySow
@@ -2736,7 +2817,42 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     // If field plot is vegetation-blocked, clearing is survival work — score above chat.
     if (v.fieldX !== -1 && !v.hasField) {
       const veg2 = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => needsClearing(grid, c.x, c.y))
-      if (veg2) add('clearLand', veg2.x, veg2.y, (95 + p.ambition * 15 + starving * 40) * reach(v, veg2.x, veg2.y))
+      if (veg2) add('clearLand', veg2.x, veg2.y, (175 + p.ambition * 20 + starving * 50) * reach(v, veg2.x, veg2.y))
+    }
+  }
+
+  // Village ring deforestation: expand outward for fields, roads, and building sites — not forest holes.
+  if (v.hasHome && (village || v.homeX >= 0) && !exhausted) {
+    const cx = village ? village.centerX : v.homeX
+    const cy = village ? village.centerY : v.homeY
+    const ringTree = findNearest(
+      grid,
+      cx,
+      cy,
+      settlementClearR,
+      (x, y) => getTerrain(grid, x, y) === TREE && !alreadyClearing(state, x, y, v.id),
+    )
+    if (ringTree) {
+      const day = earlyFoodRampDays(state)
+      const lumber =
+        v.profession === 'lumberjack' || v.profession === 'builder' || v.profession === 'farmer' ? 55 : 0
+      const early = day < 28 ? 45 : day < 60 ? 22 : 8
+      const woodNeed = wood < 3 ? 35 : wood < 6 ? 18 : wood >= woodCap(v) ? 25 : 0
+      const clearUrge =
+        (72 + p.ambition * 28 + lumber + early + woodNeed + (v.fieldX !== -1 && !v.hasField ? 40 : 0)) *
+        reach(v, ringTree.x, ringTree.y)
+      add('clearLand', ringTree.x, ringTree.y, clearUrge)
+    } else {
+      const ringBush = findNearest(
+        grid,
+        cx,
+        cy,
+        Math.round(settlementClearR * 0.75),
+        (x, y) => getTerrain(grid, x, y) === BUSH && !alreadyClearing(state, x, y, v.id),
+      )
+      if (ringBush && (v.profession === 'farmer' || v.profession === 'builder' || earlyFoundingWeeks(state))) {
+        add('clearLand', ringBush.x, ringBush.y, (48 + p.ambition * 16) * reach(v, ringBush.x, ringBush.y))
+      }
     }
   }
 
@@ -2762,7 +2878,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         const millUrge = 26 + p.sociability * 20 + p.ambition * 24 + (villageWheat >= 4 ? 20 : 0)
         if (needsClearing(grid, village.millX, village.millY)) add('clearLand', village.millX, village.millY, millUrge * 0.9 * reach(v, village.millX, village.millY))
         else if (wood >= MILL_WOOD_COST && stone >= MILL_STONE_COST) add('buildMill', village.millX, village.millY, millUrge * reach(v, village.millX, village.millY))
-        else if (wood < MILL_WOOD_COST && tree) add('gatherWood', tree.x, tree.y, millUrge * 0.6 * reach(v, tree.x, tree.y))
+        else if (wood < MILL_WOOD_COST && tree) chopWood(tree.x, tree.y, millUrge * 0.6 * reach(v, tree.x, tree.y))
         else if (rock) add('gatherStone', rock.x, rock.y, millUrge * 0.6 * reach(v, rock.x, rock.y))
       }
     }
@@ -2881,8 +2997,13 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   // Soft R&D near workbench — curious / skilled villagers with surplus leisure.
   const researchUrge = experimentUrge(v, state)
-  if (researchUrge > 20) {
-    add('experiment', v.workbenchX, v.workbenchY, researchUrge * reach(v, v.workbenchX, v.workbenchY))
+  if (researchUrge > 12) {
+    add(
+      'experiment',
+      v.workbenchX,
+      v.workbenchY,
+      researchUrge * 1.35 * reach(v, v.workbenchX, v.workbenchY),
+    )
   }
 
   const materialNeed: { resource: ResourceType; reserve: number } | null =
@@ -2938,7 +3059,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         const gap = singleDoorWallCells(grid, v.penX, v.penY, PEN_RADIUS).find((c) => getTerrain(grid, c.x, c.y) !== FENCE)
         if (gap && needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, farmUrge * 0.9 * reach(v, gap.x, gap.y))
         else if (gap && (wood >= TILE_COST || stone >= TILE_COST)) add('buildPen', gap.x, gap.y, farmUrge * reach(v, gap.x, gap.y))
-        else if (gap && tree) add('gatherWood', tree.x, tree.y, farmUrge * 0.7 * reach(v, tree.x, tree.y))
+        else if (gap && tree) chopWood(tree.x, tree.y, farmUrge * 0.7 * reach(v, tree.x, tree.y))
       }
     } else {
       let owned = 0
@@ -2953,11 +3074,14 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (village && village.memberIds.length >= 2 && v.hasHome) {
     refreshPerimeter(state, village)
-    const wantCode = village.wallTier === 'none' ? WALL_WOOD : village.wallTier === 'wood' ? WALL_STONE : null
+    const masonry = knowsStackStone(v, village)
+    const wantCode =
+      village.wallTier === 'none' ? WALL_WOOD : village.wallTier === 'wood' && masonry ? WALL_STONE : null
     if (wantCode !== null && village.perimeter.length > 0) {
       const gap = village.perimeter.find((c) => getTerrain(grid, c.x, c.y) !== wantCode)
       if (gap) {
-        const civicUrge = 15 + p.sociability * 45 + p.generosity * 35 + danger * 40
+        const civicUrge =
+          15 + p.sociability * 45 + p.generosity * 35 + danger * 40 + (wantCode === WALL_STONE ? 40 : 0)
         const res = wantCode === WALL_WOOD ? wood : stone
         if (needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, civicUrge * 0.85 * reach(v, gap.x, gap.y))
         else if (res >= WALL_SEGMENT_COST) add('buildWall', gap.x, gap.y, civicUrge * reach(v, gap.x, gap.y))
@@ -2991,12 +3115,12 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.hasHome && village) {
     const door = homeFootprint(v)?.door
-    considerLane(door?.x ?? v.homeX, door?.y ?? v.homeY, village.centerX, village.centerY, 28 + p.sociability * 14)
-    if (village.millX >= 0) considerLane(village.centerX, village.centerY, village.millX, village.millY, 32)
-    if (village.portX >= 0) considerLane(village.centerX, village.centerY, village.portX, village.portY, 32)
+    considerLane(door?.x ?? v.homeX, door?.y ?? v.homeY, village.centerX, village.centerY, 55 + p.sociability * 18)
+    if (village.millX >= 0) considerLane(village.centerX, village.centerY, village.millX, village.millY, 58)
+    if (village.portX >= 0) considerLane(village.centerX, village.centerY, village.portX, village.portY, 58)
   }
-  if (v.hasHome && v.fieldX >= 0) considerLane(v.homeX, v.homeY, v.fieldX, v.fieldY, 22)
-  if (v.hasHome && v.penX >= 0) considerLane(v.homeX, v.homeY, v.penX, v.penY, 22)
+  if (v.hasHome && v.fieldX >= 0) considerLane(v.homeX, v.homeY, v.fieldX, v.fieldY, 70)
+  if (v.hasHome && v.penX >= 0) considerLane(v.homeX, v.homeY, v.penX, v.penY, 48)
 
   const sellableSurplus = wool > 3 || cloth > 2 || hide > 2 || iron > 3 || gold > 2 || countOf(v.inventory, 'coin') > 6
   if (v.hasChest && (wood > 6 || stone > 6 || larder > stockTarget + 2 || sellableSurplus || granaryPush > 12)) {
@@ -3180,6 +3304,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         o.kind === 'harvestWheat' ||
         o.kind.startsWith('build') ||
         o.kind.startsWith('craft') ||
+        o.kind === 'experiment' ||
         o.kind === 'fish' ||
         o.kind === 'mineTunnel')
     ) {
@@ -4284,7 +4409,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'buildWall': {
       const village = state.villages.find((vg) => vg.id === v.villageId)
       if (!village) return false
-      const wantCode = village.wallTier === 'none' ? WALL_WOOD : village.wallTier === 'wood' ? WALL_STONE : null
+      const masonry = knowsStackStone(v, village)
+      const wantCode =
+        village.wallTier === 'none' ? WALL_WOOD : village.wallTier === 'wood' && masonry ? WALL_STONE : null
       if (wantCode === null) return false
       const res = wantCode === WALL_WOOD ? 'wood' : 'stone'
       if (countOf(v.inventory, res) < WALL_SEGMENT_COST) return false
@@ -4511,6 +4638,11 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
       doCounsel(state, v, other)
       return false
+    }
+    case 'ritual': {
+      if (distance(v.x, v.y, task.targetX, task.targetY) > 2.2) return true
+      doRitual(state, v)
+      return task.ageTicks < 12
     }
     case 'teachCraft': {
       const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
@@ -4861,6 +4993,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.task.kind === 'entertain' ||
       v.task.kind === 'socialise' ||
       v.task.kind === 'counsel' ||
+      v.task.kind === 'ritual' ||
       v.task.kind === 'teachCraft' ||
       v.task.kind === 'giveFood'
     const foodWork =
@@ -5009,6 +5142,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.task.kind === 'entertain' ||
       v.task.kind === 'idle' ||
       v.task.kind === 'counsel' ||
+      v.task.kind === 'ritual' ||
       v.task.kind === 'teachCraft'
     const hardLabor =
       v.task.kind.startsWith('gather') ||
@@ -5101,6 +5235,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       active.kind === 'giveFood' ||
       active.kind === 'entertain' ||
       active.kind === 'counsel' ||
+      active.kind === 'ritual' ||
       active.kind === 'teachCraft'
     const micro = active.ageTicks <= 2 && active.work <= 0
     v.task = null

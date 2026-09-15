@@ -488,7 +488,8 @@ export function structureHalfSpanMeters(
   const s = scale01 < 0 ? 0 : scale01 > 1 ? 1 : scale01
   switch (purpose) {
     case 'fortify':
-      return highKeep ? 25 + s * 30 : 20 + s * 25
+      // Compact enough to site near villages; high-keep still reads as a donjon.
+      return highKeep ? 14 + s * 18 : 10 + s * 14
     case 'gather':
       return 15 + s * 20
     case 'store':

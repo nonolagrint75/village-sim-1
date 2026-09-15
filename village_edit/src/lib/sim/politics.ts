@@ -202,9 +202,14 @@ const POWER_CACHE = new Map<number, { tick: number; scores: PowerScores; total: 
 export const CIRCLE_TICK = 90
 export const BELIEF_TICK = 48
 export const RUMOR_TICK = 30
-/** ~1 season of persistence before a circle can harden into an institution. */
-export const INSTITUTION_AGE = 900
+/**
+ * Persistence before a circle hardens into an institution.
+ * ~7 days at 72 ticks/day — visible guilds/councils by day 30–60.
+ */
+export const INSTITUTION_AGE = 480
 export const INSTITUTION_PROBLEMS = 2
+/** Soft early guild size (full craft identity can wait for apprentices). */
+const GUILD_EARLY_PRACTITIONERS = 2
 export const MAX_CIRCLES = 48
 export const MAX_RUMORS = 40
 export const MAX_CIRCLE_MEMBERS = 12
@@ -216,7 +221,7 @@ export const MAX_POLITIES = 24
 const KIND_FR: Record<CircleKind, string> = {
   kin: 'cercle de parenté',
   craft: 'cercle de métier',
-  village: 'cercle du village',
+  village: 'assemblée du village',
   threat: 'cercle de garde',
   hunger: 'cercle de partage',
   trade: 'cercle marchand',
@@ -848,17 +853,25 @@ function trySpawnCircles(state: SimState) {
         candidates.some((b) => {
           if (a.id === b.id) return false
           const r = a.relations.get(b.id)
-          return r && (r.trust > 0.3 || r.affinity > 0.25 || r.kinship > 0.4)
+          // Soft early bonds — co-workers form craft circles before deep trust.
+          return (
+            !r ||
+            r.trust > 0.18 ||
+            r.affinity > 0.12 ||
+            r.kinship > 0.3 ||
+            distance(a.x, a.y, b.x, b.y) < 18
+          )
         }),
       )
-      if (bonded.length >= 2) {
+      const pool = bonded.length >= 2 ? bonded : candidates.length >= 2 ? candidates : []
+      if (pool.length >= 2) {
         const origin =
           kind === 'threat'
             ? 'protection contre les loups'
             : kind === 'trade'
               ? 'routes et échanges'
               : `métier partagé (${label})`
-        createCircle(state, kind, bonded.slice(0, 5), bonded[0].villageId, label, origin)
+        createCircle(state, kind, pool.slice(0, 5), pool[0].villageId, label, origin)
       }
     }
 
@@ -911,34 +924,58 @@ function trySpawnCircles(state: SimState) {
     // Soft faith circle — piety cluster (no canned religion)
     const pious = sample.filter((v) => {
       const pol = politicsOf(v)
-      return pol.beliefs.piety > 0.48 || pol.creed === 'piete' || pol.creedWeight > 0.35
+      return pol.beliefs.piety > 0.42 || pol.creed === 'piete' || pol.creedWeight > 0.28
     })
     if (pious.length >= 2) {
-      const close = pious.filter((a) => pious.some((b) => a.id !== b.id && distance(a.x, a.y, b.x, b.y) < 24))
+      const close = pious.filter((a) => pious.some((b) => a.id !== b.id && distance(a.x, a.y, b.x, b.y) < 28))
       if (close.length >= 2) {
         const c = createCircle(state, 'faith', close.slice(0, 4), close[0].villageId, '', 'recueillement partagé')
         if (c) {
           c.creed = 'piete'
           for (const m of close.slice(0, 4)) {
             const pol = politicsOf(m)
-            pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.03)
-            pol.creedWeight = clamp01(pol.creedWeight + 0.05)
+            pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.04)
+            pol.creedWeight = clamp01(pol.creedWeight + 0.06)
           }
         }
       }
     }
 
-    // Elders settling disputes — older + high trust network
-    const elders = sample.filter((v) => v.age > 800 && politicsOf(v).beliefs.fairness > 0.45)
+    // Elders / notables settling disputes — founders reach this within ~1–2 weeks.
+    const elders = sample.filter(
+      (v) => v.age > ELDER_AGE * 0.72 && politicsOf(v).beliefs.fairness > 0.38,
+    )
     if (elders.length >= 2) {
       const trusted = elders.filter((e) => {
         let t = 0
-        for (const r of e.relations.values()) if (r.trust > 0.45) t++
-        return t >= 2
+        for (const r of e.relations.values()) if (r.trust > 0.32) t++
+        return t >= 1
       })
-      if (trusted.length >= 2) {
-        const c = createCircle(state, 'elder', trusted.slice(0, 3), trusted[0].villageId, '', 'arbitrage des conflits')
+      const pool = trusted.length >= 2 ? trusted : elders
+      if (pool.length >= 2) {
+        const c = createCircle(state, 'elder', pool.slice(0, 4), pool[0].villageId, '', 'arbitrage des conflits')
         if (c && !c.norms.includes('punish_theft')) c.norms.push('punish_theft')
+      }
+    }
+
+    // Village assembly — soft council of neighbours (feeds polity / laws).
+    if (sample.length >= 4) {
+      const notables = [...sample]
+        .sort((a, b) => influenceScore(state, b) - influenceScore(state, a))
+        .slice(0, 5)
+      if (notables.length >= 3) {
+        const c = createCircle(
+          state,
+          'village',
+          notables,
+          notables[0].villageId,
+          '',
+          'assemblée des voisins',
+        )
+        if (c) {
+          if (!c.norms.includes('maintain_commons')) c.norms.push('maintain_commons')
+          if (!c.norms.includes('reciprocate')) c.norms.push('reciprocate')
+        }
       }
     }
   }
@@ -1061,26 +1098,63 @@ function maybeInstitutionalize(state: SimState, c: Circle) {
   const members = livingMembers(state, c).length
   if (members < 2) return
   // Acute collective problems institutionalize faster (theft waves, famine, raids).
-  const acute = c.problemCount >= INSTITUTION_PROBLEMS + 2 || (state.famine && c.kind === 'hunger') || (state.thefts > 8 && c.kind === 'elder')
-  const needProblems = acute ? 1 : members >= 4 && age >= INSTITUTION_AGE * 1.5 ? 1 : INSTITUTION_PROBLEMS
-  const needAge = acute ? INSTITUTION_AGE * 0.55 : INSTITUTION_AGE
+  const acute =
+    c.problemCount >= INSTITUTION_PROBLEMS + 2 ||
+    (state.famine && c.kind === 'hunger') ||
+    (state.thefts > 5 && (c.kind === 'elder' || c.kind === 'village')) ||
+    c.kind === 'village' ||
+    c.kind === 'elder'
+  const needProblems =
+    acute || c.kind === 'craft' || c.kind === 'trade'
+      ? 1
+      : members >= 3 && age >= INSTITUTION_AGE
+        ? 1
+        : INSTITUTION_PROBLEMS
+  const needAge =
+    acute || c.kind === 'craft' || c.kind === 'trade' || c.kind === 'village'
+      ? INSTITUTION_AGE * 0.45
+      : INSTITUTION_AGE
   if (age < needAge || c.problemCount < needProblems) return
   c.isInstitution = true
   c.enforcement = clamp01(c.enforcement + 0.35)
   const story = c.originStory ?? `persistance du ${c.name}`
   c.originStory = story
   // Craft / trade circles with enough practitioners harden into guilds.
-  if ((c.kind === 'craft' || c.kind === 'trade') && members >= GUILD_MIN_PRACTITIONERS) {
+  if (c.kind === 'craft' || c.kind === 'trade') {
     const practitioners = livingMembers(state, c).filter((m) => hasCraftIdentityFor(state, m, c)).length
-    if (practitioners >= GUILD_MIN_PRACTITIONERS) {
+    const needGuild = Math.min(GUILD_EARLY_PRACTITIONERS, GUILD_MIN_PRACTITIONERS)
+    if (practitioners >= needGuild || members >= needGuild) {
       promoteToGuild(state, c)
     } else {
       logCause(state, story, `${c.name} devient une institution (application des normes)`)
     }
+  } else if (c.kind === 'elder' || c.kind === 'village') {
+    promoteToCouncil(state, c, story)
   } else {
     logCause(state, story, `${c.name} devient une institution (application des normes)`)
   }
   rememberCircle(c, `institutionnalisé : ${story}`)
+}
+
+/** Elder / village institutions crystallise as named councils with laws. */
+function promoteToCouncil(state: SimState, c: Circle, story: string) {
+  if (c.kind === 'elder' && !c.name.startsWith('conseil')) {
+    c.name = 'conseil des aînés'
+  } else if (c.kind === 'village' && !c.name.startsWith('conseil')) {
+    c.name = 'conseil du village'
+  }
+  if (!c.norms.includes('punish_theft') && (c.kind === 'elder' || state.thefts > 0)) {
+    c.norms.push('punish_theft')
+  }
+  if (!c.norms.includes('maintain_commons')) c.norms.push('maintain_commons')
+  c.enforcement = clamp01(c.enforcement + 0.15)
+  const laws = c.norms.map((n) => NORM_FR[n] ?? n).slice(0, 3).join(', ')
+  logCause(
+    state,
+    story,
+    `${c.name} s'institue — lois : ${laws || 'usages communs'}`,
+  )
+  rememberCircle(c, `conseil formé · ${laws}`)
 }
 
 function promoteToGuild(state: SimState, c: Circle) {
@@ -1103,10 +1177,14 @@ function promoteToGuild(state: SimState, c: Circle) {
 
 /** Apprentissage + exclusion des oisifs + prestige maître — LOD stagger. */
 function tickGuildLife(state: SimState, c: Circle) {
-  if (!c.isGuild && !(c.kind === 'craft' && c.isInstitution && livingMembers(state, c).length >= GUILD_MIN_PRACTITIONERS)) {
+  const earlyNeed = Math.min(GUILD_EARLY_PRACTITIONERS, GUILD_MIN_PRACTITIONERS)
+  if (
+    !c.isGuild &&
+    !((c.kind === 'craft' || c.kind === 'trade') && c.isInstitution && livingMembers(state, c).length >= earlyNeed)
+  ) {
     return
   }
-  if (!c.isGuild && c.kind === 'craft' && c.isInstitution) promoteToGuild(state, c)
+  if (!c.isGuild && (c.kind === 'craft' || c.kind === 'trade') && c.isInstitution) promoteToGuild(state, c)
   if (!c.isGuild) return
   if ((state.tick + c.id * 3) % (CIRCLE_TICK * 2) !== 0) return
 
@@ -1619,7 +1697,7 @@ export function activeNormsFor(state: SimState, v: Villager): NormId[] {
 export function politicalTaskBias(state: SimState, v: Villager, kind: TaskKind, targetId: number | null): number {
   // Hard gate: norms must not pull troubadours while hungry / under famine.
   if (
-    (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') &&
+    (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'ritual' || kind === 'teachCraft') &&
     (state.famine || v.hunger < 2.35)
   ) {
     return 0
@@ -1756,6 +1834,13 @@ export function politicalTaskBias(state: SimState, v: Villager, kind: TaskKind, 
   if (kind === 'counsel') {
     mult *= 1 + pol.beliefs.piety * 0.35
     if (circles.some((c) => c.kind === 'faith')) mult *= 1.35
+  }
+  if (kind === 'ritual') {
+    mult *= 1 + pol.beliefs.piety * 0.45
+    if (circles.some((c) => c.kind === 'faith')) mult *= 1.4
+    const vg = villageOf(state, v.villageId)
+    if (vg?.hasShrine) mult *= 1.25
+    if (vg?.sacredTier === 'chapel' || vg?.sacredTier === 'temple') mult *= 1.15
   }
   if (kind === 'teachCraft') {
     if (circles.some((c) => c.isGuild || c.norms.includes('teach_apprentice'))) mult *= 1.45
@@ -2175,10 +2260,26 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
       wood = 0.5
       stone = 0.55
     } else if (c.kind === 'faith' || c.creed === 'piete') {
-      reasons = [`institution ${c.name} (foi)`, 'autel', 'sanctuaire', 'recueillement']
-      purposes = ['shrine']
-      wood = 0.45
-      stone = 0.7
+      const vgFaith = village
+      const tier = vgFaith?.sacredTier ?? 'none'
+      if (tier === 'temple') {
+        reasons = null
+      } else if (tier === 'chapel') {
+        reasons = [`institution ${c.name} (foi)`, 'temple', 'sanctuaire', 'culte']
+        purposes = ['temple']
+        wood = 0.5
+        stone = 0.85
+      } else if (tier === 'shrine' || vgFaith?.hasShrine) {
+        reasons = [`institution ${c.name} (foi)`, 'chapelle', 'sanctuaire', 'recueillement']
+        purposes = ['chapel']
+        wood = 0.5
+        stone = 0.75
+      } else {
+        reasons = [`institution ${c.name} (foi)`, 'autel', 'sanctuaire', 'recueillement']
+        purposes = ['shrine']
+        wood = 0.45
+        stone = 0.7
+      }
     }
     if (reasons) {
       const fortScale =
@@ -2508,13 +2609,16 @@ function maybeSponsorPolityKeep(state: SimState, p: Polity) {
   const prosp = cap.prosperity ?? 0
   const sol = cap.standardOfLiving ?? 0
   const stoneSurplus = cap.surplus.stone ?? 0
-  const wealthOk = prosp >= 36 || sol >= 0.38 || stoneSurplus >= 0.5 || pop >= 7
-  const tierOk = TIER_RANK[p.tier] >= 2 || (pop >= 5 && (prosp >= 42 || stoneSurplus >= 0.65))
-  if (!wealthOk || !tierOk) return
-  // Soft mid-game gate: after ~day 12 of world age, or sooner if already a chiefdom.
-  const midGame = state.tick >= 12 * 48 || TIER_RANK[p.tier] >= 2
-  if (!midGame) return
-  if ((state.tick + p.id * 11) % (POLITY_TICK * 2) !== 0) return
+  const wealthOk = prosp >= 28 || sol >= 0.28 || stoneSurplus >= 0.35 || pop >= 5
+  const tierOk = TIER_RANK[p.tier] >= 1 && (pop >= 4 || TIER_RANK[p.tier] >= 2)
+  // Soft mid-game gate: after ~day 10, or sooner if already a chiefdom.
+  const midGame = state.tick >= 10 * 72 || TIER_RANK[p.tier] >= 2
+  // Forced mid-game path: settled village with no keep yet still gets a donjon order.
+  const forcedMid = state.tick >= 15 * 72 && pop >= 4
+  if (!midGame && !forcedMid) return
+  if (!wealthOk && !forcedMid) return
+  if (!tierOk && !forcedMid) return
+  if ((state.tick + p.id * 11) % POLITY_TICK !== 0) return
 
   const openFort = state.projects.some(
     (pr) => pr.villageId === cap.id && pr.phase !== 'done' && pr.intent.purposes.includes('fortify'),
@@ -2522,10 +2626,22 @@ function maybeSponsorPolityKeep(state: SimState, p: Polity) {
   if (openFort) return
 
   const scale =
-    TIER_RANK[p.tier] >= 3 ? 0.82 : TIER_RANK[p.tier] >= 2 ? 0.68 : pop >= 8 ? 0.62 : 0.52
+    TIER_RANK[p.tier] >= 3
+      ? 0.82
+      : TIER_RANK[p.tier] >= 2
+        ? 0.68
+        : forcedMid && !wealthOk
+          ? 0.55
+          : pop >= 8
+            ? 0.62
+            : 0.52
   const intent = intentFromReasons(
     [
-      TIER_RANK[p.tier] >= 2 ? `autorité de ${p.name}` : `prospérité du village n°${cap.id}`,
+      TIER_RANK[p.tier] >= 2
+        ? `autorité de ${p.name}`
+        : forcedMid
+          ? `essor du village n°${cap.id}`
+          : `prospérité du village n°${cap.id}`,
       'keep / donjon',
       'siège du pouvoir',
     ],

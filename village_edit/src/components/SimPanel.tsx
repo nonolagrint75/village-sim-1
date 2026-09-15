@@ -260,6 +260,7 @@ export const SimPanel = memo(function SimPanel({
                       ['Pouvoirs', stats.polities ?? 0],
                       ['Chefferies', stats.chiefdoms ?? 0],
                       ['Royaumes', stats.kingdoms ?? 0],
+                      ['Châteaux', stats.castles ?? 0],
                       ['Institutions', stats.institutions ?? 0],
                     ]}
                   />
@@ -337,7 +338,11 @@ export const SimPanel = memo(function SimPanel({
                               {b.members} membre{b.members === 1 ? '' : 's'} · {b.phaseHint}
                             </p>
                             <p className="sim-group-stats">
-                              {b.raids} razzia{b.raids === 1 ? '' : 's'} · {b.campLabel}
+                              {b.raids} razzia{b.raids === 1 ? '' : 's'}
+                              {(b.tradeAmbushes ?? 0) > 0
+                                ? ` · ${b.tradeAmbushes} embuscade${b.tradeAmbushes === 1 ? '' : 's'}`
+                                : ''}{' '}
+                              · {b.campLabel}
                             </p>
                           </div>
                         </li>
@@ -364,7 +369,9 @@ export const SimPanel = memo(function SimPanel({
                           <div className="sim-group-card">
                             <div className="sim-group-top">
                               <strong>{s.label}</strong>
-                              {s.hasShrine && <span className="sim-group-badge">Autel</span>}
+                              {s.hasShrine && (
+                                <span className="sim-group-badge">{s.tierLabel || 'Autel'}</span>
+                              )}
                             </div>
                             <p className="sim-group-meta">
                               Village n°{s.villageId}
@@ -379,33 +386,45 @@ export const SimPanel = memo(function SimPanel({
               )}
             </Section>
             <Section title="Châteaux & projets">
-              {projects.length === 0 ? (
+              {(stats.castles ?? 0) === 0 && projects.length === 0 ? (
                 <p className="sim-empty">
                   Aucun chantier collectif — remparts, donjons et autels apparaîtront sous menace ou ambition.
                 </p>
               ) : (
-                <ul className="sim-groups">
-                  {projects.map((p) => (
-                    <li key={p.id}>
-                      <div className="sim-group-card">
-                        <div className="sim-group-top">
-                          <strong>{p.label}</strong>
-                          {p.isFort && <span className="sim-group-badge">Fort</span>}
+                <>
+                  {(stats.castles ?? 0) > 0 && (
+                    <StatGrid items={[['Donjons / keeps achevés', stats.castles ?? 0]]} />
+                  )}
+                  {projects.length > 0 ? (
+                    <ul className="sim-groups" style={{ marginTop: (stats.castles ?? 0) > 0 ? '0.55rem' : 0 }}>
+                      {projects.map((p) => (
+                        <li key={p.id}>
+                          <div className="sim-group-card">
+                            <div className="sim-group-top">
+                              <strong>{p.label}</strong>
+                          {p.isKeep && <span className="sim-group-badge">Donjon</span>}
+                          {p.isFort && !p.isKeep && <span className="sim-group-badge">Fort</span>}
                           {p.isShrine && <span className="sim-group-badge">Autel</span>}
                           {p.phase === 'done' && !p.isFort && !p.isShrine && (
                             <span className="sim-group-badge">Achevé</span>
                           )}
-                        </div>
-                        <p className="sim-group-meta">
-                          {p.phaseLabel}
-                          {p.purposes.length > 0 ? ` · ${p.purposes.join(', ')}` : ''}
-                          {p.villageLabel ? ` · ${p.villageLabel}` : ''}
-                        </p>
-                        <p className="sim-group-stats">{p.progressNote}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                            </div>
+                            <p className="sim-group-meta">
+                              {p.phaseLabel}
+                              {p.purposes.length > 0 ? ` · ${p.purposes.join(', ')}` : ''}
+                              {p.villageLabel ? ` · ${p.villageLabel}` : ''}
+                            </p>
+                            <p className="sim-group-stats">{p.progressNote}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="sim-muted" style={{ marginTop: '0.45rem' }}>
+                      Aucun chantier en cours.
+                    </p>
+                  )}
+                </>
               )}
             </Section>
             <Section title="Habitats & travail">
@@ -523,11 +542,11 @@ export const SimPanel = memo(function SimPanel({
                   {religionSites.length > 0 && (
                     <>
                       <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
-                        Autels & lieux sacrés
+                        Autels, chapelles & temples
                       </p>
                       <StatGrid
                         items={religionSites.map((s) => [
-                          s.label,
+                          `${s.tierLabel}: ${s.label}`,
                           s.hasShrine ? 1 : 0,
                         ])}
                       />

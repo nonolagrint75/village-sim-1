@@ -173,7 +173,7 @@ export function skillForTask(kind: string): ProceduralSkill | null {
   }
   if (kind.startsWith('build')) return 'build'
   if (kind === 'fight' || kind === 'confront' || kind === 'defend') return 'fight'
-  if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
+  if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'ritual' || kind === 'teachCraft') {
     return 'social'
   }
   return null
@@ -203,7 +203,7 @@ export function skillYieldBonus(skills: ProceduralSkills, kind: string): number 
 export function practiceSkill(skills: ProceduralSkills, kind: string, success: boolean): ProceduralSkill | null {
   const sk = skillForTask(kind)
   if (!sk) return null
-  const delta = success ? 0.014 : 0.004
+  const delta = success ? 0.02 : 0.006
   skills[sk] = Math.min(1, skills[sk] + delta)
   return sk
 }

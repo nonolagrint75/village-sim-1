@@ -104,7 +104,7 @@ function ensureUtilScratch(n: number): Float32Array {
 
 /** Talk / spectacle / counsel are surplus-only — hard zero under hunger or famine. */
 function leisureBlockedBySurvival(state: SimState, v: Villager, kind: TaskKind): boolean {
-  if (kind !== 'socialise' && kind !== 'entertain' && kind !== 'counsel' && kind !== 'teachCraft') {
+  if (kind !== 'socialise' && kind !== 'entertain' && kind !== 'counsel' && kind !== 'ritual' && kind !== 'teachCraft') {
     return false
   }
   return state.famine || v.hunger < 2.35
@@ -230,7 +230,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'need_shelter') * 0.7 +
       peWeight(pe, 'shelter') * 0.3
   }
-  if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
+  if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'ritual' || kind === 'teachCraft') {
     m *=
       1 +
       n.social * 0.55 +
@@ -241,7 +241,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       peWeight(pe, 'social') * 0.2 +
       peWeight(pe, 'belonging') * 0.15
     // Hard gate: socialise/spectacle/counsel wipe under hunger (giveFood still soft-yields).
-    if (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
+    if (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'ritual' || kind === 'teachCraft') {
       if (n.hunger > 0.38) return 0
       if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
       else if (n.purpose > 0.3) m *= 0.55
@@ -257,8 +257,19 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
     m *= n.hunger > 0.25 ? 0 : 1 + n.boredom * 0.45 + n.status * 0.2
   }
   if (kind === 'counsel') m *= 1 + n.piety * 0.5
+  if (kind === 'ritual') m *= 1 + n.piety * 0.7 + mind.sacredConf * 0.45
   if (kind === 'teachCraft') m *= 1 + n.purpose * 0.35 + n.status * 0.15
   if (kind === 'makeCharcoal') m *= 1 + n.creative * 0.25 + n.purpose * 0.15
+  if (kind === 'experiment') {
+    m *=
+      1 +
+      n.creative * 0.85 +
+      n.boredom * 0.55 +
+      n.purpose * 0.35 +
+      workspaceBias(mind.broadcast, 'build') * 0.2 +
+      consciousAccessBias(mind, 'build') * 0.4
+    if (n.hunger > 0.42 || n.fatigue > 0.55) m *= 0.25
+  }
   if (kind === 'tradeRun' || kind === 'mintCoins' || kind === 'mineGold' || kind === 'buildProject') {
     m *=
       1 +
@@ -269,7 +280,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       peWeight(pe, 'status') * 0.2
   }
   if (kind === 'idle') m *= 0.55 + n.boredom * 0.35 - n.fatigue * 0.35 - n.hunger * 0.4 - n.purpose * 0.25
-  if (kind.startsWith('craft') || kind.startsWith('build') || kind === 'weaveCloth' || kind === 'sewClothing') {
+  if (kind.startsWith('craft') || kind.startsWith('build') || kind === 'weaveCloth' || kind === 'sewClothing' || kind === 'experiment') {
     m *=
       1 +
       n.creative * 0.35 +

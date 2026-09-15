@@ -464,6 +464,8 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       firstCreed: false,
       firstShrine: false,
       firstRitual: false,
+      firstChapel: false,
+      firstTemple: false,
       firstBandits: false,
       firstKeep: false,
       firstRealm: false,

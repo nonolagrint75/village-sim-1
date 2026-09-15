@@ -78,6 +78,8 @@ export type StructurePurpose =
   | 'prestige'
   | 'homestead'
   | 'shrine'
+  | 'chapel'
+  | 'temple'
 
 export interface StructureIntent {
   purposes: StructurePurpose[]
@@ -132,6 +134,8 @@ const PURPOSE_FR: Record<StructurePurpose, string> = {
   prestige: 'grande maison',
   homestead: 'nouveau foyer',
   shrine: 'autel / sanctuaire',
+  chapel: 'chapelle',
+  temple: 'temple',
 }
 
 /** Soft French label: palissade → fort → donjon according to scale / stone. */
@@ -179,6 +183,8 @@ export function intentFromReasons(
   }
   if (/halle|place|assemblée|ancien|commerce|marché|cercle/.test(text)) push('gather')
   if (/autel|sanctuaire|foi|pieux|recueillement|rite|rituel|sacré/.test(text)) push('shrine')
+  if (/chapelle/.test(text)) push('chapel')
+  if (/temple|culte affermi/.test(text)) push('temple')
   if (/prestige|richesse|ambition|statut|annexe|manoir|grande maison/.test(text)) push('prestige')
   if (/abri|toit|maison|foyer/.test(text)) push('shelter')
 
@@ -215,7 +221,9 @@ function floorMaterialFor(intent: StructureIntent): FloorMaterial {
   if (
     intent.purposes.includes('gather') ||
     intent.purposes.includes('prestige') ||
-    intent.purposes.includes('shrine')
+    intent.purposes.includes('shrine') ||
+    intent.purposes.includes('chapel') ||
+    intent.purposes.includes('temple')
   ) {
     return 'plank'
   }
@@ -224,7 +232,8 @@ function floorMaterialFor(intent: StructureIntent): FloorMaterial {
 }
 
 function shapeFor(intent: StructureIntent): HouseShape {
-  if (intent.purposes.includes('shrine')) return 'square'
+  if (intent.purposes.includes('temple') || intent.purposes.includes('chapel') || intent.purposes.includes('shrine'))
+    return 'square'
   if (intent.purposes.includes('gather')) return 'courtyard'
   if (intent.purposes.includes('prestige')) return intent.scale > 0.6 ? 'courtyard' : 'ell'
   if (intent.purposes.includes('fortify')) return 'square'
@@ -242,7 +251,10 @@ function paramsFromIntent(
   const primary =
     intent.purposes.includes('fortify')
       ? 'fortify'
-      : intent.purposes.includes('shrine') || intent.purposes.includes('gather')
+      : intent.purposes.includes('temple') ||
+          intent.purposes.includes('chapel') ||
+          intent.purposes.includes('shrine') ||
+          intent.purposes.includes('gather')
         ? 'gather'
         : intent.purposes.includes('store')
           ? 'store'
@@ -256,7 +268,7 @@ function paramsFromIntent(
 
   const halfM = structureHalfSpanMeters(primary, scale, !!tech?.highKeep)
   // Cap fort footprints so findBuildSite can succeed mid-game near villages.
-  const fortMax = tech?.highKeep ? 6 : 4
+  const fortMax = tech?.highKeep ? 5 : 3
   let rx = metersToTilesRound(halfM, 2, primary === 'fortify' ? fortMax : tech?.highKeep ? 11 : 9)
   let ry = rx
 
@@ -270,7 +282,7 @@ function paramsFromIntent(
     intent.purposes.includes('fortify') &&
     ((tech?.highKeep && scale > 0.28) ||
       (tech?.arrowSlit && scale > 0.4) ||
-      (!tech?.highKeep && scale > 0.48))
+      (!tech?.highKeep && scale > 0.42))
 
   const stone = intent.stoneBias >= intent.woodBias
   const wallHeightM = wallHeightMeters(scale, primary === 'fortify', stone)
@@ -283,7 +295,8 @@ function paramsFromIntent(
     floorMaterial: floorMaterialFor(intent),
     towers: canTower,
     courtyard: intent.purposes.includes('gather') || (intent.purposes.includes('prestige') && scale > 0.6),
-    door: !intent.purposes.includes('fortify') || scale < 0.55 || !!tech?.arrowSlit,
+    // Always leave a gate — closed keeps strand builders and garrison.
+    door: true,
     wallHeightM,
   }
 }
@@ -410,6 +423,15 @@ export function enqueueBuildProject(
     if (stoneSurplus > 1.2) intent.scale = Math.min(1, intent.scale + 0.12)
     if (tech.arrowSlit) intent.scale = Math.min(1, intent.scale + 0.08)
   }
+  // First forts without keep-tech: wood palisade so mid-game labor can finish walls.
+  if (intent.purposes.includes('fortify') && !tech.highKeep && !tech.arrowSlit) {
+    const stoneSurplus = village?.surplus.stone ?? 0
+    if (stoneSurplus < 0.9) {
+      intent.woodBias = Math.max(intent.woodBias, 0.62)
+      intent.stoneBias = Math.min(intent.stoneBias, 0.38)
+      intent.scale = Math.min(intent.scale, 0.52)
+    }
+  }
 
   // Local biome nudges timber vs stone (tundra/alpine → stone; forest → wood).
   const biome = biomeProfile(sampleBiome(state.climate, opts.nearX, opts.nearY))
@@ -420,8 +442,8 @@ export function enqueueBuildProject(
     if (tech.highKeep || tech.arrowSlit) {
       intent.stoneBias = Math.max(intent.stoneBias, 0.72)
       intent.woodBias = Math.min(intent.woodBias, 0.35)
-    } else if (intent.stoneBias >= 0.4) {
-      intent.stoneBias = Math.max(intent.stoneBias, 0.55)
+    } else if (intent.stoneBias >= 0.55 && (village?.surplus.stone ?? 0) >= 0.9) {
+      intent.stoneBias = Math.max(intent.stoneBias, 0.6)
     }
   }
 
@@ -591,6 +613,14 @@ function applyFortifyCompletion(state: SimState, project: BuildProject): void {
     ? `${fortifyLabelFr(project.intent)}${project.params.towers ? ' (tours)' : ''} achevé`
     : `${project.label} achevé`
   logCause(state, project.intent.reasons[0] ?? project.label, `${doneLabel} (#${project.id})`)
+  if (
+    project.intent.purposes.includes('fortify') &&
+    (project.params.wallMaterial === 'stone' || project.params.towers || project.intent.scale >= 0.5) &&
+    !state.milestones.firstKeep
+  ) {
+    state.milestones.firstKeep = true
+    logCause(state, doneLabel, 'premier donjon / keep achevé — siège de pouvoir')
+  }
 }
 
 /** True when a fortify project actually stamped walls/towers on the map. */
@@ -752,6 +782,8 @@ function emptyFoundingVillage(state: SimState, x: number, y: number, rng: () => 
     shrineLabel: null,
     shrineCreed: null,
     lastShrineRiteTick: 0,
+    sacredTier: 'none',
+    shrineRiteCount: 0,
     development: 0.22,
     standardOfLiving: 0.38,
     laborBalance: 0,
@@ -885,17 +917,17 @@ export function seedPioneerCamps(
       // instead of waiting for clearLand→sowField under social/rest lock.
       if (v.fieldX === -1) {
         const field =
-          findBuildSite(grid, plot.x - 8, plot.y, 2, 22, 4) ??
-          findBuildSite(grid, plot.x + 8, plot.y + 2, 2, 18, 4)
+          findBuildSite(grid, plot.x - 8, plot.y, 3, 26, 8) ??
+          findBuildSite(grid, plot.x + 8, plot.y + 2, 3, 22, 8)
         if (field) {
           v.fieldX = field.x
           v.fieldY = field.y
-          claimArea(grid, field.x, field.y, 2, CLAIM_FIELD)
-          const cells = fieldCells(grid, field.x, field.y, 2)
+          claimArea(grid, field.x, field.y, 3, CLAIM_FIELD)
+          const cells = fieldCells(grid, field.x, field.y, 3)
           clearPlotVegetation(grid, cells)
           let sown = 0
           for (const c of cells) {
-            if (sown >= 4) break
+            if (sown >= 8) break
             if (!isBuildableGround(grid, c.x, c.y)) continue
             const cropId = pickCropId(rng, sampleBiome(state.climate, c.x, c.y))
             setTerrain(grid, c.x, c.y, WHEAT, 1)

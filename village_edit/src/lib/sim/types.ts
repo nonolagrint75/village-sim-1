@@ -186,6 +186,8 @@ export type TaskKind =
   | 'entertain'
   /** Conseil spirituel / guérison soft — gourou, guérisseur. */
   | 'counsel'
+  /** Rite / recueillement au lieu sacré (autel → temple). */
+  | 'ritual'
   /** Transmission de savoir-faire (apprentissage). */
   | 'teachCraft'
   /** Bois → charbon (si technique connue). */
@@ -515,6 +517,9 @@ export interface Band {
 
 export type WallTier = 'none' | 'wood' | 'stone'
 
+/** Sacred building progression for a village faith site. */
+export type SacredTier = 'none' | 'shrine' | 'chapel' | 'temple'
+
 export interface Village {
   id: number
   centerX: number
@@ -587,6 +592,10 @@ export interface Village {
   shrineCreed: string | null
   /** Last rite held at the shrine. */
   lastShrineRiteTick: number
+  /** Building progression: none → shrine → chapel → temple. */
+  sacredTier: SacredTier
+  /** Cumulative rites at the village sacred site (drives upgrades). */
+  shrineRiteCount: number
   /**
    * Soft EU-style development index (pop + infra + production) — drives construction / trade weight.
    * Not a player budget or map-painter score.
@@ -703,6 +712,10 @@ export interface SimMilestones {
   firstShrine: boolean
   /** First communal rite at a shrine or faith circle. */
   firstRitual: boolean
+  /** First chapel upgrade from a shrine. */
+  firstChapel: boolean
+  /** First temple upgrade from a chapel. */
+  firstTemple: boolean
   /** First brigand band chronicled. */
   firstBandits: boolean
   /** First stone keep / donjon chronicled. */

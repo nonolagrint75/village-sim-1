@@ -21,7 +21,7 @@ import {
   politicsOf,
   trySpreadCreed,
 } from './politics'
-import { noteSpiritualCounsel } from './religion'
+import { noteRitualPractice, noteSpiritualCounsel } from './religion'
 import {
   adjustRelation,
   broadcastWitness,
@@ -427,6 +427,20 @@ export function doCounsel(state: SimState, guide: Villager, seeker: Villager): v
   noteSpiritualCounsel(state, guide, seeker)
   if ((state.tick + guide.id) % 80 === 0) {
     logEvent(state, `${guide.name} console ${seeker.name}`)
+  }
+}
+
+/** Recueillement / rite au lieu sacré. */
+export function doRitual(state: SimState, v: Villager): void {
+  noteRitualPractice(state, v)
+  onCognitiveEvent(v, 'ritual', 0.75)
+  onCognitiveEvent(v, 'piety_calm', 0.55)
+  onCognitiveEvent(v, 'belonging_warm', 0.35)
+  v.stamina = Math.min(4, v.stamina + 0.04)
+  if ((state.tick + v.id) % 90 === 0) {
+    const vg = state.villages.find((g) => g.id === v.villageId)
+    const place = vg?.shrineLabel ?? 'le lieu sacré'
+    logEvent(state, `${v.name} honore le sacré près de ${place}`)
   }
 }
 

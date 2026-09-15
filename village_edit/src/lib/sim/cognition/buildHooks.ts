@@ -168,9 +168,8 @@ export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: Cogn
 
   if (
     v.hasHome &&
-    (coins >= 4 || mind.needs.status > 0.45) &&
-    (v.personality.ambition > 0.55 || v.ambition === 'leader' || v.ambition === 'builder') &&
-    mind.values.status > 0.4
+    (coins >= 3 || mind.needs.status > 0.35 || (mind.livelihood?.recognition ?? 0) > 0.2) &&
+    (v.personality.ambition > 0.4 || v.ambition === 'leader' || v.ambition === 'builder' || v.ambition === 'wealth')
   ) {
     return intentFromReasons(['richesse et ambition', 'grande demeure'], {
       purposes: ['prestige', 'shelter'],
@@ -178,6 +177,24 @@ export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: Cogn
       wood: 0.65,
       stone: 0.4,
     })
+  }
+
+  // Family pressure → annex / store even without prestige ambition.
+  if (v.hasHome && v.house) {
+    let hh = 1
+    for (const o of state.villagers) {
+      if (!o.alive || o.id === v.id) continue
+      if (o.homeOwnerId === v.id || o.parentIds.includes(v.id)) hh++
+    }
+    const beds = v.house.bedSlots ?? 1
+    if (hh > beds || (v.spouseId !== null && beds < 2)) {
+      return intentFromReasons(['foyer trop étroit', 'agrandir la maison'], {
+        purposes: ['shelter', 'homestead'],
+        scale: 0.35 + Math.min(0.35, (hh - beds) * 0.12),
+        wood: 0.7,
+        stone: 0.25,
+      })
+    }
   }
 
   return null
@@ -194,7 +211,7 @@ export function maybeProposeConstruction(
   // Fortify / status drives pass the soft RNG gate more often.
   const safetyPush = mind.needs.safety >= 0.3 || mind.emotions.fear >= 0.28
   const statusPush = mind.needs.status >= 0.4
-  if (rng() > 0.82 && !safetyPush && !statusPush && mind.needs.safety < 0.55 && mind.needs.status < 0.5) {
+  if (rng() > 0.7 && !safetyPush && !statusPush && mind.needs.safety < 0.55 && mind.needs.status < 0.45) {
     return null
   }
 

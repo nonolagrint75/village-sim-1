@@ -1,4 +1,6 @@
 import { countOf, edibleValue } from '../inventory'
+import { ensureLivelihood } from '../livelihood'
+import { gearPrestige01 } from '../equipment'
 import { politicsOf } from '../politics'
 import { findRoomAt, applyRoomNeedRelief } from '../rooms'
 import { lonelinessPressure } from '../social'
@@ -6,6 +8,7 @@ import type { SimState, Villager } from '../types'
 import { distance, isNight } from '../world'
 import { coldStress01, heatStress01, sampleTempC } from '../climate'
 import { cloakWarmth01, darknessPressure, nearWarmFire, warmthPressure } from '../lightWarmth'
+import { mindOf } from './mindPool'
 import type { NeedPressures, ValueWeights } from './types'
 
 function clamp01(v: number): number {
@@ -129,10 +132,16 @@ export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures):
   )
 
   const coins = countOf(v.inventory, 'coin')
+  const live = ensureLivelihood(mindOf(v))
+  const prestige = gearPrestige01(v)
+  // Aspiration: low recognition / thin purse / ambitious roles raise status hunger.
   needs.status = clamp01(
-    (v.ambition === 'leader' || v.ambition === 'builder' ? 0.35 : 0.1) +
-      (coins < 2 ? 0.2 : -0.05) +
-      pol.grievance * 0.25,
+    (v.ambition === 'leader' || v.ambition === 'builder' || v.ambition === 'wealth' ? 0.32 : 0.1) +
+      (coins < 2 ? 0.22 : coins < 6 ? 0.08 : -0.06) +
+      (1 - live.recognition) * 0.22 +
+      (1 - Math.min(1, prestige)) * 0.12 +
+      pol.grievance * 0.2 -
+      live.recognition * 0.15,
   )
 
   const idleLife = v.profession === 'none' && v.hasHome ? 0.25 : 0

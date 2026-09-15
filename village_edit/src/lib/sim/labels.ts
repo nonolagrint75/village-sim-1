@@ -67,6 +67,7 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   experiment: 'Expérimente près de l’établi',
   entertain: 'Conte, chante ou divertit',
   counsel: 'Offre un conseil spirituel',
+  ritual: 'Honore le lieu sacré',
   teachCraft: 'Enseigne un savoir-faire',
   makeCharcoal: 'Fait du charbon de bois',
   craftGear: 'Fabrique une pièce d’équipement',

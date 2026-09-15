@@ -274,6 +274,70 @@ export function drawWolfSprite(
   }
 }
 
+/**
+ * Sacred site marker — autel (stone slab) → chapelle (small roof) → temple (larger facade).
+ * Drawn on top of the world map at village shrine coords.
+ */
+export function drawSacredSite(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  tier: 'shrine' | 'chapel' | 'temple',
+  simple: boolean,
+  shadows: boolean,
+) {
+  const s = Math.max(3, size * (tier === 'temple' ? 1.35 : tier === 'chapel' ? 1.1 : 0.85))
+  if (simple) {
+    ctx.fillStyle = tier === 'temple' ? '#c4b896' : tier === 'chapel' ? '#b0a888' : '#9a9080'
+    ctx.fillRect(sx - 2, sy - 3, 4, 5)
+    return
+  }
+  drawEntityShadow(ctx, sx, sy + s * 0.15, s * 0.55, s * 0.22, shadows)
+  if (tier === 'shrine') {
+    // Low stone altar + upright slab
+    ctx.fillStyle = '#8a8478'
+    ctx.fillRect(sx - s * 0.45, sy - s * 0.05, s * 0.9, s * 0.28)
+    ctx.fillStyle = '#a39e92'
+    ctx.fillRect(sx - s * 0.12, sy - s * 0.55, s * 0.24, s * 0.55)
+    ctx.fillStyle = 'rgba(220, 200, 140, 0.35)'
+    ctx.beginPath()
+    ctx.arc(sx, sy - s * 0.62, s * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+  // Chapel / temple body
+  const w = tier === 'temple' ? s * 1.1 : s * 0.85
+  const h = tier === 'temple' ? s * 0.95 : s * 0.7
+  ctx.fillStyle = '#c8bea8'
+  ctx.fillRect(sx - w * 0.5, sy - h * 0.35, w, h * 0.7)
+  // Roof
+  ctx.fillStyle = tier === 'temple' ? '#6a5040' : '#7a6048'
+  ctx.beginPath()
+  ctx.moveTo(sx - w * 0.58, sy - h * 0.28)
+  ctx.lineTo(sx, sy - h * 0.85)
+  ctx.lineTo(sx + w * 0.58, sy - h * 0.28)
+  ctx.closePath()
+  ctx.fill()
+  // Door
+  ctx.fillStyle = '#3a3028'
+  ctx.fillRect(sx - w * 0.12, sy + h * 0.05, w * 0.24, h * 0.28)
+  if (tier === 'temple') {
+    // Twin columns
+    ctx.fillStyle = '#ddd4c0'
+    ctx.fillRect(sx - w * 0.42, sy - h * 0.2, w * 0.1, h * 0.5)
+    ctx.fillRect(sx + w * 0.32, sy - h * 0.2, w * 0.1, h * 0.5)
+    ctx.fillStyle = 'rgba(240, 220, 160, 0.25)'
+    ctx.beginPath()
+    ctx.arc(sx, sy - h * 0.9, s * 0.14, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    // Small bell / cross stub
+    ctx.fillStyle = '#5a5040'
+    ctx.fillRect(sx - 1, sy - h * 0.95, 2, h * 0.2)
+  }
+}
+
 /** Ragged medieval brigand — distinct from villagers (dark cloak, no bright hue). */
 export function drawBanditSprite(
   ctx: CanvasRenderingContext2D,
@@ -322,6 +386,67 @@ export function drawBanditSprite(
     ctx.fillRect(sx + size * 0.22, sy - size * 0.35, size * 0.06, size * 0.55)
     ctx.fillStyle = '#6a6a70'
     ctx.fillRect(sx + size * 0.2, sy - size * 0.4, size * 0.1, size * 0.1)
+  }
+}
+
+/** Wilds camp / repaired hideout (repaire) — tents then timber lean-to. */
+export function drawBanditCampSprite(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  tier: 'camp' | 'lair',
+  simple: boolean,
+  shadows: boolean,
+) {
+  if (simple) {
+    ctx.fillStyle = tier === 'lair' ? '#4a3828' : '#3a3228'
+    ctx.fillRect(sx - 2, sy - 2, 5, 4)
+    if (tier === 'camp') {
+      ctx.fillStyle = '#c06030'
+      ctx.fillRect(sx, sy - 3, 1, 1)
+    }
+    return
+  }
+  drawEntityShadow(ctx, sx, sy, size * 0.7, size * 0.28, shadows)
+  if (tier === 'lair') {
+    // Timber lean-to / rough hut
+    ctx.fillStyle = '#3a2e24'
+    ctx.beginPath()
+    ctx.moveTo(sx - size * 0.55, sy + size * 0.15)
+    ctx.lineTo(sx - size * 0.35, sy - size * 0.45)
+    ctx.lineTo(sx + size * 0.55, sy - size * 0.35)
+    ctx.lineTo(sx + size * 0.45, sy + size * 0.2)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#2a2218'
+    ctx.fillRect(sx - size * 0.12, sy - size * 0.05, size * 0.22, size * 0.28)
+    ctx.fillStyle = '#5a4838'
+    ctx.fillRect(sx - size * 0.5, sy + size * 0.12, size * 0.95, size * 0.08)
+  } else {
+    // Canvas tent + campfire
+    ctx.fillStyle = '#4a4034'
+    ctx.beginPath()
+    ctx.moveTo(sx - size * 0.5, sy + size * 0.2)
+    ctx.lineTo(sx, sy - size * 0.55)
+    ctx.lineTo(sx + size * 0.5, sy + size * 0.2)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = '#2a241c'
+    ctx.lineWidth = Math.max(1, size * 0.06)
+    ctx.beginPath()
+    ctx.moveTo(sx, sy - size * 0.55)
+    ctx.lineTo(sx, sy + size * 0.2)
+    ctx.stroke()
+    // Fire
+    ctx.fillStyle = '#c86828'
+    ctx.beginPath()
+    ctx.ellipse(sx + size * 0.55, sy + size * 0.1, size * 0.12, size * 0.1, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#e8a040'
+    ctx.beginPath()
+    ctx.ellipse(sx + size * 0.55, sy + size * 0.05, size * 0.06, size * 0.08, 0, 0, Math.PI * 2)
+    ctx.fill()
   }
 }
 

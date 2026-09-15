@@ -63,8 +63,8 @@ const MAX_VILLAGE_KNOWLEDGE = 20
 const MAX_CIRCLE_TECH = 10
 
 /** Soft LOD: invention checks on a rotating slice of agents. */
-const INVENTION_PERIOD = 47
-const INVENTION_SLICE = 8
+const INVENTION_PERIOD = 31
+const INVENTION_SLICE = 12
 const RESEARCH_COST_WOOD = 1
 const RESEARCH_COST_STONE = 1
 
@@ -113,8 +113,8 @@ const RECIPE_TEMPLATES: RecipeTemplate[] = [
     purposes: ['craft', 'experiment'],
     requires: ['heat_wood'],
     problems: ['leisure'],
-    minSkill: 0.18,
-    baseChance: 0.028,
+    minSkill: 0.16,
+    baseChance: 0.045,
   },
   {
     id: 'grind_stone',
@@ -197,8 +197,8 @@ const RECIPE_TEMPLATES: RecipeTemplate[] = [
     purposes: ['construction', 'fortify', 'defense'],
     requires: [],
     problems: ['defense', 'siege_fear'],
-    minSkill: 0.2,
-    baseChance: 0.03,
+    minSkill: 0.15,
+    baseChance: 0.055,
   },
   {
     id: 'high_stone_keep',
@@ -209,8 +209,8 @@ const RECIPE_TEMPLATES: RecipeTemplate[] = [
     purposes: ['fortify', 'defense', 'construction'],
     requires: ['stack_stone_high'],
     problems: ['defense', 'siege_fear'],
-    minSkill: 0.32,
-    baseChance: 0.016,
+    minSkill: 0.24,
+    baseChance: 0.032,
   },
   {
     id: 'arrow_slit',
@@ -221,8 +221,8 @@ const RECIPE_TEMPLATES: RecipeTemplate[] = [
     purposes: ['fortify', 'defense', 'weapon'],
     requires: ['high_stone_keep'],
     problems: ['defense', 'hunting', 'siege_fear'],
-    minSkill: 0.35,
-    baseChance: 0.014,
+    minSkill: 0.28,
+    baseChance: 0.024,
   },
   {
     id: 'temper_iron',
@@ -232,9 +232,9 @@ const RECIPE_TEMPLATES: RecipeTemplate[] = [
     outputs: ['hardened_iron'],
     purposes: ['craft', 'weapon'],
     requires: ['charcoal_burn'],
-    problems: ['hunting', 'defense', 'mining'],
-    minSkill: 0.3,
-    baseChance: 0.02,
+    problems: ['hunting', 'defense', 'mining', 'leisure'],
+    minSkill: 0.26,
+    baseChance: 0.032,
   },
 ]
 
@@ -447,7 +447,7 @@ export function tryInvent(
   }
 
   if (!best) return null
-  if (rng() > Math.min(0.22, best.score)) return null
+  if (rng() > Math.min(0.32, best.score)) return null
 
   const { bit, isNew } = addOrReinforce(bits, best.template, state.tick, 0.45 + curiosity * 0.25, MAX_VILLAGER_KNOWLEDGE)
   if (!isNew) return null
@@ -467,7 +467,7 @@ export function tryInvent(
     if (c.memory.length > 12) c.memory.shift()
   }
 
-  logEvent(state, `${v.name} a découvert ${bit.labelFr}`)
+  logEvent(state, `${v.name} invente → ${bit.labelFr}`)
   return bit
 }
 
@@ -480,11 +480,11 @@ export function teachKnowledge(state: SimState, teacher: Villager, learner: Vill
   if (candidates.length === 0) return false
   const trust = teacher.relations.get(learner.id)?.trust ?? 0.2
   const kinship = teacher.relations.get(learner.id)?.kinship ?? 0
-  const chance = 0.08 + teacher.personality.sociability * 0.12 + learner.personality.curiosity * 0.15 + trust * 0.1 + kinship * 0.12
+  const chance = 0.18 + teacher.personality.sociability * 0.14 + learner.personality.curiosity * 0.18 + trust * 0.12 + kinship * 0.14
   if (rng() > chance) return false
   const pick = candidates[Math.floor(rng() * candidates.length)]
   const learned = mergeBitInto(to, pick, state.tick, MAX_VILLAGER_KNOWLEDGE)
-  if (learned && rng() < 0.12) {
+  if (learned && rng() < 0.35) {
     logEvent(state, `${teacher.name} enseigne « ${pick.labelFr} » à ${learner.name}`)
   }
   if (learned && learner.villageId !== null) {
@@ -510,8 +510,8 @@ export function diffuseVillageKnowledge(state: SimState, from: Village, to: Vill
   const dst = ensureVillageKnowledge(to)
   if (src.length === 0) return
   const pick = src[Math.floor(rng() * src.length)]
-  if (rng() > 0.35 + (from.development ?? 0.2) * 0.2) return
-  if (mergeBitInto(dst, pick, state.tick, MAX_VILLAGE_KNOWLEDGE) && rng() < 0.25) {
+  if (rng() > 0.18 + (from.development ?? 0.2) * 0.25) return
+  if (mergeBitInto(dst, pick, state.tick, MAX_VILLAGE_KNOWLEDGE) && rng() < 0.55) {
     logEvent(state, `Par le commerce, le savoir « ${pick.labelFr} » gagne un autre village`)
   }
   // Soft: a trader at destination may learn personally
@@ -536,7 +536,7 @@ export function noteMiningInsight(state: SimState, v: Villager, rng: () => numbe
     if (rng() < 0.35 + mindOf(v).skills.mine * 0.3) {
       const t = RECIPE_TEMPLATES.find((x) => x.id === 'sulfurish_mineral')!
       const { isNew } = addOrReinforce(bits, t, state.tick, 0.4, MAX_VILLAGER_KNOWLEDGE)
-      if (isNew) logEvent(state, `${v.name} a découvert ${t.labelFr}`)
+      if (isNew) logEvent(state, `${v.name} invente → ${t.labelFr}`)
     }
   }
 }
@@ -549,35 +549,56 @@ export function noteNitrateInsight(state: SimState, v: Villager, rng: () => numb
   if (bitKnown(bits, 'nitrate_soil')) return
   const t = RECIPE_TEMPLATES.find((x) => x.id === 'nitrate_soil')!
   const { isNew } = addOrReinforce(bits, t, state.tick, 0.38, MAX_VILLAGER_KNOWLEDGE)
-  if (isNew) logEvent(state, `${v.name} a découvert ${t.labelFr}`)
+  if (isNew) logEvent(state, `${v.name} invente → ${t.labelFr}`)
 }
 
 /**
  * Soft research session near workbench — consumes small resources, fails often.
  */
+function spendResearchMaterial(v: Villager): boolean {
+  if (countOf(v.inventory, 'wood') >= RESEARCH_COST_WOOD) {
+    removeFromInventory(v.inventory, 'wood', RESEARCH_COST_WOOD)
+    return true
+  }
+  if (countOf(v.inventory, 'stone') >= RESEARCH_COST_STONE) {
+    removeFromInventory(v.inventory, 'stone', RESEARCH_COST_STONE)
+    return true
+  }
+  if (v.chestInventory && countOf(v.chestInventory, 'wood') >= RESEARCH_COST_WOOD) {
+    removeFromInventory(v.chestInventory, 'wood', RESEARCH_COST_WOOD)
+    return true
+  }
+  if (v.chestInventory && countOf(v.chestInventory, 'stone') >= RESEARCH_COST_STONE) {
+    removeFromInventory(v.chestInventory, 'stone', RESEARCH_COST_STONE)
+    return true
+  }
+  return false
+}
+
 export function applyExperiment(
   state: SimState,
   v: Villager,
   rng: () => number,
 ): { continue: boolean; insight: KnowledgeBit | null } {
-  const wood = countOf(v.inventory, 'wood')
-  const stone = countOf(v.inventory, 'stone')
-  if (wood >= RESEARCH_COST_WOOD) removeFromInventory(v.inventory, 'wood', RESEARCH_COST_WOOD)
-  else if (stone >= RESEARCH_COST_STONE) removeFromInventory(v.inventory, 'stone', RESEARCH_COST_STONE)
-  else return { continue: false, insight: null }
+  if (!spendResearchMaterial(v)) return { continue: false, insight: null }
 
-  v.stamina = Math.max(0, v.stamina - 0.06)
+  v.stamina = Math.max(0, v.stamina - 0.05)
   const mind = mindOf(v)
-  mind.needs.boredom = clamp01(mind.needs.boredom - 0.08)
-  mind.needs.creative = clamp01(mind.needs.creative - 0.05)
+  mind.needs.boredom = clamp01(mind.needs.boredom - 0.1)
+  mind.needs.creative = clamp01(mind.needs.creative - 0.06)
 
-  // Fail often
-  const chance = 0.06 + v.personality.curiosity * 0.12 + inventorSkill(v) * 0.1 + villageSurplusLeisure(
-    v.villageId !== null ? state.villages.find((g) => g.id === v.villageId) : undefined,
-  ) * 0.08
+  // Bench sessions fail often, but not almost-always.
+  const chance =
+    0.14 +
+    v.personality.curiosity * 0.18 +
+    inventorSkill(v) * 0.14 +
+    villageSurplusLeisure(
+      v.villageId !== null ? state.villages.find((g) => g.id === v.villageId) : undefined,
+    ) *
+      0.12
   if (rng() > chance) return { continue: true, insight: null }
 
-  const insight = tryInvent(state, v, rng, { researchBoost: 2.2 })
+  const insight = tryInvent(state, v, rng, { researchBoost: 3.4 })
   return { continue: insight === null, insight }
 }
 
@@ -606,6 +627,24 @@ export function knowsTemperIron(v: Villager | null | undefined, vg: Village | nu
   return hasKnowledge(v?.knowledge, 'temper_iron', 0.3) || hasKnowledge(vg?.knowledge, 'temper_iron', 0.35)
 }
 
+/** Stone masonry — gates village stone walls / heavier forts. */
+export function knowsStackStone(v: Villager | null | undefined, vg: Village | null | undefined): boolean {
+  return (
+    hasKnowledge(v?.knowledge, 'stack_stone_high', 0.28) ||
+    hasKnowledge(vg?.knowledge, 'stack_stone_high', 0.3)
+  )
+}
+
+/** Charcoal / temper path unlocks better metal tools. */
+export function knowsMetalworkPath(v: Villager | null | undefined, vg: Village | null | undefined): boolean {
+  return (
+    hasKnowledge(v?.knowledge, 'temper_iron', 0.28) ||
+    hasKnowledge(v?.knowledge, 'charcoal_burn', 0.28) ||
+    hasKnowledge(vg?.knowledge, 'temper_iron', 0.32) ||
+    hasKnowledge(vg?.knowledge, 'charcoal_burn', 0.32)
+  )
+}
+
 /** Soft combat bonus from temper / explosive / arrow slit — not modern guns. */
 export function techCombatBonus(v: Villager): number {
   let b = 0
@@ -623,22 +662,41 @@ export function tickTechnology(state: SimState, rng: () => number): void {
   const alive = state.villagers
   const n = alive.length
   if (n === 0) return
-  const start = (Math.floor(state.tick / INVENTION_PERIOD) * INVENTION_SLICE) % n
-  for (let i = 0; i < INVENTION_SLICE; i++) {
+  const slice = Math.min(n, INVENTION_SLICE + 4)
+  const start = (Math.floor(state.tick / INVENTION_PERIOD) * slice) % n
+  for (let i = 0; i < slice; i++) {
     const v = alive[(start + i) % n]
-    if (!v.alive || v.age < 30) continue
-    if (v.hunger < 1.2 || v.stamina < 0.8) continue
+    if (!v.alive || v.age < 24) continue
+    if (v.hunger < 1.5 || v.stamina < 1.0) continue
     const problems = detectProblems(state, v)
-    if (problems.length === 0 && v.personality.curiosity < 0.6) continue
+    if (problems.length === 0 && v.personality.curiosity < 0.45) continue
     tryInvent(state, v, rng)
     noteNitrateInsight(state, v, rng)
   }
 
+  // Village knowledge drips to curious members (visible diffusion).
+  if (state.tick % (INVENTION_PERIOD * 2) === 0) {
+    for (const vg of state.villages) {
+      const pool = ensureVillageKnowledge(vg)
+      if (pool.length === 0) continue
+      const pick = pool[Math.floor(rng() * pool.length)]
+      const learners = vg.memberIds
+        .map((id) => state.villagers.find((o) => o.id === id && o.alive))
+        .filter((o): o is Villager => !!o && !hasKnowledge(o.knowledge, pick.id, 0.22))
+      if (learners.length === 0) continue
+      learners.sort((a, b) => b.personality.curiosity - a.personality.curiosity)
+      const learner = learners[0]
+      if (mergeBitInto(ensureVillagerKnowledge(learner), pick, state.tick, MAX_VILLAGER_KNOWLEDGE) && rng() < 0.4) {
+        logEvent(state, `Savoir du village → ${learner.name} apprend « ${pick.labelFr} »`)
+      }
+    }
+  }
+
   // Circle diffusion: members share one bit occasionally
-  if (state.tick % (INVENTION_PERIOD * 3) === 0) {
+  if (state.tick % (INVENTION_PERIOD * 2) === 0) {
     for (const c of state.circles) {
       if (c.memberIds.length < 2 || !c.techIds || c.techIds.length === 0) continue
-      if (rng() > 0.4) continue
+      if (rng() > 0.28) continue
       const id = c.techIds[Math.floor(rng() * c.techIds.length)]
       const donors = c.memberIds
         .map((mid) => state.villagers.find((v) => v.id === mid && v.alive))
@@ -655,28 +713,35 @@ export function tickTechnology(state: SimState, rng: () => number): void {
 
 export function experimentUrge(v: Villager, state: SimState): number {
   if (!v.hasWorkbench) return 0
-  if (v.age < 35) return 0
-  if (v.hunger < 1.5 || v.stamina < 1.2) return 0
-  const wood = countOf(v.inventory, 'wood')
-  const stone = countOf(v.inventory, 'stone')
+  if (v.age < 24) return 0
+  // Leisure R&D needs a fed, rested body — not mid-starve thrash.
+  if (v.hunger < 2.0 || v.stamina < 1.6) return 0
+  const wood = countOf(v.inventory, 'wood') + (v.chestInventory ? countOf(v.chestInventory, 'wood') : 0)
+  const stone = countOf(v.inventory, 'stone') + (v.chestInventory ? countOf(v.chestInventory, 'stone') : 0)
   if (wood < 1 && stone < 1) return 0
   const mind = mindOf(v)
   const vg = v.villageId !== null ? state.villages.find((g) => g.id === v.villageId) : undefined
   const leisure = villageSurplusLeisure(vg)
+  const bits = ensureVillagerKnowledge(v)
+  const unknown = RECIPE_TEMPLATES.some((tmpl) => !bitKnown(bits, tmpl.id) && prerequisitesMet(bits, tmpl))
   let urge =
-    8 +
-    v.personality.curiosity * 55 +
-    mind.needs.boredom * 30 +
-    mind.needs.creative * 25 +
-    inventorSkill(v) * 20 +
-    leisure * 35
-  if (v.profession === 'blacksmith' || v.profession === 'mason') urge += 18
-  if (v.task?.kind === 'idle') urge += 10
+    42 +
+    v.personality.curiosity * 95 +
+    mind.needs.boredom * 48 +
+    mind.needs.creative * 40 +
+    inventorSkill(v) * 36 +
+    leisure * 55
+  if (unknown) urge += 28
+  if (v.profession === 'blacksmith' || v.profession === 'mason' || v.profession === 'builder') urge += 32
+  if (v.task?.kind === 'idle' || v.task?.kind === 'rest') urge += 22
+  if (mind.goal?.id === 'craft') urge += 24
   return urge
 }
 
 export function spendExperimentResources(v: Villager): ResourceType | null {
   if (countOf(v.inventory, 'wood') >= 1) return 'wood'
   if (countOf(v.inventory, 'stone') >= 1) return 'stone'
+  if (v.chestInventory && countOf(v.chestInventory, 'wood') >= 1) return 'wood'
+  if (v.chestInventory && countOf(v.chestInventory, 'stone') >= 1) return 'stone'
   return null
 }

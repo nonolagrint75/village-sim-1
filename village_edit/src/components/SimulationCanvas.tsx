@@ -12,9 +12,11 @@ import {
 import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
 import { type BiomeId } from '@/lib/sim/biomeVisual'
 import {
+  drawBanditCampSprite,
   drawBanditSprite,
   drawEmbarkedVillagerSprite,
   drawHorseSprite,
+  drawSacredSite,
   drawSheepSprite,
   drawVillagerSprite,
   drawWolfSprite,
@@ -89,7 +91,10 @@ export function SimulationCanvas() {
     boats: [],
     wolves: [],
     bandits: [],
+    bandCamps: [],
     villages: [],
+    polities: [],
+    keeps: [],
     tradeLinks: [],
     lights: [],
     ticksPerSec: 0,
@@ -379,7 +384,8 @@ export function SimulationCanvas() {
       ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
     }
 
-    const { villagers, sheep, horses, boats, wolves, bandits } = viewRef.current
+    const { villagers, sheep, horses, boats, wolves, bandits, bandCamps, polities, keeps, villages } =
+      viewRef.current
     const tileS = TILE_PX * zoom
     const terrain = terrainRef.current
     const amount = amountRef.current
@@ -409,6 +415,69 @@ export function SimulationCanvas() {
     const off = (sx: number, sy: number) => sx < -size || sy < -size || sx > DISPLAY_SIZE + size || sy > DISPLAY_SIZE + size
 
     const simpleSprites = size < 4.5
+
+    // Sacred buildings (autel → chapelle → temple) under actors.
+    for (const vg of villages ?? []) {
+      if (!vg.hasShrine || vg.shrineX < 0 || vg.sacredTier === 'none') continue
+      const sx = tx(vg.shrineX)
+      const sy = ty(vg.shrineY)
+      if (off(sx, sy)) continue
+      const tier =
+        vg.sacredTier === 'temple' || vg.sacredTier === 'chapel' ? vg.sacredTier : 'shrine'
+      drawSacredSite(ctx, sx, sy, size, tier, simpleSprites, shadows)
+    }
+
+    // Territory claims (chefferies / royaumes) — soft rings under actors.
+    for (const p of polities ?? []) {
+      const sx = tx(p.cx)
+      const sy = ty(p.cy)
+      const r = Math.max(6, p.claimRadius * TILE_PX * zoom)
+      if (sx + r < -4 || sy + r < -4 || sx - r > DISPLAY_SIZE + 4 || sy - r > DISPLAY_SIZE + 4) continue
+      const kingdom = p.tier === 'kingdom'
+      const chief = p.tier === 'chiefdom'
+      ctx.beginPath()
+      ctx.arc(sx, sy, r, 0, Math.PI * 2)
+      ctx.fillStyle = kingdom
+        ? 'rgba(180, 140, 55, 0.10)'
+        : chief
+          ? 'rgba(150, 110, 50, 0.08)'
+          : 'rgba(120, 100, 70, 0.05)'
+      ctx.fill()
+      ctx.strokeStyle = kingdom
+        ? 'rgba(210, 170, 70, 0.45)'
+        : chief
+          ? 'rgba(180, 140, 70, 0.35)'
+          : 'rgba(140, 120, 80, 0.22)'
+      ctx.lineWidth = kingdom ? 1.6 : chief ? 1.2 : 0.8
+      ctx.stroke()
+      if ((kingdom || chief) && zoom >= 0.35) {
+        ctx.fillStyle = kingdom ? 'rgba(230, 200, 120, 0.75)' : 'rgba(200, 170, 110, 0.65)'
+        ctx.font = `${Math.max(9, Math.round(10 * zoom))}px Georgia, serif`
+        ctx.textAlign = 'center'
+        ctx.fillText(p.name, sx, sy - r - 4)
+      }
+    }
+
+    // Keep / donjon markers.
+    for (const k of keeps ?? []) {
+      const sx = tx(k.x)
+      const sy = ty(k.y)
+      if (off(sx, sy)) continue
+      const hs = Math.max(3.5, tileS * (k.isCastle ? 1.15 : 0.85))
+      ctx.fillStyle = k.done
+        ? k.isCastle
+          ? '#6a6e78'
+          : '#7a6850'
+        : 'rgba(120, 100, 70, 0.55)'
+      // Keep silhouette: base + tower.
+      ctx.fillRect(sx - hs * 0.55, sy - hs * 0.15, hs * 1.1, hs * 0.7)
+      ctx.fillRect(sx - hs * 0.22, sy - hs * 0.95, hs * 0.44, hs * 0.9)
+      if (k.isCastle && hs >= 5) {
+        ctx.fillStyle = k.done ? '#8a909a' : 'rgba(150, 130, 90, 0.6)'
+        ctx.fillRect(sx - hs * 0.28, sy - hs * 1.05, hs * 0.16, hs * 0.18)
+        ctx.fillRect(sx + hs * 0.12, sy - hs * 1.05, hs * 0.16, hs * 0.18)
+      }
+    }
 
     for (const s of sheep) {
       if (!s.alive) continue
@@ -512,6 +581,13 @@ export function SimulationCanvas() {
       const sy = ty(w.y)
       if (off(sx, sy)) continue
       drawWolfSprite(ctx, sx, sy, size, simpleSprites, shadows)
+    }
+
+    for (const camp of bandCamps ?? []) {
+      const sx = tx(camp.x)
+      const sy = ty(camp.y)
+      if (off(sx, sy)) continue
+      drawBanditCampSprite(ctx, sx, sy, size * 1.15, camp.tier, simpleSprites, shadows)
     }
 
     for (const b of bandits ?? []) {

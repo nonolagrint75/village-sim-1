@@ -43,6 +43,8 @@ const CAMP_WANDER = 10
 const BANDIT_SPEED = 2
 const BANDIT_HUNGER_DECAY = 0.012
 const BANDIT_HEALTH_MAX = 5
+const CAMP_HEALTH_MAX = 12
+const TRADE_AMBUSH_RANGE = 18
 
 const BAND_EPITHETS = [
   'du ravin',
@@ -296,10 +298,13 @@ function tryFormBandFromOutcasts(state: SimState, rng: () => number): boolean {
     name: bandName(rng),
     campX: camp.x,
     campY: camp.y,
+    hideoutTier: 'camp',
+    campHealth: 2 + Math.floor(rng() * 3),
     memberIds: [],
     formedTick: state.tick,
     lastRaidTick: state.tick - TICKS_PER_DAY * 2,
     raids: 0,
+    tradeAmbushes: 0,
     origin: 'outcasts',
   }
 
@@ -312,7 +317,7 @@ function tryFormBandFromOutcasts(state: SimState, rng: () => number): boolean {
   state.bands.push(band)
   if (!state.milestones.firstBandits) {
     state.milestones.firstBandits = true
-    logEvent(state, `Des hors-la-loi forment la ${band.name} dans les bois`)
+    logEvent(state, `Des hors-la-loi dressent un camp — la ${band.name} dans les bois`)
   } else {
     logEvent(state, `La ${band.name} se forme — affamés et exclus prennent le maquis`)
   }
@@ -335,7 +340,9 @@ function tryFormWildernessBand(state: SimState, rng: () => number): boolean {
     }
   }
   // Need something worth stealing — surplus, pop, or low security.
-  if (bestScore < 0.8 && !state.famine) return false
+  // Early unlock: still form camps even on lean villages (pressure of settlement alone).
+  const early = state.tick < BANDIT_START_TICK + TICKS_PER_DAY * 14
+  if (bestScore < 0.8 && !state.famine && !early) return false
 
   const camp = pickCampNearVillage(state, bestVg.centerX, bestVg.centerY, rng)
   if (!camp) return false
@@ -347,10 +354,13 @@ function tryFormWildernessBand(state: SimState, rng: () => number): boolean {
     name: bandName(rng),
     campX: camp.x,
     campY: camp.y,
+    hideoutTier: 'camp',
+    campHealth: 2 + Math.floor(rng() * 3),
     memberIds: [],
     formedTick: state.tick,
     lastRaidTick: state.tick - TICKS_PER_DAY,
     raids: 0,
+    tradeAmbushes: 0,
     origin: 'vagabonds',
   }
   for (let i = 0; i < size; i++) {
@@ -368,7 +378,7 @@ function tryFormWildernessBand(state: SimState, rng: () => number): boolean {
   state.bands.push(band)
   if (!state.milestones.firstBandits) {
     state.milestones.firstBandits = true
-    logEvent(state, `Une ${band.name} de vagabonds campe près des villages`)
+    logEvent(state, `Une ${band.name} de vagabonds dresse un camp près des villages`)
   } else {
     logEvent(state, `Des coupe-jarrets rejoignent la ${band.name}`)
   }
@@ -383,16 +393,18 @@ export function tickBandFormation(state: SimState, rng: () => number) {
   const pressure =
     (state.famine ? 0.35 : 0) +
     (state.thefts > 6 ? 0.15 : 0) +
-    Math.min(0.25, state.villages.reduce((a, v) => a + Math.max(0, (v.prosperity ?? 30) - 40) * 0.004, 0))
+    Math.min(0.25, state.villages.reduce((a, v) => a + Math.max(0, (v.prosperity ?? 30) - 40) * 0.004, 0)) +
+    Math.min(0.2, state.tradeRoutes.size * 0.04)
 
-  // Day 40–50: strong chance so headless runs always see bands.
-  const earlyWindow = state.tick < BANDIT_START_TICK + TICKS_PER_DAY * 12
+  // First fortnight after unlock: strong chance so headless runs always see camps.
+  const earlyWindow = state.tick < BANDIT_START_TICK + TICKS_PER_DAY * 14
   const wantBands = earlyWindow ? state.bands.length < 2 : state.bands.length < 1 + Math.floor(pressure * 4)
 
   if (!wantBands && living >= BAND_MIN) return
 
   if (tryFormBandFromOutcasts(state, rng)) return
-  if (rng() < (earlyWindow ? 0.85 : 0.35 + pressure)) {
+  // Wilderness bands are the reliable camp spawn (outcasts need misery first).
+  if (earlyWindow || rng() < 0.4 + pressure) {
     tryFormWildernessBand(state, rng)
   }
 }
@@ -416,13 +428,64 @@ function startRaid(state: SimState, band: Band, villageId: number) {
   }
 }
 
+/** Camped brigands mend tents → timber hideout (repaire) in the wilds. */
+function repairHideout(state: SimState, band: Band, members: Bandit[], rng: () => number) {
+  if (members.length === 0) return
+  const atCamp = members.filter((b) => b.phase === 'camp' && distance(b.x, b.y, band.campX, band.campY) < CAMP_WANDER)
+  if (atCamp.length === 0) return
+  if (band.campHealth >= CAMP_HEALTH_MAX && band.hideoutTier === 'lair') return
+
+  // One repair tick per day when idle at camp.
+  if (state.tick % TICKS_PER_DAY !== (band.id * 17) % TICKS_PER_DAY) return
+
+  band.campHealth = Math.min(CAMP_HEALTH_MAX, band.campHealth + 1 + (atCamp.length > 3 ? 1 : 0))
+  if (band.hideoutTier === 'camp' && band.campHealth >= 7) {
+    band.hideoutTier = 'lair'
+    logEvent(state, `La ${band.name} fortifie son repaire dans les bois`)
+  } else if (rng() < 0.08 && band.hideoutTier === 'camp') {
+    // Soft chronicle of ongoing repairs without spam.
+    if ((state.tick + band.id) % (TICKS_PER_DAY * 5) < FORM_CHECK) {
+      logEvent(state, `La ${band.name} raccommode son camp`)
+    }
+  }
+}
+
+function nearestTradeCaravan(state: SimState, band: Band): Villager | null {
+  let best: Villager | null = null
+  let bestD = TRADE_AMBUSH_RANGE * TRADE_AMBUSH_RANGE
+  for (const v of state.villagers) {
+    if (!v.alive || v.task?.kind !== 'tradeRun') continue
+    const dx = v.x - band.campX
+    const dy = v.y - band.campY
+    const d = dx * dx + dy * dy
+    // Prefer merchants between camp and villages (road cutters).
+    if (d <= bestD) {
+      bestD = d
+      best = v
+    }
+  }
+  return best
+}
+
+function startTradeAmbush(state: SimState, band: Band, trader: Villager) {
+  band.lastRaidTick = state.tick
+  band.tradeAmbushes = (band.tradeAmbushes ?? 0) + 1
+  const members = bandMembers(state, band)
+  for (const b of members) {
+    b.phase = 'raid'
+    b.targetVillageId = trader.villageId
+    b.targetVillagerId = trader.id
+  }
+  logEvent(state, `La ${band.name} tend une embuscade sur la route marchande`)
+}
+
 function endRaidToCamp(band: Band, members: Bandit[]) {
   for (const b of members) {
     b.phase = 'camp'
     b.targetVillageId = null
     b.targetVillagerId = null
   }
-  // Soft recenter camp on survivors.
+  // Soft recenter camp on survivors (keeps hideout anchored in wilds).
   if (members.length > 0) {
     let sx = 0
     let sy = 0
@@ -436,6 +499,10 @@ function endRaidToCamp(band: Band, members: Bandit[]) {
 }
 
 function tickBandAI(state: SimState, band: Band, rng: () => number) {
+  if (band.hideoutTier === undefined) band.hideoutTier = 'camp'
+  if (band.campHealth === undefined) band.campHealth = 3
+  if (band.tradeAmbushes === undefined) band.tradeAmbushes = 0
+
   const members = bandMembers(state, band)
   band.memberIds = members.map((m) => m.id)
   if (members.length === 0) {
@@ -443,8 +510,20 @@ function tickBandAI(state: SimState, band: Band, rng: () => number) {
     return
   }
 
+  repairHideout(state, band, members, rng)
+
   const raiding = members.some((m) => m.phase === 'raid')
-  const cooldown = TICKS_PER_DAY * (1.2 + rng() * 1.5)
+  const cooldown = TICKS_PER_DAY * (1.0 + rng() * 1.4)
+
+  // Trade caravans near the hideout are juicy — ambush before a village razzia.
+  if (!raiding && state.tick - band.lastRaidTick > cooldown * 0.55) {
+    const caravan = nearestTradeCaravan(state, band)
+    if (caravan && rng() < 0.55) {
+      startTradeAmbush(state, band, caravan)
+      return
+    }
+  }
+
   if (!raiding && state.tick - band.lastRaidTick > cooldown) {
     const target = pickRaidTarget(state, band)
     if (target !== null) {

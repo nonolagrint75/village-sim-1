@@ -95,6 +95,8 @@ export type ActorHorse = { x: number; y: number; tamed: boolean; riderId: number
 export type ActorBoat = { x: number; y: number; kind: BoatKind; alive: boolean }
 export type ActorWolf = { x: number; y: number; alive: boolean }
 export type ActorBandit = { x: number; y: number; phase: 'camp' | 'raid' | 'flee'; alive: boolean }
+/** Visible brigand hideout in the wilds. */
+export type ActorBandCamp = { x: number; y: number; tier: 'camp' | 'lair' }
 export type ActorVillage = {
   centerX: number
   centerY: number
@@ -107,9 +109,34 @@ export type ActorVillage = {
   hasMine: boolean
   mineX: number
   mineY: number
+  /** Sacred site for map markers (autel → chapelle → temple). */
+  hasShrine: boolean
+  shrineX: number
+  shrineY: number
+  sacredTier: 'none' | 'shrine' | 'chapel' | 'temple'
   wallTier: WallTier
   perimeter: { x: number; y: number }[]
   gates: { x: number; y: number }[]
+}
+
+/** Territory claim ring for map overlay (emergent polities). */
+export type ActorPolity = {
+  id: number
+  cx: number
+  cy: number
+  claimRadius: number
+  tier: string
+  name: string
+  hasKeep: boolean
+}
+
+/** Keep / donjon marker for map overlay. */
+export type ActorKeep = {
+  x: number
+  y: number
+  label: string
+  done: boolean
+  isCastle: boolean
 }
 
 export type InventoryLine = { type: ResourceType; count: number }
@@ -234,6 +261,8 @@ export type UiProjectRow = {
   phaseLabel: string
   purposes: string[]
   isFort: boolean
+  /** Stone keep / donjon (scale / towers / stone walls). */
+  isKeep: boolean
   isShrine: boolean
   villageLabel: string | null
   progressNote: string
@@ -245,6 +274,7 @@ export type UiBandRow = {
   name: string
   members: number
   raids: number
+  tradeAmbushes: number
   originLabel: string
   phaseHint: string
   campLabel: string
@@ -256,6 +286,8 @@ export type UiReligionSiteRow = {
   label: string
   creedLabel: string | null
   hasShrine: boolean
+  sacredTier: 'none' | 'shrine' | 'chapel' | 'temple'
+  tierLabel: string
 }
 
 export type DrawFrame = {
@@ -268,7 +300,13 @@ export type DrawFrame = {
   boats: ActorBoat[]
   wolves: ActorWolf[]
   bandits: ActorBandit[]
+  /** Brigand camps / repaires in the wilds. */
+  bandCamps: ActorBandCamp[]
   villages: ActorVillage[]
+  /** Emergent polity claim rings (chefferies / royaumes). */
+  polities: ActorPolity[]
+  /** Keep / donjon markers from fortify projects. */
+  keeps: ActorKeep[]
   tradeLinks: { ax: number; ay: number; bx: number; by: number }[]
   /** Static fire sources (hearths from homeFurniture); terrain hearths scanned on canvas. */
   lights: ActorLight[]
@@ -576,6 +614,8 @@ const PURPOSE_UI_FR: Record<string, string> = {
   prestige: 'prestige',
   homestead: 'foyer',
   shrine: 'autel',
+  chapel: 'chapelle',
+  temple: 'temple',
 }
 
 /** Active + recent civic works (forts, autels, halles…). */
@@ -586,7 +626,13 @@ export function packProjects(state: SimState): UiProjectRow[] {
   for (const p of projects) {
     const purposes = p.intent?.purposes ?? []
     const isFort = purposes.includes('fortify')
-    const isShrine = purposes.includes('shrine')
+    const isShrine =
+      purposes.includes('shrine') || purposes.includes('chapel') || purposes.includes('temple')
+    const isKeep =
+      isFort &&
+      (p.params?.towers ||
+        p.params?.wallMaterial === 'stone' ||
+        (p.intent?.scale ?? 0) >= 0.5)
     let villageLabel: string | null = null
     if (p.villageId !== null) {
       const vg = state.villages.find((v) => v.id === p.villageId)
@@ -606,6 +652,7 @@ export function packProjects(state: SimState): UiProjectRow[] {
       phaseLabel: PROJECT_PHASE_FR[phase] ?? phase,
       purposes: purposes.map((u) => PURPOSE_UI_FR[u] ?? u),
       isFort,
+      isKeep,
       isShrine,
       villageLabel,
       progressNote,
@@ -613,6 +660,7 @@ export function packProjects(state: SimState): UiProjectRow[] {
   }
   rows.sort((a, b) => {
     if (a.phase === 'done' !== (b.phase === 'done')) return a.phase === 'done' ? 1 : -1
+    if (a.isKeep !== b.isKeep) return a.isKeep ? -1 : 1
     if (a.isFort !== b.isFort) return a.isFort ? -1 : 1
     if (a.isShrine !== b.isShrine) return a.isShrine ? -1 : 1
     return b.id - a.id
@@ -637,14 +685,16 @@ export function packBands(state: SimState): UiBandRow[] {
     let phaseHint = 'au camp'
     if (raiding > 0) phaseHint = `en razzia (${raiding})`
     else if (fleeing > 0) phaseHint = 'en fuite'
+    const tier = band.hideoutTier === 'lair' ? 'repaire' : 'camp'
     rows.push({
       id: band.id,
       name: band.name,
       members,
       raids: band.raids,
+      tradeAmbushes: band.tradeAmbushes ?? 0,
       originLabel: band.origin === 'outcasts' ? 'bannis' : 'vagabonds',
       phaseHint,
-      campLabel: `camp (${Math.round(band.campX)}, ${Math.round(band.campY)})`,
+      campLabel: `${tier} (${Math.round(band.campX)}, ${Math.round(band.campY)})`,
     })
   }
   rows.sort((a, b) => b.raids - a.raids || b.members - a.members)
@@ -656,13 +706,24 @@ export function packReligionSites(state: SimState): UiReligionSiteRow[] {
   const rows: UiReligionSiteRow[] = []
   for (const vg of state.villages) {
     const hasShrine = !!vg.hasShrine
+    const sacredTier = vg.sacredTier ?? (hasShrine ? 'shrine' : 'none')
     const creed = vg.shrineCreed ? creedLabel(vg.shrineCreed as CreedId) : null
-    if (!hasShrine && !creed) continue
+    if (!hasShrine && !creed && sacredTier === 'none') continue
+    const tierLabel =
+      sacredTier === 'temple'
+        ? 'Temple'
+        : sacredTier === 'chapel'
+          ? 'Chapelle'
+          : sacredTier === 'shrine'
+            ? 'Autel'
+            : 'Lieu de foi'
     rows.push({
       villageId: vg.id,
-      label: vg.shrineLabel || (hasShrine ? 'autel' : 'lieu de foi'),
+      label: vg.shrineLabel || (hasShrine ? tierLabel.toLowerCase() : 'lieu de foi'),
       creedLabel: creed && creed !== 'aucune' ? creed : null,
       hasShrine,
+      sacredTier,
+      tierLabel,
     })
   }
   return rows.slice(0, 10)
@@ -733,6 +794,7 @@ export const EMPTY_STATS: SimStats = {
   polities: 0,
   chiefdoms: 0,
   kingdoms: 0,
+  castles: 0,
   polityRows: [],
 }
 
@@ -768,7 +830,7 @@ export function packChronicle(log: string[], limit = 18): string[] {
   const notable: string[] = []
   const rest: string[] = []
   const notableRe =
-    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|réputation|forme |enseigne|apprenti|oisiveté|divertit|console|chefferie|royaume|campement|succède|succession|prétention|rivalité|souverain|territoire|absorbe|contestation|rite|rituel|autel|sanctuaire|foi|conversion|convertit|recueillement|sacré|voie de foi|cercle pieux|brigand|bande |razzia|pill|bannis|vagabond|keep|fort de|palissade|marché/i
+    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|invente|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|prêtre|réputation|forme |enseigne|apprenti|oisiveté|divertit|console|chefferie|royaume|campement|succède|succession|prétention|rivalité|souverain|territoire|absorbe|contestation|rite|rituel|autel|chapelle|temple|sanctuaire|foi|conversion|convertit|recueillement|sacré|voie de foi|cercle pieux|brigand|bande |razzia|pill|bannis|vagabond|embuscade|repaire|camp |hors-la-loi|keep|fort de|palissade|marché/i
 
   for (let i = window.length - 1; i >= 0; i--) {
     const entry = window[i]
@@ -791,6 +853,13 @@ export function packChronicle(log: string[], limit = 18): string[] {
   push(notable)
   push(rest)
   return out
+}
+
+const TIER_RANK_DRAW: Record<string, number> = {
+  camp: 0,
+  village: 1,
+  chiefdom: 2,
+  kingdom: 3,
 }
 
 export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
@@ -880,6 +949,15 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     if (!b.alive) continue
     bandits.push({ x: b.x, y: b.y, phase: b.phase, alive: true })
   }
+  const bandCamps: ActorBandCamp[] = []
+  for (const band of state.bands ?? []) {
+    if (band.memberIds.length === 0) continue
+    bandCamps.push({
+      x: band.campX,
+      y: band.campY,
+      tier: band.hideoutTier === 'lair' ? 'lair' : 'camp',
+    })
+  }
   const villages: ActorVillage[] = new Array(state.villages.length)
   const byId = new Map<number, (typeof state.villages)[0]>()
   for (let i = 0; i < state.villages.length; i++) {
@@ -897,6 +975,10 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
       hasMine: vg.hasMine,
       mineX: vg.mineX,
       mineY: vg.mineY,
+      hasShrine: !!vg.hasShrine,
+      shrineX: vg.shrineX ?? -1,
+      shrineY: vg.shrineY ?? -1,
+      sacredTier: vg.sacredTier ?? (vg.hasShrine ? 'shrine' : 'none'),
       wallTier: vg.wallTier,
       perimeter: vg.perimeter,
       gates: vg.gates,
@@ -912,6 +994,49 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     const vb = byId.get(b)
     if (va && vb) tradeLinks.push({ ax: va.centerX, ay: va.centerY, bx: vb.centerX, by: vb.centerY })
   }
+
+  const polities: ActorPolity[] = []
+  for (const p of state.polities ?? []) {
+    if (TIER_RANK_DRAW[p.tier] < 1 && p.claimRadius < 18) continue
+    const cap = byId.get(p.capitalVillageId) ?? byId.get(p.villageIds[0] ?? -1)
+    if (!cap) continue
+    let hasKeep = false
+    for (const pr of state.projects ?? []) {
+      if (pr.villageId === null || !p.villageIds.includes(pr.villageId)) continue
+      if (pr.phase !== 'done' || !pr.intent.purposes.includes('fortify')) continue
+      if (pr.params.towers || pr.params.wallMaterial === 'stone' || pr.intent.scale >= 0.5) {
+        hasKeep = true
+        break
+      }
+    }
+    polities.push({
+      id: p.id,
+      cx: cap.centerX,
+      cy: cap.centerY,
+      claimRadius: Math.max(8, Math.round(p.claimRadius)),
+      tier: p.tier,
+      name: p.name,
+      hasKeep,
+    })
+  }
+  polities.sort((a, b) => (TIER_RANK_DRAW[b.tier] ?? 0) - (TIER_RANK_DRAW[a.tier] ?? 0))
+
+  const keeps: ActorKeep[] = []
+  for (const pr of state.projects ?? []) {
+    if (!pr.intent?.purposes?.includes('fortify')) continue
+    if ((pr.intent.scale ?? 0) < 0.25 && pr.phase === 'done') continue
+    const isCastle =
+      !!pr.params?.towers || pr.params?.wallMaterial === 'stone' || (pr.intent?.scale ?? 0) >= 0.5
+    if (!isCastle && pr.phase === 'done') continue
+    keeps.push({
+      x: pr.cx,
+      y: pr.cy,
+      label: pr.label || 'fort',
+      done: pr.phase === 'done',
+      isCastle,
+    })
+  }
+
   return {
     season: state.season,
     hour: getCalendar(state.tick).hour,
@@ -921,7 +1046,10 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     boats,
     wolves,
     bandits,
+    bandCamps,
     villages,
+    polities: polities.slice(0, 16),
+    keeps: keeps.slice(0, 12),
     tradeLinks,
     lights,
     ticksPerSec,

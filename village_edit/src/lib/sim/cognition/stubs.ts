@@ -223,7 +223,8 @@ export function tickReligionDepth(state: SimState, mind: CognitiveState, v: Vill
     (v.task?.kind === 'socialise' ||
       v.task?.kind === 'rest' ||
       v.task?.kind === 'giveFood' ||
-      v.task?.kind === 'counsel')
+      v.task?.kind === 'counsel' ||
+      v.task?.kind === 'ritual')
   if (rite) {
     mind.sacredConf = clamp01(mind.sacredConf + 0.06 + pol.beliefs.piety * 0.04)
     pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.01)
@@ -325,8 +326,8 @@ export function cultureTaskBias(mind: CognitiveState, kind: TaskKind): number {
   const w = mind.cultureWeight
   const tag = mind.cultureTag
   const table: Record<string, Partial<Record<TaskKind, number>>> = {
-    bois: { gatherWood: 1.35, clearLand: 1.2, buildHouse: 1.15 },
-    blé: { sowField: 1.35, harvestWheat: 1.4, grindFlour: 1.25, bakeBread: 1.2 },
+    bois: { gatherWood: 1.35, clearLand: 1.55, buildHouse: 1.15 },
+    blé: { sowField: 1.35, harvestWheat: 1.4, grindFlour: 1.25, bakeBread: 1.2, clearLand: 1.35 },
     fer: { gatherIron: 1.3, mineTunnel: 1.25, craftIronTool: 1.35, mineGold: 1.15 },
     pierre: { gatherStone: 1.3, buildWall: 1.25, buildMill: 1.15, socialise: 1.1 },
     sel: { tradeRun: 1.4, buildCart: 1.2, buildPort: 1.25, mintCoins: 1.2, buyMaterial: 1.15 },
@@ -344,7 +345,7 @@ export function religionTaskBias(mind: CognitiveState, kind: TaskKind, x: number
   if (mind.sacredConf < 0.2) return 1
   const d = distance(x, y, mind.sacredX, mind.sacredY)
   const near = d < 18
-  if (kind === 'socialise' || kind === 'giveFood' || kind === 'rest') {
+  if (kind === 'socialise' || kind === 'giveFood' || kind === 'rest' || kind === 'ritual') {
     return near ? 1 + mind.sacredConf * 0.55 : 1 + mind.sacredConf * 0.08
   }
   if (kind === 'steal' || kind === 'confront') {
@@ -375,6 +376,7 @@ export function stubStatus(mind: CognitiveState): string {
   if (topHabit && topHabit[1] > 0.2) bits.push(`habitude ${topHabit[0]}`)
   if (mind.sacredConf > 0.25) bits.push(`lieu sacré ${Math.round(mind.sacredConf * 100)}%`)
   if (mind.livelihood?.roleTag === 'gourou') bits.push('gourou')
+  if (mind.livelihood?.roleTag === 'pretre') bits.push(mind.livelihood.titleFr || 'prêtre')
   if (mind.rivalId !== null) bits.push(`rival #${mind.rivalId}`)
   return bits.length ? bits.join(' · ') : 'habitudes / culture en formation'
 }

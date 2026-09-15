@@ -60,8 +60,8 @@ export const ACTIVITY_LABELS_FR: Record<ActivityBucket, string> = {
   social: 'société',
 }
 
-const EMA = 0.08
-const TITLE_REVIEW = 180
+const EMA = 0.12
+const TITLE_REVIEW = 90
 const UNEMPLOYED_STRESS = 0.012
 export const GUILD_MIN_PRACTITIONERS = 3
 
@@ -134,6 +134,8 @@ export function bucketsForTask(kind: TaskKind): ActivityBucket[] {
       return ['entertain', 'social']
     case 'counsel':
       return ['counsel', 'ritual']
+    case 'ritual':
+      return ['ritual', 'social']
     case 'giveFood':
       return ['care', 'social']
     case 'steal':
@@ -190,6 +192,14 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     pietyMin: 0.55,
   },
   {
+    id: 'pretre',
+    titleFr: 'prêtre',
+    weights: { ritual: 0.45, counsel: 0.3, teach: 0.15, care: 0.1 },
+    minDominant: 0.22,
+    skillNeed: 'social',
+    pietyMin: 0.58,
+  },
+  {
     id: 'guerisseur',
     titleFr: 'guérisseur',
     weights: { counsel: 0.35, care: 0.35, ritual: 0.15, gather: 0.1 },
@@ -223,7 +233,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'forgeron_emerge',
     titleFr: 'forgeron',
     weights: { craft: 0.45, mine: 0.25, build: 0.1 },
-    minDominant: 0.28,
+    minDominant: 0.22,
     skillNeed: 'craft',
     softProfession: 'blacksmith',
   },
@@ -231,7 +241,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'tisserand_emerge',
     titleFr: 'tisserand',
     weights: { craft: 0.5, farm: 0.15, trade: 0.1 },
-    minDominant: 0.28,
+    minDominant: 0.22,
     skillNeed: 'craft',
     softProfession: 'weaver',
   },
@@ -239,7 +249,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'pecheur_emerge',
     titleFr: 'pêcheur',
     weights: { fish: 0.55, trade: 0.1, gather: 0.1 },
-    minDominant: 0.3,
+    minDominant: 0.24,
     skillNeed: 'fish',
     softProfession: 'fisher',
   },
@@ -247,7 +257,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'fermier_emerge',
     titleFr: 'fermier',
     weights: { farm: 0.5, gather: 0.15, care: 0.05 },
-    minDominant: 0.3,
+    minDominant: 0.24,
     skillNeed: 'farm',
     softProfession: 'farmer',
   },
@@ -255,7 +265,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'mineur_emerge',
     titleFr: 'mineur',
     weights: { mine: 0.55, craft: 0.1, build: 0.1 },
-    minDominant: 0.3,
+    minDominant: 0.24,
     skillNeed: 'mine',
     softProfession: 'miner',
   },
@@ -263,7 +273,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'marchand_emerge',
     titleFr: 'marchand',
     weights: { trade: 0.5, social: 0.2, smuggle: 0.05 },
-    minDominant: 0.28,
+    minDominant: 0.22,
     skillNeed: 'trade',
     softProfession: 'trader',
   },
@@ -271,7 +281,7 @@ export const OPEN_ROLE_RECIPES: RoleRecipe[] = [
     id: 'batisseur_emerge',
     titleFr: 'bâtisseur',
     weights: { build: 0.5, craft: 0.15, mine: 0.1 },
-    minDominant: 0.28,
+    minDominant: 0.22,
     skillNeed: 'build',
     softProfession: 'builder',
   },
@@ -410,6 +420,11 @@ export function noteActivityPractice(v: Villager, kind: TaskKind, intensity = 1)
   if (sum > 1.35) {
     for (const k of ACTIVITY_KEYS) live.mix[k] /= sum
   }
+  // Anti-monoculture: once a specialty appears, gather shouldn't forever dominate titles.
+  const specialty = Math.max(live.mix.craft, live.mix.farm, live.mix.build, live.mix.fish, live.mix.mine, live.mix.trade)
+  if (specialty > 0.18 && live.mix.gather > specialty + 0.08) {
+    live.mix.gather = clamp01(live.mix.gather * 0.92)
+  }
 }
 
 export function notePatronage(v: Villager, amount: number): void {
@@ -510,6 +525,7 @@ export function isServiceLivelihood(roleTag: string | null): boolean {
     roleTag === 'troubadour' ||
     roleTag === 'conteur' ||
     roleTag === 'gourou' ||
+    roleTag === 'pretre' ||
     roleTag === 'guerisseur' ||
     roleTag === 'guide' ||
     roleTag === 'precepteur'
@@ -565,10 +581,17 @@ export function tickLivelihood(state: SimState, v: Villager, piety = 0.4, guildC
       }
     }
 
-    if (prev !== next.titleFr && prev !== 'sans métier clair') {
-      logEvent(state, `${v.name} est désormais connu comme ${next.titleFr}`)
-    } else if (prev !== next.titleFr && next.titleFr !== 'sans métier clair') {
-      logEvent(state, `${v.name} se forge une réputation de ${next.titleFr}`)
+    if (prev !== next.titleFr && next.titleFr !== 'sans métier clair') {
+      live.recognition = clamp01(live.recognition + 0.08)
+      const recipe = OPEN_ROLE_RECIPES.find((r) => r.id === next.roleTag)
+      if (recipe?.softProfession && (v.profession === 'none' || v.profession === 'forager')) {
+        v.profession = recipe.softProfession
+      }
+      if (prev !== 'sans métier clair') {
+        logEvent(state, `${v.name} est désormais connu comme ${next.titleFr}`)
+      } else {
+        logEvent(state, `${v.name} se forge une réputation de ${next.titleFr}`)
+      }
     }
   }
 }
