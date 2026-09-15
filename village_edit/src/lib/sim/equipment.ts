@@ -860,7 +860,14 @@ export function pickGearCraftTarget(
     if (def.slot === 'feet' && !eq.feet) score += 20
     if (def.slot === 'torso' && !eq.torso) score += 18
     if (def.slot === 'outer' && winter && !eq.outer) score += 24
+    if (def.slot === 'legs' && winter && !eq.legs) score += 16
+    if (def.slot === 'hands' && opts.cold01 > 0.4 && !eq.hands) score += 14
     if (def.slot === 'mainHand' && !eq.mainHand) score += 16
+    // Undressed in a freeze: prioritize any warm slot over jewelry/prestige.
+    if (opts.cold01 > 0.4 && (def.clo > 0.15 || def.slot === 'outer' || def.slot === 'torso')) {
+      score += 20 + opts.cold01 * 25
+    }
+    if (opts.cold01 > 0.45 && def.slot === 'jewelry') score *= 0.25
 
     if (score > bestScore) {
       bestScore = score
@@ -882,18 +889,30 @@ export function craftAndEquipGear(v: Villager, id: GearId): boolean {
 }
 
 /** Founders / wealthy roles get a minimal starter kit. */
-export function seedStarterKit(v: Villager, wealth01: number, role: Profession, rng: () => number) {
+export function seedStarterKit(
+  v: Villager,
+  wealth01: number,
+  role: Profession,
+  rng: () => number,
+  opts?: { cold01?: number },
+) {
   const eq = ensureEquipment(v)
-  if (wealth01 > 0.15 || role !== 'none') {
-    if (!eq.torso) eq.torso = wealth01 > 0.45 ? 'wool_tunic' : 'linen_tunic'
+  const cold = opts?.cold01 ?? 0
+  // Cold founding sites: never start naked in a freeze.
+  if (cold > 0.2 || wealth01 > 0.15 || role !== 'none') {
+    if (!eq.torso) eq.torso = cold > 0.35 || wealth01 > 0.45 ? 'wool_tunic' : 'linen_tunic'
   }
-  if (wealth01 > 0.25 && !eq.feet) eq.feet = 'leather_shoes'
+  if ((cold > 0.18 || wealth01 > 0.25) && !eq.feet) eq.feet = cold > 0.4 ? 'leather_boots' : 'leather_shoes'
+  if (cold > 0.28 && !eq.legs) eq.legs = 'wool_hose'
+  if (cold > 0.32 && !eq.outer) eq.outer = cold > 0.55 ? 'fur_mantle' : 'wool_cloak'
+  if (cold > 0.4 && !eq.hands) eq.hands = 'wool_mittens'
+  if (cold > 0.45 && !eq.head) eq.head = 'wool_hood'
   if (wealth01 > 0.4 && rng() < 0.55 && !eq.belt) eq.belt = 'coin_purse'
   if ((role === 'guard' || role === 'blacksmith') && wealth01 > 0.3 && !eq.mainHand) {
     eq.mainHand = role === 'guard' ? 'iron_dagger' : 'wood_axe'
   }
   // Most founders get a wood tool so gather/build isn't stuck behind craftSpear every time.
-  if (!eq.mainHand && (wealth01 > 0.18 || rng() < 0.65)) {
+  if (!eq.mainHand && (wealth01 > 0.18 || rng() < 0.65 || cold > 0.25)) {
     eq.mainHand = 'wood_axe'
   }
   if (role === 'trader' && !eq.belt) eq.belt = 'leather_satchel'

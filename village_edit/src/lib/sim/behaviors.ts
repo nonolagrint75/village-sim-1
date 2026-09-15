@@ -40,6 +40,7 @@ import {
   sleepSpot,
   spendFurnitureRecipe,
   storeSpot,
+  warmthSpot,
   woodCostOf,
   type FurnitureKind,
 } from './furniture'
@@ -96,6 +97,7 @@ import {
 import {
   craftAndEquipGear,
   createEmptyEquipment,
+  ensureEquipment,
   equipmentEffectsOf,
   equipFromToolTier,
   GEAR_DEFS,
@@ -505,36 +507,52 @@ function atHomeShelter(v: Villager): boolean {
   return v.hasHome && distance(v.x, v.y, v.homeX, v.homeY) <= SHELTER_RADIUS
 }
 
+function homeOwnerOf(v: Villager, state: SimState): Villager {
+  if (v.homeOwnerId === v.id || v.homeOwnerId === null) return v
+  return state.villagers.find((o) => o.id === v.homeOwnerId && o.alive) ?? v
+}
+
+/** Worn clo + bag leather/clothing + hearth when sheltered. */
+function effectiveClo(v: Villager, state: SimState): number {
+  const gear = equipmentEffectsOf(v)
+  const homeClo = atHomeShelter(v) ? homeWarmthClo(homeOwnerOf(v, state)) : 0
+  return (
+    clothingClo(countOf(v.inventory, 'leather') > 0, countOf(v.inventory, 'clothing') > 0, gear.clo) + homeClo
+  )
+}
+
+/** How underdressed vs local cold (0 = adequate, 1 = naked in a freeze). */
+function cloDeficit01(v: Villager, state: SimState, cold01: number): number {
+  if (cold01 < 0.05) return 0
+  const need = 0.5 + cold01 * 1.4
+  const have = effectiveClo(v, state)
+  return clamp((need - have) / Math.max(0.45, need), 0, 1)
+}
+
+function outdoorCold01(state: SimState, v: Villager): number {
+  const temp = sampleTempC(state.climate, v.x, v.y)
+  const biomeCold = biomeColdBias(sampleBiome(state.climate, v.x, v.y))
+  const airCold = coldStress01(temp)
+  // Only layer biome chill when air is already cool — otherwise temperate forests
+  // with residual coldBias burn calories like tundra at 20 °C.
+  return Math.min(1, airCold + (atHomeShelter(v) || airCold < 0.08 ? 0 : biomeCold * 0.55))
+}
+
 /** Clothing/leather + hearth vs local air temperature (°C) — clo × surface corporelle. */
 function warmthMultiplier(v: Villager, state: SimState): number {
   const temp = sampleTempC(state.climate, v.x, v.y)
-  const biomeCold = biomeColdBias(sampleBiome(state.climate, v.x, v.y))
-  // Only layer biome chill when air is already cool — otherwise temperate forests
-  // with residual coldBias burn calories like tundra at 20 °C.
-  const airCold = coldStress01(temp)
-  const cold = Math.min(1, airCold + (atHomeShelter(v) || airCold < 0.08 ? 0 : biomeCold * 0.55))
+  const cold = outdoorCold01(state, v)
   const heat = heatStress01(temp)
   const rain = !atHomeShelter(v) ? sampleRain(state.climate, v.x, v.y) : 0
   const massKg = bodyMassKgFromPhenotype(v.phenotype)
   const heightM = heightMetersFromPhenotype(v.phenotype)
-  const gear = equipmentEffectsOf(v)
-  let homeClo = 0
-  if (atHomeShelter(v)) {
-    const head =
-      v.homeOwnerId === v.id
-        ? v
-        : v.homeOwnerId !== null
-          ? state.villagers.find((o) => o.id === v.homeOwnerId && o.alive)
-          : v
-    if (head) homeClo = homeWarmthClo(head)
-  }
   return thermalBurnMultiplier({
     cold01: cold,
     heat01: heat,
     rain01: rain,
     night: isNight(state.tick),
     sheltered: atHomeShelter(v),
-    clo: clothingClo(countOf(v.inventory, 'leather') > 0, countOf(v.inventory, 'clothing') > 0, gear.clo) + homeClo,
+    clo: effectiveClo(v, state),
     massKg,
     heightM,
   })
@@ -588,9 +606,17 @@ function wearTool(v: Villager, hits = 1) {
   v.toolWear += hits
   if (v.toolWear < TOOL_WEAR_MAX) return
   v.toolWear = 0
-  if (v.toolTier === 'iron') v.toolTier = 'stone'
-  else if (v.toolTier === 'stone') v.toolTier = 'wood'
-  else v.toolTier = 'none'
+  if (v.toolTier === 'iron') {
+    v.toolTier = 'stone'
+    equipFromToolTier(v, 'stone')
+  } else if (v.toolTier === 'stone') {
+    v.toolTier = 'wood'
+    equipFromToolTier(v, 'wood')
+  } else {
+    v.toolTier = 'none'
+    // Broken wood tool leaves the hand empty — bare-hands labor thereafter.
+    ensureEquipment(v).mainHand = null
+  }
 }
 
 /** Chance to finish one labor tick (chop/mine/craft). Bare hands struggle; tools matter. */
@@ -1511,8 +1537,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const overloaded = encumbranceRatio(v) > 0.92 || inventoryNearlyFull(v.inventory)
   const mind = mindOf(v)
   const airT = sampleTempC(state.climate, v.x, v.y)
-  const cold = coldStress01(airT)
+  const cold = outdoorCold01(state, v)
   const heat = heatStress01(airT)
+  const underdressed = cloDeficit01(v, state, cold)
   let searchR = curiosityRadius(v, SHORT_BLIND_R)
   if (night) searchR = Math.round(searchR * 0.55)
   if (exhausted) searchR = Math.round(searchR * 0.65)
@@ -2173,7 +2200,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
   if (v.hasWorkbench && (cloth >= CLOTH_PER_CLOTHING || countOf(v.inventory, 'leather') >= 1) && canPracticeCraft(v, 'sew')) {
     const winterPush = season === 'winter' ? 45 : season === 'autumn' ? 20 : 5
-    const coldPush = cold * 55
+    const coldPush = cold * 55 + underdressed * 70
     add('sewClothing', v.workbenchX, v.workbenchY, (30 + winterPush + coldPush) * reach(v, v.workbenchX, v.workbenchY))
   }
   if (v.hasWorkbench && hide > 0 && canPracticeCraft(v, 'tan')) {
@@ -2203,7 +2230,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         'craftGear',
         v.workbenchX,
         v.workbenchY,
-        (26 + winterPush + cold * 40 + rolePush + p.ambition * 10) * reach(v, v.workbenchX, v.workbenchY),
+        (26 + winterPush + cold * 40 + underdressed * 85 + rolePush + p.ambition * 10) *
+          reach(v, v.workbenchX, v.workbenchY),
       )
     }
   }
@@ -2386,24 +2414,38 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.hasHome) {
     const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
-    const restX = bed?.x ?? v.homeX
-    const restY = bed?.y ?? v.homeY
+    const hearth = warmthSpot(v.furnitureQueue, v.homeLayout)
+    const owner = homeOwnerOf(v, state)
+    const useHearth =
+      cold > 0.28 &&
+      underdressed > 0.2 &&
+      (hasHomeFurniture(owner, 'hearth') || hearth) &&
+      (!bed || underdressed > 0.45 || cold > 0.5)
+    const restX = useHearth ? (hearth?.x ?? v.homeX) : (bed?.x ?? v.homeX)
+    const restY = useHearth ? (hearth?.y ?? v.homeY) : (bed?.y ?? v.homeY)
     const restNeed =
       (season === 'winter' ? 38 : 8) +
       cold * 55 +
+      underdressed * cold * 70 +
       heat * 28 +
       (night ? 70 : 0) +
       (exhausted ? 90 : tired ? 40 : 0) +
       (1 - v.stamina / STAMINA_MAX) * 50 +
-      (!atHomeShelter(v) && cold > 0.25 ? 50 : 0) +
-      (bed && v.bedCount > 0 ? 18 : 0)
+      (!atHomeShelter(v) && cold > 0.25 ? 50 + underdressed * 40 : 0) +
+      (bed && v.bedCount > 0 ? 18 : 0) +
+      (hasHomeFurniture(owner, 'hearth') && cold > 0.2 ? 22 : 0)
     // Don't nap while carrying food and getting hungry — that was the mid-run starve path.
     const hungryWithFood = v.hunger < 2.2 && bestEdible(v)
-    const restScore = hungryWithFood ? restNeed * 0.22 : restNeed
+    const restScore = hungryWithFood && underdressed < 0.55 ? restNeed * 0.22 : restNeed
     if (restScore > 6) add('rest', restX, restY, restScore * reach(v, restX, restY))
-  } else if (exhausted || tired || cold > 0.4 || heat > 0.5) {
+  } else if (exhausted || tired || cold > 0.4 || heat > 0.5 || underdressed * cold > 0.35) {
     // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
-    add('rest', v.x, v.y, (exhausted ? 70 : 32) + (night ? 28 : 0) + cold * 40 + heat * 25)
+    add(
+      'rest',
+      v.x,
+      v.y,
+      (exhausted ? 70 : 32) + (night ? 28 : 0) + cold * 40 + underdressed * 45 + heat * 25,
+    )
   }
 
   const goodMemory = v.memories.find((m) => m.kind === 'goodSpot')
@@ -3527,9 +3569,15 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'rest': {
       const sheltered = atHomeShelter(v)
+      const owner = homeOwnerOf(v, state)
       const inChambre = v.homeLayout ? findRoomAt(v.homeLayout, v.x, v.y)?.kind === 'chambre' : false
-      const bedBonus = v.bedCount > 0 && sheltered ? STAMINA_REST_BED : sheltered ? STAMINA_REST_HOME : STAMINA_IDLE * 1.6
-      recoverStamina(v, bedBonus * (inChambre ? 1.15 : 1))
+      const nearHearth =
+        sheltered &&
+        (hasHomeFurniture(owner, 'hearth') ||
+          (v.homeLayout ? findRoomAt(v.homeLayout, v.x, v.y)?.kind === 'cuisine' : false))
+      const baseBonus = v.bedCount > 0 && sheltered ? STAMINA_REST_BED : sheltered ? STAMINA_REST_HOME : STAMINA_IDLE * 1.6
+      const furnitureBonus = sheltered ? restSleepBonus(owner, v.age) : 0
+      recoverStamina(v, (baseBonus + furnitureBonus) * (inChambre ? 1.15 : 1) * (nearHearth ? 1.08 : 1))
       // Nibble while resting if genuinely hungry — avoids rest→starve with food in the bag.
       if (v.hunger < 1.8) {
         const snack = bestEdible(v)
@@ -3540,9 +3588,20 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           v.hunger = Math.min(HUNGER_MAX, v.hunger + Math.max(legacy, fromKcal) * 0.85)
         }
       }
+      // Soft drink: ale/wine while resting (hydrating liquids — no separate thirst meter).
+      if (sheltered && (state.tick + v.id) % 11 === 0) {
+        const drink =
+          countOf(v.inventory, 'ale') > 0 ? 'ale' : countOf(v.inventory, 'wine') > 0 ? 'wine' : null
+        if (drink) {
+          removeFromInventory(v.inventory, drink, 1)
+          recoverStamina(v, 0.04)
+          const fromKcal = hungerRestoreFromFood(drink)
+          if (fromKcal > 0) v.hunger = Math.min(HUNGER_MAX, v.hunger + fromKcal * 0.35)
+        }
+      }
       if (sheltered && v.hunger > 0.5) {
         // Quiet recovery near the hearth — slight hunger cost of resting idle.
-        if (state.season === 'winter') recoverStamina(v, 0.02)
+        if (state.season === 'winter' || nearHearth) recoverStamina(v, nearHearth ? 0.035 : 0.02)
       }
       const need = isNight(state.tick) ? 30 : v.stamina < STAMINA_TIRED ? 50 : 40
       // Cut rest short when hungry with food so eat/farm can resume.
@@ -3708,17 +3767,38 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       }
     }
   }
-  // Cold / heat / wet outdoors drain stamina; hearth recovers a little even without a rest task.
+  // Cold / heat / wet outdoors drain stamina; underdressed freeze can kill.
+  // Hearth recovers a little even without a rest task.
   {
     const air = sampleTempC(state.climate, v.x, v.y)
-    const biome = sampleBiome(state.climate, v.x, v.y)
-    const cold = Math.min(1, coldStress01(air) + (atHomeShelter(v) ? 0 : biomeColdBias(biome) * 0.85))
+    const cold = outdoorCold01(state, v)
     const heat = heatStress01(air)
     const rain = sampleRain(state.climate, v.x, v.y)
+    const deficit = cloDeficit01(v, state, cold)
+    const night = isNight(state.tick)
     if (!atHomeShelter(v) && !v.embarked && (cold > 0.05 || heat > 0.05 || rain > 0.4)) {
-      spendStamina(v, cold * (isNight(state.tick) ? 0.022 : 0.01) + heat * 0.014 + rain * 0.008)
+      // Cloaked villagers suffer less outdoor stamina bleed.
+      const cloMul = 0.55 + deficit * 0.7
+      spendStamina(
+        v,
+        (cold * (night ? 0.022 : 0.01) * cloMul + heat * 0.014 + rain * 0.008) ,
+      )
+      // Hypothermia: health only when underdressed in real cold — cloaked folk mostly burn food.
+      const exposure = cold * deficit * (night ? 1.4 : 1)
+      if (exposure > 0.22 && (state.tick + v.id * 7) % 3 === 0) {
+        if (deficit > 0.35) {
+          v.health -= 0.45 + exposure * 0.85 + deficit * 0.35
+          if (v.health <= 0) {
+            v.alive = false
+            state.deaths += 1
+            logEvent(state, `${v.name} meurt de froid`)
+            onDeath(state, v, null)
+            return
+          }
+        }
+      }
     } else if (atHomeShelter(v) && !v.task) {
-      recoverStamina(v, 0.028)
+      recoverStamina(v, 0.028 + (hasHomeFurniture(homeOwnerOf(v, state), 'hearth') ? 0.012 : 0))
     } else if (!v.task && v.stamina < STAMINA_TIRED) {
       recoverStamina(v, 0.01)
     }
@@ -3917,6 +3997,44 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
+    }
+  }
+
+  // Froid : ne pas rester dehors sous-vêtu — rentrer / coudre / artisanat.
+  if (
+    v.task &&
+    v.task.kind !== 'rest' &&
+    v.task.kind !== 'flee' &&
+    v.task.kind !== 'fight' &&
+    v.task.kind !== 'eat' &&
+    v.task.kind !== 'craftGear' &&
+    v.task.kind !== 'sewClothing' &&
+    v.task.kind !== 'buildHearth' &&
+    v.task.kind !== 'buildBed' &&
+    v.task.kind !== 'buildHouse'
+  ) {
+    const coldNow = outdoorCold01(state, v)
+    const deficitNow = cloDeficit01(v, state, coldNow)
+    if (coldNow > 0.4 && deficitNow > 0.5 && !atHomeShelter(v)) {
+      stashInterruptedTask(v)
+      if (v.hasHome) {
+        const owner = homeOwnerOf(v, state)
+        const hearth = warmthSpot(v.furnitureQueue, v.homeLayout)
+        setTask(v, 'rest', hearth?.x ?? v.homeX, hearth?.y ?? v.homeY)
+        noteChosenAction(v, 'rest', 'froid — abri')
+      } else {
+        setTask(v, 'rest', v.x, v.y)
+        noteChosenAction(v, 'rest', 'froid — pause')
+      }
+    } else if (
+      coldNow > 0.35 &&
+      deficitNow > 0.55 &&
+      v.hasWorkbench &&
+      (v.task.kind === 'idle' || v.task.kind === 'socialise' || v.task.kind === 'entertain')
+    ) {
+      stashInterruptedTask(v)
+      setTask(v, 'craftGear', v.workbenchX, v.workbenchY)
+      noteChosenAction(v, 'craftGear', 'froid — s’habiller')
     }
   }
 

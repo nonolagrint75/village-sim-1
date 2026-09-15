@@ -60,11 +60,12 @@ import {
   type Villager,
   type Wolf,
 } from './types'
-import { createClimate, sampleBiome, tickClimate } from './climate'
+import { coldStress01, createClimate, sampleBiome, sampleTempC, tickClimate } from './climate'
 import {
   BiomeId,
   FAUNA_WEIGHT_MAX,
   faunaSpawnWeight,
+  biomeColdBias,
   biomeSettlementScore,
   biomeIsFoundable,
   type FaunaKind,
@@ -286,7 +287,9 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   }
 
   for (const v of villagers) {
-    seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng)
+    const air = sampleTempC(climate, v.x, v.y)
+    const cold01 = Math.min(1, coldStress01(air) + biomeColdBias(sampleBiome(climate, v.x, v.y)) * 0.85)
+    seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng, { cold01 })
     // Soft heat_wood seed so charcoal / bronze chains aren't knowledge-locked forever.
     if (rng() < 0.55) {
       v.knowledge.push({
