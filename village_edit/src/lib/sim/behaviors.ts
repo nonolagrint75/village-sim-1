@@ -687,7 +687,8 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
 
 function laborWorkNeeded(kind: TaskKind): number {
   if (kind === 'buildWorkbench' || kind === 'buildChest' || kind === 'buildBed' || kind === 'buildTable') return 2.2
-  if (kind === 'buildCart' || kind === 'buildBoat') return 3.5
+  if (kind === 'buildCart') return 3.5
+  if (kind === 'buildBoat') return 2.0
   if (kind === 'craftSpear' || kind === 'craftStoneSpear') return 1.6
   if (kind === 'craftIronTool' || kind === 'craftGear') return 2.8
   if (kind === 'makeCharcoal') return 2.0
@@ -2017,7 +2018,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       v.profession === 'lumberjack' ||
       p.curiosity > 0.35)
   ) {
-    const dock = findMillSite(grid, v.homeX, v.homeY, 55)
+    const dock =
+      findMillSite(grid, v.x, v.y, 28) ?? findMillSite(grid, v.homeX, v.homeY, 55)
     if (dock) {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
@@ -2883,7 +2885,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       ? getTerrain(grid, v.x, v.y) === WATER && distance(v.x, v.y, task.targetX, task.targetY) <= 2.2
       : task.kind === 'fish' && boat && !v.embarked
         ? chebyshev(v.x, v.y, boat.x, boat.y) <= 2
-        : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
+        : task.kind === 'buildBoat'
+          ? distance(v.x, v.y, task.targetX, task.targetY) <= 2.4
+          : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
 
   if (task.kind === 'eat') {
     // Walk to table/target first — no teleport meals from mid-field.
@@ -3166,11 +3170,11 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
       const needStone = cargo ? BOAT_CARGO_STONE_COST : 0
-      // Household chest counts as communal timber so pack wood under survival pressure can still launch.
-      if (householdStock(v, 'wood') < needWood || householdStock(v, 'stone') < needStone) return false
+      // Allow travel/labor to the dock even if pack wood dips; only gate the launch.
       const labor = accumulateLabor('buildBoat')
       if (labor === 'abort') return false
       if (labor === 'continue') return true
+      if (householdStock(v, 'wood') < needWood || householdStock(v, 'stone') < needStone) return false
       if (!consumeHousehold(v, 'wood', needWood)) return false
       if (needStone > 0 && !consumeHousehold(v, 'stone', needStone)) return false
       // Poix / corde : calfatage et gréement (bonus de solidité soft via cargo).
