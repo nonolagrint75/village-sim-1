@@ -88,7 +88,7 @@ import {
   projectTaskUrge,
 } from './construction'
 import { computePerimeter, occupiedTiles } from './defence'
-import { conductTrade, findTradeOpportunity, portEligible, priceOf, targetPerCapita, tickVillageEconomy, TRADE_COOLDOWN, villageBirthBias } from './commerce'
+import { conductTrade, countNearbyRoadTiles, findTradeOpportunity, portEligible, priceOf, targetPerCapita, tickVillageEconomy, TRADE_COOLDOWN, villageBirthBias } from './commerce'
 import { nearbyVillagers } from './kernels'
 import { HORSE_CARRY_BONUS, tickHorse, tickHorseBreeding, tryTame } from './horses'
 import {
@@ -1447,6 +1447,7 @@ function findOrCreateVillage(state: SimState, x: number, y: number, joinRadius: 
     gates: [],
     naturalCover: 0,
     perimeterTick: -PERIMETER_REFRESH,
+    perimeterFrozen: false,
     hasMill: false,
     millX: -1,
     millY: -1,
@@ -1509,6 +1510,9 @@ function recalcVillageCentre(state: SimState, village: Village) {
 }
 
 function refreshPerimeter(state: SimState, village: Village) {
+  if (village.perimeterFrozen === undefined) village.perimeterFrozen = false
+  // Expanding homes must not move the ring after the first palisade stakes go in.
+  if (village.perimeterFrozen && village.perimeter.length > 0) return
   if (state.tick - village.perimeterTick < PERIMETER_REFRESH) return
   village.perimeterTick = state.tick
   recalcVillageCentre(state, village)
@@ -2347,22 +2351,54 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  if (village && v.hasHome && v.tradeCooldown <= 0 && (v.profession === 'trader' || v.ambition === 'wealth' || (village.prosperity ?? 0) > 55)) {
+  if (
+    village &&
+    v.hasHome &&
+    v.tradeCooldown <= 0 &&
+    !famine &&
+    v.hunger >= 1.6 &&
+    (v.profession === 'trader' ||
+      v.ambition === 'wealth' ||
+      (village.prosperity ?? 0) > 40 ||
+      (p.ambition > 0.5 && p.sociability > 0.35) ||
+      (village.hasMarket && p.ambition > 0.3) ||
+      (village.tradeRuns > 0 && p.ambition > 0.4))
+  ) {
     const deal = findTradeOpportunity(state, village, v.x, v.y, v)
     if (deal) {
-      const travelPenalty = deal.distance * 0.08
-      const cargoBonus = (v.hasCart ? 36 : 0) + (v.boatId !== null ? 24 : 0) + (v.mounted ? 8 : 0)
-      const surplusPush = Math.min(48, deal.gain * 16)
-      const hubBonus = deal.target.isRegionalHub ? 14 : Math.min(18, deal.target.attractiveness * 0.09)
-      const prosperPush = Math.min(20, (village.prosperity ?? 35) * 0.12)
-      const destX = deal.target.hasPort ? deal.target.portX : deal.target.centerX
-      const destY = deal.target.hasPort ? deal.target.portY : deal.target.centerY
+      const travelPenalty = deal.distance * 0.055
+      const cargoBonus = (v.hasCart ? 40 : 0) + (v.boatId !== null ? 28 : 0) + (v.mounted ? 10 : 0)
+      const surplusPush = Math.min(64, deal.gain * 20)
+      const hubBonus = deal.target.isRegionalHub ? 20 : Math.min(24, deal.target.attractiveness * 0.11)
+      const prosperPush = Math.min(28, (village.prosperity ?? 35) * 0.16)
+      const marketPush = (village.hasMarket ? 18 : 0) + (deal.target.hasMarket ? 12 : 0)
+      const roadPush = Math.min(16, countNearbyRoadTiles(state, village.centerX, village.centerY, 14) * 0.22)
+      const destX = deal.target.hasPort
+        ? deal.target.portX
+        : deal.target.hasMarket
+          ? deal.target.marketX
+          : deal.target.centerX
+      const destY = deal.target.hasPort
+        ? deal.target.portY
+        : deal.target.hasMarket
+          ? deal.target.marketY
+          : deal.target.centerY
       add(
         'tradeRun',
         destX,
         destY,
-        32 + surplusPush + p.sociability * 15 + p.ambition * 8 + cargoBonus + hubBonus + prosperPush - travelPenalty,
+        58 +
+          surplusPush +
+          p.sociability * 20 +
+          p.ambition * 14 +
+          cargoBonus +
+          hubBonus +
+          prosperPush +
+          marketPush +
+          roadPush -
+          travelPenalty,
         deal.target.id,
+        deal.resource,
       )
     }
   }
@@ -2729,6 +2765,23 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
+  // Surplus craft specialization — develop beyond perpetual woodcutting.
+  if (v.hasWorkbench && !state.famine && v.hunger >= 2.5 && edibleValue(v.inventory) >= 2) {
+    const live = mindOf(v).livelihood
+    const craftPush =
+      18 +
+      p.curiosity * 22 +
+      p.ambition * 18 +
+      (live?.mix.craft ?? 0) * 40 +
+      (v.ambition === 'builder' || v.ambition === 'wealth' ? 16 : 0)
+    if (canPracticeCraft(v, 'wood') && wood >= 2) {
+      add('craftGoods', v.workbenchX, v.workbenchY, craftPush * reach(v, v.workbenchX, v.workbenchY))
+    }
+    if (canPracticeCraft(v, 'weave') && (countOf(v.inventory, 'wool') > 0 || countOf(v.inventory, 'flax') > 0)) {
+      add('weaveCloth', v.workbenchX, v.workbenchY, (craftPush + 8) * reach(v, v.workbenchX, v.workbenchY))
+    }
+  }
+
   if (v.hasWorkbench && v.toolTier === 'wood') {
     let upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
     if (knowsStackStone(v, village) || hasKnowledge(v.knowledge, 'grind_stone', 0.25)) upgrade *= 1.25
@@ -2776,8 +2829,14 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  if (v.hasWorkbench && gold >= NUGGETS_PER_COIN && v.profession === 'trader') {
-    add('mintCoins', v.workbenchX, v.workbenchY, (20 + (1 - p.generosity) * 40) * reach(v, v.workbenchX, v.workbenchY))
+  if (v.hasWorkbench && gold >= NUGGETS_PER_COIN) {
+    const mintDrive =
+      (v.profession === 'trader' ? 55 : 28) +
+      (1 - p.generosity) * 35 +
+      (v.ambition === 'wealth' ? 30 : 0) +
+      (v.profession === 'blacksmith' ? 18 : 0) +
+      Math.min(40, gold * 6)
+    add('mintCoins', v.workbenchX, v.workbenchY, mintDrive * reach(v, v.workbenchX, v.workbenchY))
   }
 
   if (v.hasHome && isOwner) {
@@ -4409,6 +4468,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'buildWall': {
       const village = state.villages.find((vg) => vg.id === v.villageId)
       if (!village) return false
+      if (village.perimeterFrozen === undefined) village.perimeterFrozen = false
       const masonry = knowsStackStone(v, village)
       const wantCode =
         village.wallTier === 'none' ? WALL_WOOD : village.wallTier === 'wood' && masonry ? WALL_STONE : null
@@ -4419,15 +4479,24 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (getTerrain(grid, task.targetX, task.targetY) !== wantCode) {
         setTerrain(grid, task.targetX, task.targetY, wantCode)
         removeFromInventory(v.inventory, res, WALL_SEGMENT_COST)
+        village.perimeterFrozen = true
       }
+      const walled = village.perimeter.filter((c) => {
+        const t = getTerrain(grid, c.x, c.y)
+        return t === WALL_WOOD || t === WALL_STONE
+      }).length
       const nextGap = village.perimeter.find((c) => getTerrain(grid, c.x, c.y) !== wantCode)
-      if (!nextGap) {
+      // Soft close: unbuildable leftovers / gates shouldn't block an enceinte forever.
+      const mostlyClosed = village.perimeter.length > 0 && walled / village.perimeter.length >= 0.82
+      if (!nextGap || mostlyClosed) {
         if (wantCode === WALL_WOOD) {
           village.wallTier = 'wood'
-          village.wallHealth = village.perimeter.length * WALL_HEALTH_PER_CELL
-          logEvent(state, `Enceinte fermée : ${village.perimeter.length} cases bâties, ${village.naturalCover} couvertes par l'eau`)
+          village.wallHealth = Math.max(walled, 1) * WALL_HEALTH_PER_CELL
+          village.perimeterFrozen = true
+          logEvent(state, `Enceinte fermée : ${walled} cases bâties, ${village.naturalCover} couvertes par l'eau`)
         } else {
           village.wallTier = 'stone'
+          village.perimeterFrozen = true
           logEvent(state, `Le village a son rempart de pierre`)
         }
         return false
@@ -5369,13 +5438,13 @@ export function tickReproduction(state: SimState, rng: () => number) {
     isMarriageAge(v) &&
     v.reproCooldown <= 0 &&
     v.hunger >= REPRO_HUNGER_THRESHOLD &&
-    edibleValue(v.inventory) >= REPRO_FOOD_STOCK
+    edibleValue(v.inventory) + (v.chestInventory ? edibleValue(v.chestInventory) : 0) >= REPRO_FOOD_STOCK
 
   const lookup = pedigreeLookup(state)
 
   const tryCouple = (a: Villager, b: Villager): boolean => {
       if (!ready(a) || !ready(b) || a.id === b.id) return false
-      if (distance(a.x, a.y, b.x, b.y) > 2.5) return false
+      if (distance(a.x, a.y, b.x, b.y) > 5.5) return false
       const bonded =
         (a.spouseId === b.id && b.spouseId === a.id) || (a.spouseId === null && b.spouseId === null)
       if (!bonded) return false

@@ -749,6 +749,7 @@ function emptyFoundingVillage(state: SimState, x: number, y: number, rng: () => 
     gates: [],
     naturalCover: 0,
     perimeterTick: -1200,
+    perimeterFrozen: false,
     hasMill: false,
     millX: -1,
     millY: -1,

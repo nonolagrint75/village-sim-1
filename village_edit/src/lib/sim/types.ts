@@ -531,6 +531,11 @@ export interface Village {
   gates: { x: number; y: number }[]
   naturalCover: number
   perimeterTick: number
+  /**
+   * Once wall segments are placed, freeze the ring so expansion doesn't
+   * orphan built cells and leave wallTier stuck at `none`.
+   */
+  perimeterFrozen: boolean
   hasMill: boolean
   millX: number
   millY: number

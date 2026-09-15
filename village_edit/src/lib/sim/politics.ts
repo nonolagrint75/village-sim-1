@@ -1506,6 +1506,9 @@ function crystallizeCreed(pol: PoliticalState): CreedId | null {
   if (pol.beliefs.fairness > 0.65 && pol.grievance > 0.3) return 'partage'
   if (pol.beliefs.greed > 0.6) return 'commerce_libre'
   if (pol.beliefs.piety > 0.65) return 'piete'
+  // Threat / justice creeds — previously declared but never assigned.
+  if (pol.grievance > 0.55 && pol.beliefs.loyalty > 0.5) return 'protection'
+  if (pol.grievance > 0.62 && pol.beliefs.fairness < 0.45) return 'vengeance'
   if (pol.beliefs.tradition > 0.65) return 'tradition'
   if (pol.beliefs.tradition < 0.35) return 'changement'
   if (pol.grievance > 0.6) return 'ordre'
@@ -2282,10 +2285,11 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
       }
     }
     if (reasons) {
-      const fortScale =
-        purposes?.includes('fortify') && (stone ?? 0) >= 0.7
-          ? 0.62 + c.legitimacy * 0.3
-          : 0.55 + c.legitimacy * 0.25
+      const fortScale = purposes?.includes('fortify')
+        ? (stone ?? 0) >= 0.7
+          ? 0.48 + c.legitimacy * 0.22
+          : 0.36 + c.legitimacy * 0.14
+        : 0.55 + c.legitimacy * 0.25
       const intent = intentFromReasons(reasons, {
         purposes,
         scale: fortScale,
@@ -2829,15 +2833,16 @@ function desiredTier(state: SimState, p: Polity): PolityTier {
     return 'kingdom'
   }
   if (
-    (inst >= 1 && pop >= 4 && p.legitimacy > 0.3) ||
+    (inst >= 1 && pop >= 3 && p.legitimacy > 0.28) ||
     (inst >= 1 && walls && pop >= 3) ||
-    (keep && pop >= 4) ||
-    (pop >= 6 && age > 480 && coh > 0.4) ||
-    (prosp >= 48 && pop >= 5 && inst >= 1)
+    (keep && pop >= 3) ||
+    (pop >= 5 && age > 360 && coh > 0.35) ||
+    (prosp >= 36 && pop >= 4 && inst >= 1) ||
+    (inst >= 1 && age > 720 && pop >= 4)
   ) {
     return 'chiefdom'
   }
-  if (pop >= 3 || (cap && (cap.development ?? 0) > 0.8)) return 'village'
+  if (pop >= 2 || (cap && (cap.development ?? 0) > 0.5) || inst >= 1) return 'village'
   return 'camp'
 }
 
@@ -3025,17 +3030,17 @@ function maybeAbsorbPolities(state: SimState) {
 
 function tickSuccessionContests(state: SimState, p: Polity) {
   if (p.rulerId === null) return
-  if (state.tick - p.lastRulerChangeTick < 350) return
+  if (state.tick - p.lastRulerChangeTick < 220) return
   const ruler = state.villagers.find((v) => v.id === p.rulerId && v.alive)
   if (!ruler) return
-  // Ambitious rivals in institutions challenge weak rulers.
-  if (p.legitimacy > 0.45 && politicsOf(ruler).grievance < 0.5) return
+  // Soft contests even under moderate legitimacy — succession stays visible mid-game.
+  if (p.legitimacy > 0.62 && politicsOf(ruler).grievance < 0.35) return
   const challengers: Villager[] = []
   for (const c of polityInstitutions(state, p)) {
     for (const m of livingMembers(state, c)) {
       if (m.id === ruler.id) continue
-      if (m.personality.ambition < 0.55) continue
-      if (influenceScore(state, m) + 0.1 < influenceScore(state, ruler)) continue
+      if (m.personality.ambition < 0.45) continue
+      if (influenceScore(state, m) + 0.05 < influenceScore(state, ruler)) continue
       challengers.push(m)
     }
   }
@@ -3043,8 +3048,8 @@ function tickSuccessionContests(state: SimState, p: Polity) {
     // Fallback: any ambitious notable in the polity.
     for (const vid of p.villageIds) {
       for (const m of villageMembers(state, vid)) {
-        if (m.id === ruler.id || m.personality.ambition < 0.62) continue
-        if (influenceScore(state, m) > influenceScore(state, ruler) * 0.95) challengers.push(m)
+        if (m.id === ruler.id || m.personality.ambition < 0.5) continue
+        if (influenceScore(state, m) > influenceScore(state, ruler) * 0.88) challengers.push(m)
       }
     }
   }

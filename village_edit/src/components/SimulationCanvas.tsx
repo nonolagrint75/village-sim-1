@@ -416,6 +416,23 @@ export function SimulationCanvas() {
 
     const simpleSprites = size < 4.5
 
+    // Soft clear-ring around villages — défrichement frontier at a glance.
+    for (const vg of villages ?? []) {
+      const sx = tx(vg.centerX)
+      const sy = ty(vg.centerY)
+      const r = Math.max(8, 18 * TILE_PX * zoom)
+      if (sx + r < -4 || sy + r < -4 || sx - r > DISPLAY_SIZE + 4 || sy - r > DISPLAY_SIZE + 4) continue
+      ctx.beginPath()
+      ctx.arc(sx, sy, r, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(170, 150, 90, 0.06)'
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(140, 120, 70, 0.18)'
+      ctx.lineWidth = 0.7
+      ctx.setLineDash([3, 4])
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+
     // Sacred buildings (autel → chapelle → temple) under actors.
     for (const vg of villages ?? []) {
       if (!vg.hasShrine || vg.shrineX < 0 || vg.sacredTier === 'none') continue
@@ -425,6 +442,13 @@ export function SimulationCanvas() {
       const tier =
         vg.sacredTier === 'temple' || vg.sacredTier === 'chapel' ? vg.sacredTier : 'shrine'
       drawSacredSite(ctx, sx, sy, size, tier, simpleSprites, shadows)
+      if (zoom >= 0.4) {
+        ctx.fillStyle = 'rgba(230, 210, 160, 0.85)'
+        ctx.font = `${Math.max(8, Math.round(9 * zoom))}px Georgia, serif`
+        ctx.textAlign = 'center'
+        const label = tier === 'temple' ? 'temple' : tier === 'chapel' ? 'chapelle' : 'autel'
+        ctx.fillText(label, sx, sy + size * 0.95)
+      }
     }
 
     // Territory claims (chefferies / royaumes) — soft rings under actors.
@@ -476,6 +500,12 @@ export function SimulationCanvas() {
         ctx.fillStyle = k.done ? '#8a909a' : 'rgba(150, 130, 90, 0.6)'
         ctx.fillRect(sx - hs * 0.28, sy - hs * 1.05, hs * 0.16, hs * 0.18)
         ctx.fillRect(sx + hs * 0.12, sy - hs * 1.05, hs * 0.16, hs * 0.18)
+      }
+      if (zoom >= 0.45 && k.isCastle) {
+        ctx.fillStyle = 'rgba(210, 205, 195, 0.8)'
+        ctx.font = `${Math.max(8, Math.round(9 * zoom))}px Georgia, serif`
+        ctx.textAlign = 'center'
+        ctx.fillText(k.done ? 'donjon' : 'chantier', sx, sy + hs * 0.95)
       }
     }
 

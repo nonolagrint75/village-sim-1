@@ -598,6 +598,38 @@ export function tickReligionWorld(state: SimState): void {
     tickShrineRitual(state, vg)
   }
 
+  // Soft persistence so cult life stays visible mid-run (jours 30–60+).
+  if (state.tick % 360 === 0) {
+    for (const vg of state.villages) {
+      ensureVillageShrine(vg)
+      if (!vg.hasShrine || !vg.shrineLabel) continue
+      const faithful = villageMembers(state, vg.id).filter((v) => {
+        const pol = politicsOf(v)
+        return pol.creed !== null || pol.beliefs.piety > 0.5
+      })
+      if (faithful.length < 2) continue
+      logCause(
+        state,
+        `foi vivante au village n°${vg.id}`,
+        `${faithful.length} villageois honorent encore ${vg.shrineLabel}`,
+      )
+    }
+    for (const c of state.circles) {
+      if (c.kind !== 'faith') continue
+      const members = livingMembers(state, c.memberIds)
+      if (members.length < 2) continue
+      if ((state.tick + c.id * 17) % 720 !== 0) continue
+      const leader = c.leaderId !== null ? members.find((m) => m.id === c.leaderId) : members[0]
+      logCause(
+        state,
+        `persistance du ${c.name}`,
+        leader
+          ? `${leader.name} entretient le rite parmi ${members.length} fidèles`
+          : `le culte pieux rassemble ${members.length} fidèles`,
+      )
+    }
+  }
+
   for (const c of state.circles) {
     if (c.kind !== 'faith' && c.creed !== 'piete') continue
     const members = livingMembers(state, c.memberIds)

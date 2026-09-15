@@ -651,8 +651,8 @@ function tickOneBandit(state: SimState, b: Bandit, band: Band, rng: () => number
   // Brawl — unarmed theft turns violent.
   if (distance(b.x, b.y, prey.x, prey.y) <= FIGHT_RANGE) {
     const preyArmed = prey.toolTier !== 'none' || prey.profession === 'guard'
-    const banditHit = 0.28 + b.courage * 0.25
-    const preyHit = preyArmed ? 0.4 + prey.personality.courage * 0.2 : 0.12
+    const banditHit = 0.18 + b.courage * 0.18
+    const preyHit = preyArmed ? 0.48 + prey.personality.courage * 0.22 : 0.18
     if (rng() < banditHit) {
       prey.health -= 1
       if (prey.health <= 0) {
