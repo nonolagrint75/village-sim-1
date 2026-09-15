@@ -411,6 +411,51 @@ export function planFurnitureJobs(
   return jobs.sort((a, b) => FURNITURE_DEFS[a.kind].priority - FURNITURE_DEFS[b.kind].priority)
 }
 
+export function furnitureAlreadyOwned(
+  v: {
+    hasWorkbench: boolean
+    hasChest: boolean
+    bedCount: number
+    hasTable: boolean
+    homeFurniture: FurniturePlacement[]
+  },
+  kind: FurnitureKind,
+): boolean {
+  if (kind === 'workbench') return v.hasWorkbench
+  if (kind === 'chest') return v.hasChest
+  if (kind === 'bed') return v.bedCount > 0
+  if (kind === 'table') return v.hasTable
+  return v.homeFurniture.some((p) => p.id === kind)
+}
+
+/** Mark queue jobs done when the household already owns that piece (pioneers / inheritance). */
+export function syncFurnitureQueueWithOwned(
+  queue: FurnitureJob[],
+  v: {
+    hasWorkbench: boolean
+    hasChest: boolean
+    bedCount: number
+    hasTable: boolean
+    homeFurniture: FurniturePlacement[]
+  },
+): void {
+  let bedsMarked = 0
+  for (const j of queue) {
+    if (j.done) {
+      if (j.kind === 'bed') bedsMarked++
+      continue
+    }
+    if (j.kind === 'bed') {
+      if (bedsMarked < v.bedCount) {
+        j.done = true
+        bedsMarked++
+      }
+      continue
+    }
+    if (furnitureAlreadyOwned(v, j.kind)) j.done = true
+  }
+}
+
 export function nextFurnitureJob(queue: FurnitureJob[]): FurnitureJob | null {
   return queue.find((j) => !j.done) ?? null
 }

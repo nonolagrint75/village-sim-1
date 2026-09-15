@@ -268,7 +268,6 @@ import {
   BENCH,
   HOUSE,
   IRON,
-  HEARTH,
   LOOT,
   MILL,
   MOUNTAIN,
