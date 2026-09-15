@@ -3714,7 +3714,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (labor === 'continue') return true
       if (!spendFurnitureRecipe(v.inventory, kind)) return false
       const def = FURNITURE_DEFS[kind]
-      setTerrain(grid, task.targetX, task.targetY, def.terrain)
+      if (def.terrain != null) setTerrain(grid, task.targetX, task.targetY, def.terrain)
       const done = applyFurnitureBuilt(v, kind, task.targetX, task.targetY)
       const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : ROOM_LABEL_FR[def.room]
       logEvent(state, `${v.name} installe ${furnitureLabelFr(kind)} dans ${roomFr}`)

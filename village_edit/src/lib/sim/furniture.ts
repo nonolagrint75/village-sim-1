@@ -71,7 +71,8 @@ export type FurnitureDef = {
   recipe: Partial<Record<ResourceType, number>>
   wood: number
   room: RoomKind
-  terrain: number
+  /** Terrain id, or null for soft / catalog-only kinds (sconce, chandelier). */
+  terrain: number | null
   utilities: FurnitureUtility[]
   maxCount: number
   priority: number
@@ -261,17 +262,27 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     kind: 'sconce',
     labelFr: 'applique',
     buildTask: 'buildWorkbench',
+    recipe: { wood: 1, iron: 1 },
     wood: 1,
     room: 'hall',
     terrain: null,
+    utilities: ['warmth'],
+    maxCount: 2,
+    priority: 95,
+    labor: 1.2,
   },
   chandelier: {
     kind: 'chandelier',
     labelFr: 'lustre',
     buildTask: 'buildWorkbench',
+    recipe: { wood: 4, iron: 1 },
     wood: 4,
     room: 'hall',
     terrain: null,
+    utilities: ['warmth'],
+    maxCount: 1,
+    priority: 98,
+    labor: 2.0,
   },
 }
 
@@ -279,7 +290,9 @@ export const FURNITURE_KINDS = (Object.keys(FURNITURE_DEFS) as FurnitureKind[]).
   (a, b) => FURNITURE_DEFS[a].priority - FURNITURE_DEFS[b].priority,
 )
 
-export const FURNITURE_TERRAIN = new Set(FURNITURE_KINDS.map((k) => FURNITURE_DEFS[k].terrain))
+export const FURNITURE_TERRAIN = new Set(
+  FURNITURE_KINDS.map((k) => FURNITURE_DEFS[k].terrain).filter((t): t is number => t != null),
+)
 
 export function furnitureLabelFr(kind: FurnitureKind): string {
   return FURNITURE_DEFS[kind].labelFr
@@ -538,7 +551,7 @@ export type PlaceableFurnitureType = {
   recipe: Partial<Record<ResourceType, number>>
   wood: number
   utilities: FurnitureUtility[]
-  terrain: number
+  terrain: number | null
   allowedIn: RoomFurnitureKind[]
 }
 
