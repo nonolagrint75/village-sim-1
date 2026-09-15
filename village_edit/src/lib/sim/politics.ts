@@ -3177,6 +3177,9 @@ export type PolitySummaryRow = {
 export function politicsSummary(state: SimState): {
   circles: number
   institutions: number
+  guilds: number
+  councils: number
+  laws: { id: string; label: string; count: number }[]
   rumors: number
   leadingName: string | null
   leadingLegitimacy: number
@@ -3184,27 +3187,42 @@ export function politicsSummary(state: SimState): {
   chiefdoms: number
   kingdoms: number
   castles: number
+  camps: number
   polityRows: PolitySummaryRow[]
 } {
   ensurePolitiesArray(state)
   let leadingName: string | null = null
   let leadingLegitimacy = 0
   let institutions = 0
+  let guilds = 0
+  let councils = 0
+  const lawCounts = new Map<NormId, number>()
   for (const c of state.circles) {
     if (c.isInstitution) institutions++
+    if (c.isGuild) guilds++
+    if (c.isInstitution && (c.kind === 'elder' || c.kind === 'village' || c.name.startsWith('conseil'))) {
+      councils++
+    }
+    for (const n of c.norms) lawCounts.set(n, (lawCounts.get(n) ?? 0) + 1)
     if (c.legitimacy > leadingLegitimacy && c.leaderId !== null) {
       leadingLegitimacy = c.legitimacy
       const leader = state.villagers.find((v) => v.id === c.leaderId)
       leadingName = leader ? `${leader.name} (${c.name})` : c.name
     }
   }
+  const laws = [...lawCounts.entries()]
+    .map(([id, count]) => ({ id, label: NORM_FR[id] ?? id, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'fr'))
+    .slice(0, 8)
 
   let chiefdoms = 0
   let kingdoms = 0
+  let camps = 0
   const polityRows: PolitySummaryRow[] = []
   for (const p of state.polities) {
     if (p.tier === 'chiefdom') chiefdoms++
     if (p.tier === 'kingdom') kingdoms++
+    if (p.tier === 'camp') camps++
     const ruler = p.rulerId !== null ? state.villagers.find((v) => v.id === p.rulerId && v.alive) : null
     if (p.legitimacy > leadingLegitimacy && ruler) {
       leadingLegitimacy = p.legitimacy
@@ -3232,6 +3250,9 @@ export function politicsSummary(state: SimState): {
   return {
     circles: state.circles.length,
     institutions,
+    guilds,
+    councils,
+    laws,
     rumors: state.rumors.length,
     leadingName,
     leadingLegitimacy,
@@ -3239,6 +3260,7 @@ export function politicsSummary(state: SimState): {
     chiefdoms,
     kingdoms,
     castles: countCastles(state),
+    camps,
     polityRows,
   }
 }
