@@ -17,10 +17,11 @@ import {
   type StructureParams,
   type WallMaterial,
 } from './architecture'
-import { sampleBiome } from './climate'
-import { biomeProfile } from './biomes'
+import { sampleBiome, sampleTempC, coldStress01 } from './climate'
+import { biomeColdBias, biomeIsFoundable, biomeProfile } from './biomes'
 import type { ResourceType } from './inventory'
 import { addToInventory, countOf, createInventory } from './inventory'
+import { seedStarterKit } from './equipment'
 import { planFurnitureJobs } from './furniture'
 import { buildHouseLayout } from './rooms'
 import {
@@ -41,6 +42,7 @@ import {
   PLANK,
   WALL_STONE,
   WALL_WOOD,
+  WHEAT,
   WORKBENCH,
   type Personality,
   type SimState,
@@ -49,9 +51,11 @@ import {
   type Villager,
   type WorldGrid,
 } from './types'
+import { pickCropId } from './resources'
 import {
   claimArea,
   claimCells,
+  fieldCells,
   findBuildSite,
   getTerrain,
   inBounds,
@@ -660,6 +664,35 @@ function emptyFoundingVillage(state: SimState, x: number, y: number, rng: () => 
  * Stamp 1–2 pioneer cabins + workbench per founding cluster so craft / stone / farm
  * loops unlock within the first sim days instead of a naked wander-only boot.
  */
+function pickFoundablePioneerPlot(
+  state: SimState,
+  center: { x: number; y: number },
+  v: Villager,
+  placed: number,
+): { x: number; y: number } | null {
+  const grid = state.grid
+  const climate = state.climate
+  const candidates: { x: number; y: number }[] = [
+    { x: center.x + (placed % 2 === 0 ? -6 : 6), y: center.y + (placed < 1 ? -4 : 5) },
+    { x: center.x + (placed % 2 === 0 ? 5 : -5), y: center.y + (placed < 1 ? 5 : -6) },
+    { x: v.x, y: v.y },
+    { x: center.x, y: center.y },
+  ]
+  const radii = [6, 8, 12, 18]
+  let fallback: { x: number; y: number } | null = null
+  for (const origin of candidates) {
+    for (const radius of radii) {
+      const plot = findBuildSite(grid, origin.x, origin.y, 2, 28, radius)
+      if (!plot) continue
+      if (!fallback) fallback = plot
+      if (!climate || biomeIsFoundable(sampleBiome(climate, plot.x, plot.y))) {
+        return plot
+      }
+    }
+  }
+  return fallback
+}
+
 export function seedPioneerCamps(
   state: SimState,
   groupCenters: { x: number; y: number }[],
@@ -684,9 +717,7 @@ export function seedPioneerCamps(
     const village = emptyFoundingVillage(state, center.x, center.y, rng)
     let placed = 0
     for (const v of pioneers) {
-      const plot =
-        findBuildSite(grid, center.x + (placed % 2 === 0 ? -6 : 6), center.y + (placed < 1 ? -4 : 5), 2, 28, 6) ??
-        findBuildSite(grid, v.x, v.y, 2, 22, 8)
+      const plot = pickFoundablePioneerPlot(state, center, v, placed)
       if (!plot) continue
       const design = { ...PIONEER_DESIGN }
       const fp = houseFootprint(design, plot.x, plot.y)
@@ -737,15 +768,18 @@ export function seedPioneerCamps(
       })
       addToInventory(v.inventory, 'wood', 10)
       addToInventory(v.inventory, 'stone', 4)
+      // Second food stack (starter already filled one) — bag buffer for fortnight 1.
       addToInventory(v.inventory, 'food', 8)
-      addToInventory(v.inventory, 'wheat', 4)
-      // Larder seed so pioneers eat while clearing/sowing the first field.
+      addToInventory(v.inventory, 'wheat', 6)
+      // Chest pantry: ~2 weeks of shared rations while forage/fields come online.
+      // Not a permanent abundance buff — emptied by normal takeFromChest/eat.
       if (v.chestInventory) {
-        addToInventory(v.chestInventory, 'food', 8)
+        addToInventory(v.chestInventory, 'food', 18)
+        addToInventory(v.chestInventory, 'wheat', 6)
         addToInventory(v.chestInventory, 'wood', 4)
       }
-      // Claim a nearby field plot so sow/harvest can start in the first spring
-      // instead of waiting for a rare chooseOptions window under rest lock.
+      // Claim + clear + pre-sow a nearby field so growth starts on day 1
+      // instead of waiting for clearLand→sowField under social/rest lock.
       if (v.fieldX === -1) {
         const field =
           findBuildSite(grid, plot.x - 8, plot.y, 2, 22, 4) ??
@@ -754,10 +788,40 @@ export function seedPioneerCamps(
           v.fieldX = field.x
           v.fieldY = field.y
           claimArea(grid, field.x, field.y, 2, CLAIM_FIELD)
+          const cells = fieldCells(grid, field.x, field.y, 2)
+          clearPlotVegetation(grid, cells)
+          let sown = 0
+          for (const c of cells) {
+            if (sown >= 4) break
+            if (!isBuildableGround(grid, c.x, c.y)) continue
+            const cropId = pickCropId(rng, sampleBiome(state.climate, c.x, c.y))
+            setTerrain(grid, c.x, c.y, WHEAT, 1)
+            grid.cropType[c.y * grid.width + c.x] = cropId
+            sown++
+          }
+          if (sown > 0) v.hasField = true
         }
       }
       v.x = fp.door.x
       v.y = fp.door.y
+      if (state.climate && !biomeIsFoundable(sampleBiome(state.climate, v.x, v.y))) {
+        if (biomeIsFoundable(sampleBiome(state.climate, plot.x, plot.y))) {
+          v.x = plot.x
+          v.y = plot.y
+        } else {
+          v.x = center.x
+          v.y = center.y
+        }
+      }
+      // Door may sit cooler than the cluster pick — refresh warm kit + tool.
+      if (state.climate) {
+        const air = sampleTempC(state.climate, v.x, v.y)
+        const cold01 = Math.min(
+          1,
+          coldStress01(air) + biomeColdBias(sampleBiome(state.climate, v.x, v.y)) * 0.85,
+        )
+        seedStarterKit(v, 0.35, v.profession, rng, { cold01 })
+      }
       v.villageId = village.id
       village.memberIds.push(v.id)
       placed++

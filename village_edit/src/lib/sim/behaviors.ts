@@ -464,14 +464,14 @@ function sowingSeason(season: Season, tempC = 12): boolean {
   if (cropTempFactor(tempC) < 0.35) return false
   return season === 'spring' || season === 'summer' || (season === 'autumn' && tempC > 14)
 }
-/** First month — richer forage until fields cycle; mid-run keep a mild boost. */
+/** Fortnight 1 only — richer forage so Nouveau monde bags refill before first harvest. */
 function earlyFoundingWeeks(state: SimState): boolean {
-  return state.tick < TICKS_PER_DAY * 30
+  return state.tick < TICKS_PER_DAY * 14
 }
 function forageYieldAmt(state: SimState): number {
   const ripe = berriesRipeIn(state.season)
   if (earlyFoundingWeeks(state)) return ripe ? 4 : 2
-  return ripe ? 3 : 1
+  return ripe ? 2 : 1
 }
 function growthRate(season: Season): number {
   if (season === 'spring') return 1.25
@@ -1628,6 +1628,8 @@ function bestEdible(v: Villager): ResourceType | null {
 
 /** Prefer table when housed — travel time is intentional (no teleport meals). */
 function eatTarget(v: Villager): { x: number; y: number } {
+  // Critical hunger: eat where you stand — table walks were mid-run starve deaths.
+  if (v.hunger < EAT_IN_PLACE) return { x: Math.round(v.x), y: Math.round(v.y) }
   const table = eatSpot(v.furnitureQueue, v.homeLayout)
   if (table && v.hasHome) return table
   if (v.hasTable) return { x: v.tableX, y: v.tableY }
@@ -1648,14 +1650,14 @@ function restTarget(v: Villager): { x: number; y: number } {
  */
 function tryAssignSurvivalTask(state: SimState, v: Villager): boolean {
   const night = isNight(state.tick)
-  if (v.hunger < 2.35 && bestEdible(v)) {
+  if (v.hunger < EAT_INTERRUPT && bestEdible(v)) {
     const t = eatTarget(v)
     setTask(v, 'eat', t.x, t.y)
     noteChosenAction(v, 'eat', 'survie — manger')
     return true
   }
   if (
-    v.hunger < 1.45 &&
+    v.hunger < CHEST_PULL &&
     !bestEdible(v) &&
     v.hasChest &&
     v.chestInventory &&
@@ -2165,6 +2167,12 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const socialNear = nearbyVillagers(state, v.x, v.y, SOCIAL_SIGHT, v.id, 32)
   const mindSelf = mindOf(v)
   const loneSelf = lonelinessPressure(v, state.tick)
+  const survivalTight =
+    v.hunger < SURVIVAL_TIGHT_HUNGER ||
+    larder < 2.5 ||
+    famine ||
+    (v.fieldX !== -1 && !v.hasField) ||
+    state.tick < TICKS_PER_DAY * 12
   for (let si = 0; si < socialNear.length; si++) {
     const other = socialNear[si]
 
@@ -2179,6 +2187,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       other.parentIds.includes(v.id) ||
       v.adoptiveParentIds.includes(other.id) ||
       other.adoptiveParentIds.includes(v.id)
+    const isKin = isSpouse || kinship > 0.5 || isParentChild
+    // Under survival pressure, strangers drop out — kin only at a soft whisper.
+    if (survivalTight && !isKin) continue
     const friendPull = affinity > 0.35 ? 22 : 0
     const kinPull = kinship > 0.4 || isSpouse || isParentChild ? 36 : 0
     const admirePull = respect * 35
@@ -2195,14 +2206,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const chatNeed = mind.needs.social * 48 + mind.needs.belonging * 28 + lone * 40 + mind.needs.boredom * 18
     // Nearby talk stays possible at night for kin; strangers hush for sleep.
     const nightChat = night ? (isSpouse || kinship > 0.4 || isParentChild || mind.needs.social > 0.7 ? 0.55 : 0.22) : 1
-    const survivalChat =
-      isSpouse || kinship > 0.4 || isParentChild
-        ? 1
-        : v.hunger >= 1.6
-          ? 1
-          : v.hunger >= 1.0
-            ? 0.55
-            : 0.25
+    const survivalChat = survivalTight ? (isKin ? 0.35 : 0.12) : v.hunger >= EAT_WITH_FOOD ? 1 : v.hunger >= 1.0 ? 0.55 : 0.25
     add(
       'socialise',
       other.x,
@@ -2216,7 +2220,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         reach(v, other.x, other.y),
       other.id,
     )
-    if (other.hunger < HUNGRY_THRESHOLD && larder > 1.5 && (v.hunger >= 1.8 || kinship > 0.4 || isSpouse || isParentChild)) {
+    if (other.hunger < HUNGRY_THRESHOLD && larder > 1.5 && (v.hunger >= REST_SNACK || kinship > 0.4 || isSpouse || isParentChild)) {
       const norms = activeNormsFor(state, v)
       let share = p.generosity * 55 + affinity * 45 + respect * 40 + kinship * 35 + (isSpouse || isParentChild ? 40 : 0)
       share *= homophilyBias(cultSim, 'giveFood')
@@ -2226,7 +2230,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       if (myDebt > 0.35) share *= 1.4 + Math.min(1, myDebt) * 0.5
       if (norms.includes('reciprocate') && myDebt > 0.2) share *= 1.25
       // Don't empty your own bag chatting while starving.
-      if (v.hunger < 1.8) share *= 0.25
+      if (v.hunger < REST_SNACK) share *= 0.25
       add('giveFood', other.x, other.y, share * survivalChat * reach(v, other.x, other.y), other.id)
     }
     if (affinity < -0.5 || v.grudgeTarget === other.id || (rel?.grudge ?? 0) > 0.6) {
@@ -3046,8 +3050,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
 
   if (task.kind === 'eat') {
-    // Walk to table/target first — no teleport meals from mid-field.
-    if (!arrived) {
+    // Walk to table unless critically hungry — then eat in place immediately.
+    const canEatNow = arrived || v.hunger < EAT_IN_PLACE
+    if (!canEatNow) {
       /* fall through to movement */
     } else {
       const food = bestEdible(v)
