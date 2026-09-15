@@ -144,7 +144,10 @@ export type SelectedVillager = {
   legitimacy: number
   grievance: number
   circleNames: string[]
-  /** Null when cognition pack fails — portrait must still render. */
+  /**
+   * Mind / cognition summary for the portrait « Cognition » block.
+   * Null when cognition pack fails — portrait must still render.
+   */
   cognition: CognitionDebug | null
   /** Null if family module not ready. */
   family: FamilySummary | null
@@ -159,6 +162,9 @@ export type SelectedVillager = {
   /** Shared village technique library size (0 if no village). */
   villageKnowledgeCount: number
 }
+
+/** Alias — mind summary shipped inside `SelectedVillager.cognition`. */
+export type MindSummary = CognitionDebug
 
 /** Lean lineage row for Société « Généalogie ». */
 export type UiLineageRow = {
@@ -214,8 +220,15 @@ export type UiGroupRow = {
 export type UiFrame = {
   stats: SimStats
   chronicle: string[]
-  /** Id the worker packed for — used to ignore stale UI vs a newer local click. */
+  /**
+   * Echo of the worker's current selection id (alive or dead entity).
+   * Main thread ignores frames where this ≠ local selectedRef.
+   */
   selectedId: number | null
+  /**
+   * Packed villager for the portrait — equipment + mind summary included.
+   * Null only when `selectedId` is null or the entity was purged from state.
+   */
   selected: SelectedVillager | null
   groups: UiGroupRow[]
   lineages: UiLineageRow[]
@@ -223,6 +236,14 @@ export type UiFrame = {
   cultures: UiCountRow[]
   creeds: UiCountRow[]
   ticksPerSec: number
+}
+
+export type PackUiOptions = {
+  /**
+   * Select-reply / priority pack: still echoes selectedId + full selected payload,
+   * but skips heavy lineage/culture tallies so the reply is never starved.
+   */
+  priority?: boolean
 }
 
 const MAX_UI_GROUP_MEMBERS = 8

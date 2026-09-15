@@ -589,6 +589,7 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
     kind === 'buildWorkbench' ||
     kind === 'buildChest' ||
     kind === 'buildBed' ||
+    kind === 'buildTable' ||
     kind === 'buildCart' ||
     kind === 'buildBoat' ||
     kind === 'craftSpear' ||
@@ -621,7 +622,7 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
 }
 
 function laborWorkNeeded(kind: TaskKind): number {
-  if (kind === 'buildWorkbench' || kind === 'buildChest' || kind === 'buildBed') return 2.2
+  if (kind === 'buildWorkbench' || kind === 'buildChest' || kind === 'buildBed' || kind === 'buildTable') return 2.2
   if (kind === 'buildCart' || kind === 'buildBoat') return 3.5
   if (kind === 'craftSpear' || kind === 'craftStoneSpear') return 1.6
   if (kind === 'craftIronTool' || kind === 'craftGear') return 2.8
@@ -640,6 +641,99 @@ function dropCarriedGold(state: SimState, v: Villager) {
 function homeFootprint(v: Villager): HouseFootprint | null {
   if (!v.house || v.homeX < 0) return null
   return houseFootprint(v.house, v.homeX, v.homeY)
+}
+
+function ensureHomeLayout(v: Villager): HouseLayout | null {
+  if (!v.house || v.homeX < 0) return null
+  if (v.homeLayout && v.homeLayout.rooms.length > 0) return v.homeLayout
+  const fp = homeFootprint(v)
+  if (!fp) return null
+  v.homeLayout = buildHouseLayout(v.house, fp)
+  return v.homeLayout
+}
+
+function seedFurnitureQueue(v: Villager, layout: HouseLayout) {
+  if (v.furnitureQueue.length > 0) return
+  v.furnitureQueue = planFurnitureJobs(layout, {
+    beds: v.house?.bedSlots ?? 1,
+    wantWorkshop: !!v.house?.hasWorkshop || layout.rooms.some((r) => r.kind === 'atelier'),
+    wantStore: !!v.house?.hasStoreroom || layout.rooms.some((r) => r.kind === 'reserve'),
+    household: Math.max(1, v.house?.bedSlots ?? 1),
+  })
+}
+
+function taskForFurniture(kind: FurnitureKind): TaskKind {
+  return FURNITURE_DEFS[kind].buildTask
+}
+
+function woodNeededForFurniture(kind: FurnitureKind): number {
+  if (kind === 'bed') return BED_COST
+  if (kind === 'chest' || kind === 'cupboard' || kind === 'shelf' || kind === 'tub') return CHEST_COST
+  if (kind === 'workbench' || kind === 'loom' || kind === 'hearth') return WORKBENCH_COST
+  if (kind === 'table' || kind === 'bench' || kind === 'stool') return TABLE_COST
+  return woodCostOf(kind)
+}
+
+function householdSize(state: SimState, owner: Villager): number {
+  let n = 1
+  for (const o of state.villagers) {
+    if (!o.alive || o.id === owner.id) continue
+    if (o.homeOwnerId === owner.id) n++
+    else if (o.parentIds.includes(owner.id) || owner.parentIds.includes(o.id)) n++
+  }
+  return n
+}
+
+/** Expand rooms when wealth / family outgrow the current plan. */
+function maybeExpandHome(state: SimState, v: Villager, rng: () => number): boolean {
+  if (!v.hasHome || v.homeOwnerId !== v.id || !v.house) return false
+  const wealth = countOf(v.inventory, 'coin') + (v.chestInventory ? countOf(v.chestInventory, 'coin') : 0)
+  const hh = householdSize(state, v)
+  const current = v.house.roomKinds ?? []
+  const expanded = expandRoomKinds(current, {
+    household: hh,
+    wealth,
+    artisan: v.profession === 'mason' || v.profession === 'builder' || v.profession === 'blacksmith' || v.house.hasWorkshop,
+  })
+  if (!expanded) return false
+  // Only expand occasionally to avoid thrash.
+  if (rng() > 0.35 && wealth < 12 && hh <= (v.house.bedSlots ?? 1)) return false
+
+  const sized = roomCountToSpan(expanded.length, v.house.rx, v.house.ry)
+  const grew = sized.rx > v.house.rx || sized.ry > v.house.ry
+  v.house = {
+    ...v.house,
+    roomKinds: expanded,
+    rx: sized.rx,
+    ry: sized.ry,
+    bedSlots: Math.max(v.house.bedSlots, expanded.filter((k) => k === 'chambre').length),
+    hasWorkshop: v.house.hasWorkshop || expanded.includes('atelier'),
+    hasStoreroom: v.house.hasStoreroom || expanded.includes('reserve'),
+  }
+  const fp = houseFootprint(v.house, v.homeX, v.homeY)
+  claimCells(state.grid, fp.walls, CLAIM_HOUSE)
+  claimCells(state.grid, fp.interior, CLAIM_HOUSE)
+  claimCells(state.grid, fp.open, CLAIM_HOUSE)
+  v.homeLayout = buildHouseLayout(v.house, fp)
+  // Append new furniture jobs for rooms that lack them.
+  const fresh = planFurnitureJobs(v.homeLayout, {
+    beds: v.house.bedSlots,
+    wantWorkshop: v.house.hasWorkshop,
+    wantStore: v.house.hasStoreroom,
+    household: hh,
+  })
+  const existingKeys = new Set(v.furnitureQueue.map((j) => `${j.kind}@${j.roomKind}`))
+  for (const j of fresh) {
+    if (!existingKeys.has(`${j.kind}@${j.roomKind}`)) v.furnitureQueue.push(j)
+  }
+  const roomsFr = expanded.map((k) => ROOM_LABEL_FR[k]).join(', ')
+  logEvent(
+    state,
+    grew
+      ? `${v.name} agrandit sa demeure (${roomsFr})`
+      : `${v.name} aménage de nouvelles pièces : ${roomsFr}`,
+  )
+  return true
 }
 
 function moveToward(v: { x: number; y: number }, tx: number, ty: number, speed: number, grid: WorldGrid, wear = 0): boolean {
@@ -1358,6 +1452,8 @@ function planHouse(state: SimState, v: Villager, village: Village | undefined, r
   v.house = design
   v.homeX = plot.x
   v.homeY = plot.y
+  v.homeLayout = null
+  v.furnitureQueue = []
   const fp = houseFootprint(design, plot.x, plot.y)
   claimCells(grid, fp.walls, CLAIM_HOUSE)
   claimCells(grid, fp.interior, CLAIM_HOUSE)
@@ -1417,6 +1513,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         kind === 'buildBed' ||
         kind === 'buildChest' ||
         kind === 'buildWorkbench' ||
+        kind === 'buildTable' ||
         kind === 'buildCart' ||
         kind.startsWith('craft') ||
         kind === 'weaveCloth' ||
@@ -1483,12 +1580,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   // Mild score penalty when relying on blind search (unknown territory).
   const bushKnown = bushSense?.source !== 'search'
   const woodKnowMul = treeSense?.source === 'search' ? 0.78 : 1.12
-  const rock = v.hasWorkbench
-    ? (() => {
-        const s = senseResource(grid, v, mind, 'stone', senseOpts)
-        return s ? { x: s.x, y: s.y } : null
-      })()
-    : null
+  const rock = (() => {
+    const s = senseResource(grid, v, mind, 'stone', senseOpts)
+    return s ? { x: s.x, y: s.y } : null
+  })()
   const ironOre = v.hasWorkbench
     ? (() => {
         const s = senseResource(grid, v, mind, 'iron', senseOpts)
@@ -1496,7 +1591,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       })()
     : null
   const mountainOre =
-    v.hasWorkbench && v.toolTier !== 'none' && v.toolTier !== 'wood'
+    v.hasWorkbench && v.toolTier !== 'none'
       ? (() => {
           const preferDeeper = v.profession === 'miner' || v.toolTier === 'iron'
           const anchor =
@@ -1842,20 +1937,57 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const isOwner = v.homeOwnerId === v.id
   const fp = isOwner ? homeFootprint(v) : null
   if (v.hasHome && isOwner && fp) {
-    const slots = furnitureSlots(fp)
-    const drive = 45 + p.ambition * 40
-    const maxBeds = v.house ? v.house.bedSlots : 2
-    if (!v.hasWorkbench) {
-      if (wood >= WORKBENCH_COST) add('buildWorkbench', slots.workbench.x, slots.workbench.y, drive * reach(v, slots.workbench.x, slots.workbench.y))
-      else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
-    } else if (!v.hasChest) {
-      if (wood >= CHEST_COST) add('buildChest', slots.chest.x, slots.chest.y, drive * 0.9 * reach(v, slots.chest.x, slots.chest.y))
-      else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.7 * reach(v, tree.x, tree.y))
-    } else if (v.bedCount < maxBeds && slots.beds[v.bedCount]) {
-      const spot = slots.beds[v.bedCount]
-      const familyDrive = drive * (v.bedCount === 0 ? 1 : 0.55)
-      if (wood >= BED_COST) add('buildBed', spot.x, spot.y, familyDrive * reach(v, spot.x, spot.y))
-      else if (tree) add('gatherWood', tree.x, tree.y, familyDrive * 0.7 * reach(v, tree.x, tree.y))
+    // Emergent: richer / larger households expand rooms.
+    if ((state.tick + v.id * 13) % 47 === 0) maybeExpandHome(state, v, rng)
+
+    const layout = ensureHomeLayout(v)
+    if (layout) seedFurnitureQueue(v, layout)
+
+    const liveFp = homeFootprint(v) ?? fp
+    // Finish any new exterior/partition walls after expansion.
+    const wallGap = liveFp.walls.find((c) => getTerrain(grid, c.x, c.y) !== HOUSE)
+    if (wallGap) {
+      const expandUrge = 40 + p.ambition * 30
+      if (needsClearing(grid, wallGap.x, wallGap.y)) {
+        add('clearLand', wallGap.x, wallGap.y, expandUrge * 1.1 * reach(v, wallGap.x, wallGap.y))
+      } else if (wood >= TILE_COST) {
+        add('buildHouse', wallGap.x, wallGap.y, expandUrge * reach(v, wallGap.x, wallGap.y))
+      } else if (tree) {
+        add('gatherWood', tree.x, tree.y, expandUrge * 0.75 * reach(v, tree.x, tree.y))
+      }
+    }
+
+    const job = nextFurnitureJob(v.furnitureQueue)
+    if (job && !wallGap) {
+      const cost = woodNeededForFurniture(job.kind)
+      const taskKind = taskForFurniture(job.kind)
+      const drive = 48 + p.ambition * 35 + (job.kind === 'bed' ? 12 : 0)
+      if (wood >= cost) {
+        add(taskKind, job.x, job.y, drive * reach(v, job.x, job.y))
+      } else if (tree) {
+        add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+      }
+    } else if (!job) {
+      // Legacy fallback if queue empty — keep old slot logic for partial homes.
+      const slots = furnitureSlots(liveFp)
+      const drive = 45 + p.ambition * 40
+      const maxBeds = v.house ? v.house.bedSlots : 2
+      if (!v.hasWorkbench) {
+        if (wood >= WORKBENCH_COST) add('buildWorkbench', slots.workbench.x, slots.workbench.y, drive * reach(v, slots.workbench.x, slots.workbench.y))
+        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+      } else if (!v.hasChest) {
+        if (wood >= CHEST_COST) add('buildChest', slots.chest.x, slots.chest.y, drive * 0.9 * reach(v, slots.chest.x, slots.chest.y))
+        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.7 * reach(v, tree.x, tree.y))
+      } else if (v.bedCount < maxBeds && slots.beds[v.bedCount]) {
+        const spot = slots.beds[v.bedCount]
+        const familyDrive = drive * (v.bedCount === 0 ? 1 : 0.55)
+        if (wood >= BED_COST) add('buildBed', spot.x, spot.y, familyDrive * reach(v, spot.x, spot.y))
+        else if (tree) add('gatherWood', tree.x, tree.y, familyDrive * 0.7 * reach(v, tree.x, tree.y))
+      } else if (!v.hasTable) {
+        const eat = eatSpot(v.furnitureQueue, v.homeLayout) ?? slots.workbench
+        if (wood >= TABLE_COST) add('buildTable', eat.x, eat.y, drive * 0.85 * reach(v, eat.x, eat.y))
+        else if (tree) add('gatherWood', tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
+      }
     }
   }
 
@@ -2009,28 +2141,32 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   // Recettes catalogue (poix, linon, bronze, remèdes, salaisons…).
   if (v.hasWorkbench) {
+    let bestRecipe: (typeof CRAFT_RECIPES)[number] | null = null
+    let bestScore = 0
     for (const recipe of CRAFT_RECIPES) {
       if (recipe.station !== 'workbench') continue
       if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
       const score = (recipe.urge + p.ambition * 12 + mindOf(v).skills.craft * 18) * reach(v, v.workbenchX, v.workbenchY)
-      add('craftGoods', v.workbenchX, v.workbenchY, score, null, recipe.output)
-      break
+      if (score > bestScore) {
+        bestScore = score
+        bestRecipe = recipe
+      }
     }
+    if (bestRecipe) add('craftGoods', v.workbenchX, v.workbenchY, bestScore, null, bestRecipe.output)
   }
   if (village?.hasMill) {
+    let bestMill: (typeof CRAFT_RECIPES)[number] | null = null
+    let bestMillScore = 0
     for (const recipe of CRAFT_RECIPES) {
       if (recipe.station !== 'mill') continue
       if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
-      add(
-        'craftGoods',
-        village.millX,
-        village.millY,
-        (recipe.urge + starving * 40) * reach(v, village.millX, village.millY),
-        null,
-        recipe.output,
-      )
-      break
+      const score = (recipe.urge + starving * 40) * reach(v, village.millX, village.millY)
+      if (score > bestMillScore) {
+        bestMillScore = score
+        bestMill = recipe
+      }
     }
+    if (bestMill) add('craftGoods', village.millX, village.millY, bestMillScore, null, bestMill.output)
   }
 
   // Remèdes si blessé.
@@ -2480,10 +2616,19 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         task.pathI = 0
         task.pathTick = -999
       }
-      if (!(profile.amphibious && boat && chebyshev(v.x, v.y, boat.x, boat.y) <= 1)) {
+      // Delay random nudge — early nudges walk away from the work target and amplify fails.
+      const productive =
+        task.kind.startsWith('gather') ||
+        task.kind.startsWith('build') ||
+        task.kind === 'clearLand' ||
+        task.kind === 'mineTunnel' ||
+        task.kind === 'harvestWheat' ||
+        task.kind === 'sowField'
+      const stuckCap = productive ? STUCK_LIMIT + 6 : STUCK_LIMIT
+      if (task.stuckTicks >= 6 && !(profile.amphibious && boat && chebyshev(v.x, v.y, boat.x, boat.y) <= 1)) {
         moveRandom(v, rng, grid, 2)
       }
-      if (task.stuckTicks >= STUCK_LIMIT) {
+      if (task.stuckTicks >= stuckCap) {
         v.nextThinkTick = state.tick + THINK_COOLDOWN + 4
         return false
       }
@@ -2676,6 +2821,16 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.5, emotion: 0.3 })
         }
         return gained > 0 && remaining > 0 && countOf(v.inventory, 'wood') < woodCap(v)
+      }
+      // Surface iron may be gone after resource expansion — snap to a diggable mountain face.
+      if (task.kind === 'gatherIron' && t !== IRON) {
+        const tip = pickDigTarget(grid, task.targetX, task.targetY, { maxRadius: 12, preferDeeper: true })
+        if (!tip) return false
+        task.kind = 'mineTunnel'
+        task.targetX = tip.x
+        task.targetY = tip.y
+        task.path = null
+        return true
       }
       if (t !== wantTerrain) return false
       const { gained } = takeFromTile(grid, task.targetX, task.targetY, v, res, v.toolTier === 'iron' ? 2 : 1, wantTerrain, GRASS, state)

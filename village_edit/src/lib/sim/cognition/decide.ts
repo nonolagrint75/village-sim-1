@@ -191,13 +191,15 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
   if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
     m *=
       1 +
-      n.social * 0.85 +
-      n.belonging * 0.55 +
-      n.boredom * 0.2 +
+      n.social * 0.55 +
+      n.belonging * 0.4 +
+      n.boredom * 0.12 +
       workspaceBias(mind.broadcast, 'kin') * 0.25 +
       consciousAccessBias(mind, 'kin') * 0.55 +
       peWeight(pe, 'social') * 0.2 +
       peWeight(pe, 'belonging') * 0.15
+    // Micro-social must yield when survival / shelter / livelihood pressure is on.
+    if (n.hunger > 0.4 || n.shelter > 0.45 || n.purpose > 0.3) m *= 0.7
   }
   if (kind === 'entertain') m *= 1 + n.boredom * 0.45 + n.status * 0.2
   if (kind === 'counsel') m *= 1 + n.piety * 0.5
@@ -212,7 +214,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'status') * 0.5 +
       peWeight(pe, 'status') * 0.2
   }
-  if (kind === 'idle') m *= 1 + n.boredom * 0.5 - n.fatigue * 0.35
+  if (kind === 'idle') m *= 0.55 + n.boredom * 0.35 - n.fatigue * 0.35 - n.hunger * 0.4 - n.purpose * 0.25
   if (kind.startsWith('craft') || kind.startsWith('build') || kind === 'weaveCloth' || kind === 'sewClothing') {
     m *=
       1 +

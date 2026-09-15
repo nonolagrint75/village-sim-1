@@ -257,17 +257,20 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
     const step = plan.steps[plan.stepI]
     const inPlan = plan.steps.includes(kind)
     const commit = Math.min(1, mind.goal.commitment / 40)
+    // Repeated failures on the current step → loosen gate so livelihood alternatives can win.
+    const stuckStep = mind.failures >= 2
     if (step === kind) {
       // Active plan step dominates utility AI — commitment amplifies.
-      mult *= 2.4 + commit * 1.2
+      mult *= stuckStep ? 1.35 : 2.4 + commit * 1.2
     } else if (PLAN_INTERRUPTS.has(kind)) {
       mult *= 1.05
     } else if (inPlan) {
       // Later steps of the same plan stay attractive but yield to current step.
-      mult *= 0.85
+      mult *= stuckStep ? 1.05 : 0.85
     } else {
-      // Off-plan work is strongly suppressed while committed.
-      mult *= 0.38 + (1 - commit) * 0.35
+      // Off-plan work is suppressed while committed — but not crushed (was ~0.38 → perpetual gatherFood lock).
+      const floor = stuckStep ? 0.72 : 0.55
+      mult *= floor + (1 - commit) * 0.35
     }
   }
   return mult
@@ -278,6 +281,17 @@ export function advancePlan(mind: CognitiveState, completedKind: TaskKind): void
   if (mind.plan.steps[mind.plan.stepI] === completedKind) {
     mind.plan.stepI += 1
     if (mind.plan.stepI >= mind.plan.steps.length) mind.plan = null
+  }
+}
+
+/** Skip a plan step that keeps failing so agents leave gatherFood/idle locks. */
+export function skipStuckPlanStep(mind: CognitiveState, failedKind: TaskKind): void {
+  if (!mind.plan || mind.plan.goalId !== mind.goal.id) return
+  if (mind.plan.steps[mind.plan.stepI] !== failedKind) return
+  if (mind.failures < 2) return
+  mind.plan.stepI += 1
+  if (mind.plan.stepI >= mind.plan.steps.length) {
+    mind.plan = planForGoal(mind.goal.id)
   }
 }
 

@@ -15,7 +15,7 @@ import {
   topPreferences,
 } from './labor'
 import { applyEmotionEvent, amygdalaTag, decayEmotions, emotionTaskBias, type EmotionEvent } from './emotions'
-import { advancePlan, goalLabelFr, pickGoal, replanAfterFailure, scoreGoals, type ReplanReason } from './goals'
+import { advancePlan, goalLabelFr, pickGoal, replanAfterFailure, skipStuckPlanStep, scoreGoals, type ReplanReason } from './goals'
 import { constructionReasonFr, maybeProposeConstruction } from './buildHooks'
 import {
   decayEpisodic,
@@ -503,6 +503,7 @@ export function recordTaskOutcome(
   } else {
     mind.habits[kind] = Math.max(0, (mind.habits[kind] ?? 0) * 0.92)
     replanAfterFailure(mind, reason)
+    skipStuckPlanStep(mind, kind)
     if (preferenceTaskBias(mind.preferences, kind) <= 0.85) onCognitiveEvent(v, 'labor_forced', 0.4)
   }
   syncMindToPool(v.id, mind)

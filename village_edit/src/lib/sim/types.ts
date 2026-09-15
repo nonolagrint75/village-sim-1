@@ -351,6 +351,10 @@ export interface Villager {
   chestX: number
   chestY: number
   chestInventory: Slot[] | null
+  /** Extra medieval furniture (table, hearth, loom…) — not bed/chest/workbench. */
+  homeFurniture: FurniturePlacement[]
+  /** Armoire stores — textiles / tools overflow beside the chest. */
+  cupboardInventory: Slot[] | null
   villageId: number | null
   hue: number
   alive: boolean
