@@ -524,7 +524,11 @@ export const SimPanel = memo(function SimPanel({
                   items={[
                     ['Cercles', stats.circles ?? 0],
                     ['Institutions', stats.institutions ?? 0],
+                    ['Guildes', stats.guilds ?? 0],
+                    ['Conseils', stats.councils ?? 0],
                     ['Rumeurs', stats.rumors ?? 0],
+                    ['Campements', stats.camps ?? 0],
+                    ['Chefferies', stats.chiefdoms ?? 0],
                   ]}
                 />
               )}
@@ -539,6 +543,14 @@ export const SimPanel = memo(function SimPanel({
                 <p className="sim-empty" style={{ marginTop: '0.5rem' }}>
                   Aucun chef clairement légitime pour l’instant.
                 </p>
+              )}
+              {(stats.laws ?? []).length > 0 && (
+                <>
+                  <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
+                    Lois & normes
+                  </p>
+                  <StatGrid items={(stats.laws ?? []).slice(0, 6).map((l) => [l.label, l.count])} />
+                </>
               )}
               <button type="button" className="sim-action" onClick={openGroups}>
                 Voir les groupes
@@ -692,7 +704,11 @@ export const SimPanel = memo(function SimPanel({
                       >
                         <div className="sim-group-top">
                           <strong>{g.name}</strong>
-                          {g.isInstitution && <span className="sim-group-badge">Institution</span>}
+                          {g.isGuild && <span className="sim-group-badge">Guilde</span>}
+                          {g.isCouncil && !g.isGuild && <span className="sim-group-badge">Conseil</span>}
+                          {g.isInstitution && !g.isGuild && !g.isCouncil && (
+                            <span className="sim-group-badge">Institution</span>
+                          )}
                         </div>
                         <p className="sim-group-meta">
                           {g.kindLabel}

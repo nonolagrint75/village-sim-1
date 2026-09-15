@@ -325,6 +325,8 @@ export type UiGroupRow = {
   moreMembers: number
   leaderName: string | null
   isInstitution: boolean
+  isGuild: boolean
+  isCouncil: boolean
   legitimacy: number
   reputation: number
   villageLabel: string | null
@@ -490,22 +492,29 @@ export function packGroups(state: SimState): UiGroupRow[] {
         ? `Village n°${vg.id} (${Math.round(vg.centerX)}, ${Math.round(vg.centerY)})`
         : `Village n°${c.villageId}`
     }
+    const isGuild = !!c.isGuild
+    const isCouncil =
+      c.isInstitution && (c.kind === 'elder' || c.kind === 'village' || c.name.startsWith('conseil'))
     rows[i] = {
       id: c.id,
       name: c.name,
       kind: c.kind,
-      kindLabel: c.isGuild ? 'guilde' : circleKindLabel(c.kind),
+      kindLabel: isGuild ? 'guilde' : isCouncil ? 'conseil' : circleKindLabel(c.kind),
       memberCount: aliveCount,
       memberNames: names,
       moreMembers: Math.max(0, aliveCount - names.length),
       leaderName,
-      isInstitution: c.isInstitution || !!c.isGuild,
+      isInstitution: c.isInstitution || isGuild,
+      isGuild,
+      isCouncil,
       legitimacy: c.legitimacy,
       reputation: c.reputation,
       villageLabel,
-      summary: c.isGuild
+      summary: isGuild
         ? `guilde · ${groupSummaryText(c.norms, c.originStory, c.creed, c.memory)}`
-        : groupSummaryText(c.norms, c.originStory, c.creed, c.memory),
+        : isCouncil
+          ? `conseil · ${groupSummaryText(c.norms, c.originStory, c.creed, c.memory)}`
+          : groupSummaryText(c.norms, c.originStory, c.creed, c.memory),
     }
   }
   rows.sort((a, b) => {
@@ -788,12 +797,16 @@ export const EMPTY_STATS: SimStats = {
   prices: {},
   circles: 0,
   institutions: 0,
+  guilds: 0,
+  councils: 0,
+  laws: [],
   rumors: 0,
   leadingCircle: null,
   leadingLegitimacy: 0,
   polities: 0,
   chiefdoms: 0,
   kingdoms: 0,
+  camps: 0,
   castles: 0,
   polityRows: [],
 }
@@ -830,7 +843,7 @@ export function packChronicle(log: string[], limit = 18): string[] {
   const notable: string[] = []
   const rest: string[] = []
   const notableRe =
-    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|invente|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|prêtre|réputation|forme |enseigne|apprenti|oisiveté|divertit|console|chefferie|royaume|campement|succède|succession|prétention|rivalité|souverain|territoire|absorbe|contestation|rite|rituel|autel|chapelle|temple|sanctuaire|foi|conversion|convertit|recueillement|sacré|voie de foi|cercle pieux|brigand|bande |razzia|pill|bannis|vagabond|embuscade|repaire|camp |hors-la-loi|keep|fort de|palissade|marché/i
+    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|conseil|loi|lois|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|invente|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|prêtre|réputation|forme |enseigne|apprenti|oisiveté|divertit|console|chefferie|royaume|campement|succède|succession|prétention|rivalité|souverain|territoire|absorbe|contestation|rite|rituel|autel|chapelle|temple|sanctuaire|foi|conversion|convertit|recueillement|sacré|voie de foi|cercle pieux|brigand|bande |razzia|pill|bannis|vagabond|embuscade|repaire|camp |hors-la-loi|keep|fort de|palissade|marché/i
 
   for (let i = window.length - 1; i >= 0; i--) {
     const entry = window[i]

@@ -2784,7 +2784,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.hasWorkbench && v.toolTier === 'wood') {
     let upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
-    if (knowsStackStone(v, village) || hasKnowledge(v.knowledge, 'grind_stone', 0.25)) upgrade *= 1.25
+    if (knowsStackStone(v, village) || hasKnowledge(v.knowledge, 'grind_stone', 0.25)) upgrade *= 1.55
     if (stone >= STONE_SPEAR_COST) add('craftStoneSpear', v.x, v.y, upgrade)
     else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 1.05 * reach(v, rock.x, rock.y))
   }
@@ -3140,7 +3140,11 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const gap = village.perimeter.find((c) => getTerrain(grid, c.x, c.y) !== wantCode)
       if (gap) {
         const civicUrge =
-          15 + p.sociability * 45 + p.generosity * 35 + danger * 40 + (wantCode === WALL_STONE ? 40 : 0)
+          15 +
+          p.sociability * 45 +
+          p.generosity * 35 +
+          danger * 40 +
+          (wantCode === WALL_STONE ? 55 : masonry ? 28 : 0)
         const res = wantCode === WALL_WOOD ? wood : stone
         if (needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, civicUrge * 0.85 * reach(v, gap.x, gap.y))
         else if (res >= WALL_SEGMENT_COST) add('buildWall', gap.x, gap.y, civicUrge * reach(v, gap.x, gap.y))

@@ -43,11 +43,11 @@ const BASE_PRICE: Partial<Record<ResourceType, number>> = { ...BASE_PRICES }
  */
 const TARGET_PER_CAPITA: Partial<Record<ResourceType, number>> = { ...TARGET_STOCK }
 
-/** A trade only fires once the per-capita surplus clears this fraction of what's "wanted". */
-const MIN_TRADE_GAIN_FRACTION = 0.22
-
 /** Soft arbitrage between villages already linked by a trade route. */
 const LINKED_SURPLUS_COUPLE = 0.07
+
+/** A trade only fires once the per-capita surplus clears this fraction of what's "wanted". */
+const MIN_TRADE_GAIN_FRACTION = 0.14
 
 function clampNum(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v))
