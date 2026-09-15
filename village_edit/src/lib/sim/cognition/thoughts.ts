@@ -70,6 +70,7 @@ export function thoughtsFromNeeds(mind: CognitiveState, tick: number, sparse = f
 
 const EVENT_THOUGHT: Partial<Record<EmotionEvent, { text: string; valence: number; stress: number }>> = {
   wolf: { text: 'des loups rôdent', valence: -0.55, stress: 0.1 },
+  bandit: { text: 'des brigands rôdent', valence: -0.5, stress: 0.1 },
   famine: { text: 'la famine mord', valence: -0.55, stress: 0.12 },
   build_success: { text: 'l’ouvrage tient', valence: 0.4, stress: -0.05 },
   trade_success: { text: 'bon marché conclu', valence: 0.35, stress: -0.03 },

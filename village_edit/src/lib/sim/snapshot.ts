@@ -28,6 +28,7 @@ import {
   type CreedId,
   type NormId,
 } from './politics'
+import { religionPortraitFr } from './religion'
 import type { Ambition, Memory, Relation } from './social'
 import { knowledgeCount, knowledgeLabelsFr } from './technology'
 import { ensureLivelihood, topActivitiesFr, livelihoodLabelForUi } from './livelihood'
@@ -93,6 +94,7 @@ export type ActorSheep = { x: number; y: number; captured: boolean; alive: boole
 export type ActorHorse = { x: number; y: number; tamed: boolean; riderId: number | null; alive: boolean }
 export type ActorBoat = { x: number; y: number; kind: BoatKind; alive: boolean }
 export type ActorWolf = { x: number; y: number; alive: boolean }
+export type ActorBandit = { x: number; y: number; phase: 'camp' | 'raid' | 'flee'; alive: boolean }
 export type ActorVillage = {
   centerX: number
   centerY: number
@@ -177,6 +179,8 @@ export type SelectedVillager = {
   memories: Memory[]
   creed: CreedId | null
   creedLabel: string
+  /** Soft faith / shrine / gourou blurb for the portrait. */
+  religionNote: string | null
   legitimacy: number
   grievance: number
   circleNames: string[]
@@ -222,6 +226,38 @@ export type UiLineageRow = {
 
 export type UiCountRow = { label: string; count: number }
 
+/** Lean project / fort / shrine row for Royaume. */
+export type UiProjectRow = {
+  id: number
+  label: string
+  phase: string
+  phaseLabel: string
+  purposes: string[]
+  isFort: boolean
+  isShrine: boolean
+  villageLabel: string | null
+  progressNote: string
+}
+
+/** Brigand band row for Royaume. */
+export type UiBandRow = {
+  id: number
+  name: string
+  members: number
+  raids: number
+  originLabel: string
+  phaseHint: string
+  campLabel: string
+}
+
+/** Shrine / religion site row. */
+export type UiReligionSiteRow = {
+  villageId: number
+  label: string
+  creedLabel: string | null
+  hasShrine: boolean
+}
+
 export type DrawFrame = {
   season: Season
   /** Calendar hour-of-day (0–23) for visual day/night overlay. */
@@ -231,6 +267,7 @@ export type DrawFrame = {
   horses: ActorHorse[]
   boats: ActorBoat[]
   wolves: ActorWolf[]
+  bandits: ActorBandit[]
   villages: ActorVillage[]
   tradeLinks: { ax: number; ay: number; bx: number; by: number }[]
   /** Static fire sources (hearths from homeFurniture); terrain hearths scanned on canvas. */
@@ -275,6 +312,12 @@ export type UiFrame = {
   /** Emergent culture-tag histogram (not languages unless ethnos lands). */
   cultures: UiCountRow[]
   creeds: UiCountRow[]
+  /** Active / recent build projects (forts, shrines, halls…). */
+  projects: UiProjectRow[]
+  /** Brigand bands camping outside villages. */
+  bands: UiBandRow[]
+  /** Village shrines / sacred sites. */
+  religionSites: UiReligionSiteRow[]
   ticksPerSec: number
 }
 
@@ -516,6 +559,115 @@ export function packCreedCounts(state: SimState): UiCountRow[] {
     .slice(0, 10)
 }
 
+const PROJECT_PHASE_FR: Record<string, string> = {
+  clear: 'défrichement',
+  gather: 'collecte',
+  build: 'construction',
+  done: 'achevé',
+}
+
+const PURPOSE_UI_FR: Record<string, string> = {
+  shelter: 'abri',
+  fortify: 'fortification',
+  gather: 'halle',
+  store: 'grenier',
+  mine: 'mine',
+  mining_access: 'mine',
+  prestige: 'prestige',
+  homestead: 'foyer',
+  shrine: 'autel',
+}
+
+/** Active + recent civic works (forts, autels, halles…). */
+export function packProjects(state: SimState): UiProjectRow[] {
+  const projects = state.projects ?? []
+  if (projects.length === 0) return []
+  const rows: UiProjectRow[] = []
+  for (const p of projects) {
+    const purposes = p.intent?.purposes ?? []
+    const isFort = purposes.includes('fortify')
+    const isShrine = purposes.includes('shrine')
+    let villageLabel: string | null = null
+    if (p.villageId !== null) {
+      const vg = state.villages.find((v) => v.id === p.villageId)
+      villageLabel = vg
+        ? `Village n°${vg.id}`
+        : `Village n°${p.villageId}`
+    }
+    const pending = p.pending?.length ?? 0
+    const phase = String(p.phase)
+    let progressNote = PROJECT_PHASE_FR[phase] ?? phase
+    if (phase === 'build' && pending > 0) progressNote = `${pending} segment${pending > 1 ? 's' : ''} restant${pending > 1 ? 's' : ''}`
+    else if (phase === 'done') progressNote = 'achevé'
+    rows.push({
+      id: p.id,
+      label: p.label || 'ouvrage',
+      phase,
+      phaseLabel: PROJECT_PHASE_FR[phase] ?? phase,
+      purposes: purposes.map((u) => PURPOSE_UI_FR[u] ?? u),
+      isFort,
+      isShrine,
+      villageLabel,
+      progressNote,
+    })
+  }
+  rows.sort((a, b) => {
+    if (a.phase === 'done' !== (b.phase === 'done')) return a.phase === 'done' ? 1 : -1
+    if (a.isFort !== b.isFort) return a.isFort ? -1 : 1
+    if (a.isShrine !== b.isShrine) return a.isShrine ? -1 : 1
+    return b.id - a.id
+  })
+  return rows.slice(0, 12)
+}
+
+/** Brigand bands for Royaume. */
+export function packBands(state: SimState): UiBandRow[] {
+  const bands = state.bands ?? []
+  if (bands.length === 0) return []
+  const alive = new Set((state.bandits ?? []).filter((b) => b.alive).map((b) => b.id))
+  const rows: UiBandRow[] = []
+  for (const band of bands) {
+    const members = band.memberIds.filter((id) => alive.has(id)).length
+    if (members === 0 && band.raids === 0) continue
+    const phases = (state.bandits ?? [])
+      .filter((b) => b.alive && b.bandId === band.id)
+      .map((b) => b.phase)
+    const raiding = phases.filter((p) => p === 'raid').length
+    const fleeing = phases.filter((p) => p === 'flee').length
+    let phaseHint = 'au camp'
+    if (raiding > 0) phaseHint = `en razzia (${raiding})`
+    else if (fleeing > 0) phaseHint = 'en fuite'
+    rows.push({
+      id: band.id,
+      name: band.name,
+      members,
+      raids: band.raids,
+      originLabel: band.origin === 'outcasts' ? 'bannis' : 'vagabonds',
+      phaseHint,
+      campLabel: `camp (${Math.round(band.campX)}, ${Math.round(band.campY)})`,
+    })
+  }
+  rows.sort((a, b) => b.raids - a.raids || b.members - a.members)
+  return rows.slice(0, 8)
+}
+
+/** Village shrines / sacred sites. */
+export function packReligionSites(state: SimState): UiReligionSiteRow[] {
+  const rows: UiReligionSiteRow[] = []
+  for (const vg of state.villages) {
+    const hasShrine = !!vg.hasShrine
+    const creed = vg.shrineCreed ? creedLabel(vg.shrineCreed as CreedId) : null
+    if (!hasShrine && !creed) continue
+    rows.push({
+      villageId: vg.id,
+      label: vg.shrineLabel || (hasShrine ? 'autel' : 'lieu de foi'),
+      creedLabel: creed && creed !== 'aucune' ? creed : null,
+      hasShrine,
+    })
+  }
+  return rows.slice(0, 10)
+}
+
 export const EMPTY_STATS: SimStats = {
   tick: 0,
   season: 'spring',
@@ -531,8 +683,11 @@ export const EMPTY_STATS: SimStats = {
   carts: 0,
   boats: 0,
   ports: 0,
+  markets: 0,
   tradeRunsTotal: 0,
   wolves: 0,
+  bandits: 0,
+  bands: 0,
   totalCoins: 0,
   totalBread: 0,
   houses: 0,
@@ -547,6 +702,7 @@ export const EMPTY_STATS: SimStats = {
   births: 0,
   deaths: 0,
   deathsByWolf: 0,
+  deathsByBandit: 0,
   thefts: 0,
   brawls: 0,
   friendships: 0,
@@ -574,6 +730,10 @@ export const EMPTY_STATS: SimStats = {
   rumors: 0,
   leadingCircle: null,
   leadingLegitimacy: 0,
+  polities: 0,
+  chiefdoms: 0,
+  kingdoms: 0,
+  polityRows: [],
 }
 
 export type WorldFrame = {
@@ -601,14 +761,14 @@ function summarizeInventory(inv: Slot[]): InventoryLine[] {
 }
 
 /** Prefer causal / milestone lines; keep a short readable chronicle. */
-export function packChronicle(log: string[], limit = 14): string[] {
+export function packChronicle(log: string[], limit = 18): string[] {
   if (log.length === 0) return []
-  const window = log.slice(-40)
+  const window = log.slice(-60)
   const causal: string[] = []
   const notable: string[] = []
   const rest: string[] = []
   const notableRe =
-    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|creed|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|réputation|forme |enseigne|apprenti|oisiveté|divertit|console/i
+    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|réputation|forme |enseigne|apprenti|oisiveté|divertit|console|chefferie|royaume|campement|succède|succession|prétention|rivalité|souverain|territoire|absorbe|contestation|rite|rituel|autel|sanctuaire|foi|conversion|convertit|recueillement|sacré|voie de foi|cercle pieux|brigand|bande |razzia|pill|bannis|vagabond|keep|fort de|palissade|marché/i
 
   for (let i = window.length - 1; i >= 0; i--) {
     const entry = window[i]
@@ -713,6 +873,13 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     if (!w.alive) continue
     wolves.push({ x: w.x, y: w.y, alive: true })
   }
+  const bandits: ActorBandit[] = []
+  const bbands = state.bandits
+  for (let i = 0; i < bbands.length; i++) {
+    const b = bbands[i]
+    if (!b.alive) continue
+    bandits.push({ x: b.x, y: b.y, phase: b.phase, alive: true })
+  }
   const villages: ActorVillage[] = new Array(state.villages.length)
   const byId = new Map<number, (typeof state.villages)[0]>()
   for (let i = 0; i < state.villages.length; i++) {
@@ -753,6 +920,7 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     horses,
     boats,
     wolves,
+    bandits,
     villages,
     tradeLinks,
     lights,
@@ -881,6 +1049,7 @@ export function packSelectedMinimal(v: Villager): SelectedVillager {
     memories: [],
     creed: null,
     creedLabel: 'aucune',
+    religionNote: null,
     legitimacy: 0,
     grievance: 0,
     circleNames: [],
@@ -1097,6 +1266,13 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     memories,
     creed: polCreed,
     creedLabel: creedLbl,
+    religionNote: (() => {
+      try {
+        return religionPortraitFr(state, v, mindOf(v))
+      } catch {
+        return null
+      }
+    })(),
     legitimacy: polLegitimacy,
     grievance: polGrievance,
     circleNames,
@@ -1230,6 +1406,27 @@ export function packUi(
             return []
           }
         })(),
+    projects: (() => {
+      try {
+        return packProjects(state)
+      } catch {
+        return []
+      }
+    })(),
+    bands: (() => {
+      try {
+        return packBands(state)
+      } catch {
+        return []
+      }
+    })(),
+    religionSites: (() => {
+      try {
+        return packReligionSites(state)
+      } catch {
+        return []
+      }
+    })(),
     ticksPerSec,
   }
 }

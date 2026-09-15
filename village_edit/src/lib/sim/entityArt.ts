@@ -274,6 +274,57 @@ export function drawWolfSprite(
   }
 }
 
+/** Ragged medieval brigand — distinct from villagers (dark cloak, no bright hue). */
+export function drawBanditSprite(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  phase: 'camp' | 'raid' | 'flee',
+  simple: boolean,
+  shadows: boolean,
+) {
+  if (simple) {
+    ctx.fillStyle = phase === 'raid' ? '#5a2820' : '#3a3430'
+    ctx.fillRect(sx - 1, sy - 2, 3, 4)
+    return
+  }
+  drawEntityShadow(ctx, sx, sy, size * 0.38, size * 0.18, shadows)
+  const cloak = phase === 'raid' ? '#4a3028' : '#35302c'
+  const tunic = '#2a2420'
+  const skin = '#8a6a52'
+  // Legs
+  ctx.fillStyle = tunic
+  ctx.fillRect(sx - size * 0.16, sy + size * 0.05, size * 0.12, size * 0.32)
+  ctx.fillRect(sx + size * 0.04, sy + size * 0.05, size * 0.12, size * 0.32)
+  // Body / cloak
+  ctx.fillStyle = cloak
+  ctx.beginPath()
+  ctx.moveTo(sx - size * 0.28, sy + size * 0.08)
+  ctx.lineTo(sx - size * 0.22, sy - size * 0.28)
+  ctx.lineTo(sx + size * 0.22, sy - size * 0.28)
+  ctx.lineTo(sx + size * 0.32, sy + size * 0.1)
+  ctx.closePath()
+  ctx.fill()
+  // Head
+  ctx.fillStyle = skin
+  ctx.beginPath()
+  ctx.ellipse(sx, sy - size * 0.38, size * 0.16, size * 0.18, 0, 0, Math.PI * 2)
+  ctx.fill()
+  // Hood / hair
+  ctx.fillStyle = '#1a1614'
+  ctx.beginPath()
+  ctx.ellipse(sx, sy - size * 0.46, size * 0.18, size * 0.12, 0, Math.PI, Math.PI * 2)
+  ctx.fill()
+  // Staff / short blade when raiding
+  if (phase === 'raid' && size >= 6) {
+    ctx.fillStyle = '#5a4030'
+    ctx.fillRect(sx + size * 0.22, sy - size * 0.35, size * 0.06, size * 0.55)
+    ctx.fillStyle = '#6a6a70'
+    ctx.fillRect(sx + size * 0.2, sy - size * 0.4, size * 0.1, size * 0.1)
+  }
+}
+
 function mailWeave(
   ctx: CanvasRenderingContext2D,
   x: number,

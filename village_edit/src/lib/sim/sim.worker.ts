@@ -70,6 +70,9 @@ function postUiFrame(opts?: { priority?: boolean }) {
         lineages: [],
         cultures: [],
         creeds: [],
+        projects: [],
+        bands: [],
+        religionSites: [],
         ticksPerSec: tps,
       },
     })
@@ -88,6 +91,9 @@ function postUiFrame(opts?: { priority?: boolean }) {
           lineages: [],
           cultures: [],
           creeds: [],
+          projects: [],
+          bands: [],
+          religionSites: [],
           ticksPerSec: tps,
         },
       })

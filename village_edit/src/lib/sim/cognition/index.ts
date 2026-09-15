@@ -79,6 +79,7 @@ export {
   isGuardRole,
   nearestTacticalThreat,
   noteWolfDanger,
+  noteBanditDanger,
   pickSafetyTarget,
   restoreInterruptedTask,
   shouldEngageThreat,

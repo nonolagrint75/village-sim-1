@@ -43,6 +43,7 @@ export type EmotionEvent =
   | 'theft_victim'
   | 'theft_witness'
   | 'wolf'
+  | 'bandit'
   | 'gift'
   | 'death_kin'
   | 'death_seen'
@@ -83,6 +84,11 @@ export function applyEmotionEvent(e: EmotionState, event: EmotionEvent, intensit
     case 'wolf':
       e.fear = clamp01(e.fear + 0.4 * k)
       e.stress = clamp01(e.stress + 0.25 * k)
+      break
+    case 'bandit':
+      e.fear = clamp01(e.fear + 0.35 * k)
+      e.anger = clamp01(e.anger + 0.18 * k)
+      e.stress = clamp01(e.stress + 0.22 * k)
       break
     case 'gift':
       e.affection = clamp01(e.affection + 0.28 * k)

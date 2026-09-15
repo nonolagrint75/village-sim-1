@@ -25,7 +25,15 @@ import {
 } from '@/lib/sim/labels'
 import { MONTH_LABELS_FR } from '@/lib/sim/calendar'
 import type { CircleKind } from '@/lib/sim/politics'
-import type { SelectedVillager, UiCountRow, UiGroupRow, UiLineageRow } from '@/lib/sim/snapshot'
+import type {
+  SelectedVillager,
+  UiBandRow,
+  UiCountRow,
+  UiGroupRow,
+  UiLineageRow,
+  UiProjectRow,
+  UiReligionSiteRow,
+} from '@/lib/sim/snapshot'
 import type { Profession, SimStats } from '@/lib/sim/types'
 
 function num(v: unknown, fallback = 0): number {
@@ -76,6 +84,9 @@ export const SimPanel = memo(function SimPanel({
   lineages,
   cultures,
   creeds,
+  projects,
+  bands,
+  religionSites,
   selectedId,
   selected,
   nameOf,
@@ -89,6 +100,9 @@ export const SimPanel = memo(function SimPanel({
   lineages: UiLineageRow[]
   cultures: UiCountRow[]
   creeds: UiCountRow[]
+  projects: UiProjectRow[]
+  bands: UiBandRow[]
+  religionSites: UiReligionSiteRow[]
   /** Local click id — show pending portrait even if worker pack is still null. */
   selectedId: number | null
   selected: SelectedVillager | null
@@ -236,16 +250,163 @@ export const SimPanel = memo(function SimPanel({
       <div className="sim-panel-body">
         {tab === 'realm' && (
           <div className="sim-stack">
+            <Section title="Pouvoirs & territoires">
+              {(stats.polities ?? 0) === 0 ? (
+                <p className="sim-empty">Pas encore de pouvoirs émergents — les villages forgeront chefs et prétentions.</p>
+              ) : (
+                <>
+                  <StatGrid
+                    items={[
+                      ['Pouvoirs', stats.polities ?? 0],
+                      ['Chefferies', stats.chiefdoms ?? 0],
+                      ['Royaumes', stats.kingdoms ?? 0],
+                      ['Institutions', stats.institutions ?? 0],
+                    ]}
+                  />
+                  {stats.leadingCircle ? (
+                    <p className="sim-lead" style={{ marginTop: '0.45rem' }}>
+                      Ascendant : {stats.leadingCircle}
+                      {(stats.leadingLegitimacy ?? 0) > 0
+                        ? ` · légitimité ${Math.round((stats.leadingLegitimacy ?? 0) * 100)} %`
+                        : ''}
+                    </p>
+                  ) : null}
+                  {(stats.polityRows ?? []).length > 0 && (
+                    <ul className="sim-groups" style={{ marginTop: '0.55rem' }}>
+                      {(stats.polityRows ?? []).slice(0, 8).map((p) => (
+                        <li key={p.id}>
+                          <div className="sim-group-card">
+                            <div className="sim-group-top">
+                              <strong>{p.name}</strong>
+                              <span className="sim-group-badge">{p.tierLabel}</span>
+                            </div>
+                            <p className="sim-group-meta">
+                              {p.rulerName ? `${p.titleLabel} ${p.rulerName}` : 'sans chef'}
+                            </p>
+                            <p className="sim-group-stats">
+                              légitimité {Math.round(p.legitimacy * 100)} % · {p.villages} village
+                              {p.villages > 1 ? 's' : ''} · revendication {p.claimRadius}
+                              {p.rivals > 0 ? ` · ${p.rivals} rival${p.rivals > 1 ? 's' : ''}` : ''}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </Section>
             <Section title="Peuple">
               <StatGrid
                 items={[
                   ['Naissances', stats.births],
                   ['Morts', stats.deaths],
                   ['Morts (loups)', stats.deathsByWolf],
+                  ['Morts (brigands)', stats.deathsByBandit ?? 0],
                   ['Loups', stats.wolves],
+                  ['Brigands', stats.bandits ?? 0],
+                  ['Bandes', stats.bands ?? 0],
                   ['Moutons', stats.sheep],
                 ]}
               />
+            </Section>
+            <Section title="Brigands">
+              {(stats.bandits ?? 0) === 0 && bands.length === 0 ? (
+                <p className="sim-empty">
+                  Aucune bande encore — la misère et l’errance en feront naître hors des villages.
+                </p>
+              ) : (
+                <>
+                  <StatGrid
+                    items={[
+                      ['Brigands vivants', stats.bandits ?? 0],
+                      ['Bandes', Math.max(stats.bands ?? 0, bands.length)],
+                      ['Morts causées', stats.deathsByBandit ?? 0],
+                    ]}
+                  />
+                  {bands.length > 0 && (
+                    <ul className="sim-groups" style={{ marginTop: '0.55rem' }}>
+                      {bands.map((b) => (
+                        <li key={b.id}>
+                          <div className="sim-group-card">
+                            <div className="sim-group-top">
+                              <strong>{b.name}</strong>
+                              <span className="sim-group-badge">{b.originLabel}</span>
+                            </div>
+                            <p className="sim-group-meta">
+                              {b.members} membre{b.members === 1 ? '' : 's'} · {b.phaseHint}
+                            </p>
+                            <p className="sim-group-stats">
+                              {b.raids} razzia{b.raids === 1 ? '' : 's'} · {b.campLabel}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </Section>
+            <Section title="Religions & voies">
+              {creeds.length === 0 && religionSites.length === 0 ? (
+                <p className="sim-empty">
+                  Pas encore de voie de foi — piété, rites et autels émergent avec le temps.
+                </p>
+              ) : (
+                <>
+                  {creeds.length > 0 && (
+                    <StatGrid items={creeds.slice(0, 8).map((c) => [c.label, c.count])} />
+                  )}
+                  {religionSites.length > 0 && (
+                    <ul className="sim-groups" style={{ marginTop: '0.55rem' }}>
+                      {religionSites.map((s) => (
+                        <li key={s.villageId}>
+                          <div className="sim-group-card">
+                            <div className="sim-group-top">
+                              <strong>{s.label}</strong>
+                              {s.hasShrine && <span className="sim-group-badge">Autel</span>}
+                            </div>
+                            <p className="sim-group-meta">
+                              Village n°{s.villageId}
+                              {s.creedLabel ? ` · « ${s.creedLabel} »` : ''}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </Section>
+            <Section title="Châteaux & projets">
+              {projects.length === 0 ? (
+                <p className="sim-empty">
+                  Aucun chantier collectif — remparts, donjons et autels apparaîtront sous menace ou ambition.
+                </p>
+              ) : (
+                <ul className="sim-groups">
+                  {projects.map((p) => (
+                    <li key={p.id}>
+                      <div className="sim-group-card">
+                        <div className="sim-group-top">
+                          <strong>{p.label}</strong>
+                          {p.isFort && <span className="sim-group-badge">Fort</span>}
+                          {p.isShrine && <span className="sim-group-badge">Autel</span>}
+                          {p.phase === 'done' && !p.isFort && !p.isShrine && (
+                            <span className="sim-group-badge">Achevé</span>
+                          )}
+                        </div>
+                        <p className="sim-group-meta">
+                          {p.phaseLabel}
+                          {p.purposes.length > 0 ? ` · ${p.purposes.join(', ')}` : ''}
+                          {p.villageLabel ? ` · ${p.villageLabel}` : ''}
+                        </p>
+                        <p className="sim-group-stats">{p.progressNote}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Section>
             <Section title="Habitats & travail">
               <StatGrid
@@ -255,6 +416,7 @@ export const SimPanel = memo(function SimPanel({
                   ['Enclos', stats.pens],
                   ['Moulins', stats.mills],
                   ['Ports', stats.ports],
+                  ['Marchés', stats.markets ?? 0],
                   ['Bateaux', stats.boats],
                 ]}
               />
@@ -345,25 +507,38 @@ export const SimPanel = memo(function SimPanel({
                 Généalogie
               </button>
             </Section>
-            <Section title="Identités & cultures">
-              {cultures.length === 0 && creeds.length === 0 ? (
-                <p className="sim-empty">Pas encore d’identités émergentes — imitation et creeds viendront.</p>
+            <Section title="Religions & cultures">
+              {cultures.length === 0 && creeds.length === 0 && religionSites.length === 0 ? (
+                <p className="sim-empty">Pas encore d’identités émergentes — imitation et voies de foi viendront.</p>
               ) : (
                 <>
-                  {cultures.length > 0 && (
+                  {creeds.length > 0 && (
                     <>
                       <p className="sim-muted" style={{ marginBottom: '0.35rem' }}>
+                        Voies de foi (creeds)
+                      </p>
+                      <StatGrid items={creeds.slice(0, 8).map((c) => [c.label, c.count])} />
+                    </>
+                  )}
+                  {religionSites.length > 0 && (
+                    <>
+                      <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
+                        Autels & lieux sacrés
+                      </p>
+                      <StatGrid
+                        items={religionSites.map((s) => [
+                          s.label,
+                          s.hasShrine ? 1 : 0,
+                        ])}
+                      />
+                    </>
+                  )}
+                  {cultures.length > 0 && (
+                    <>
+                      <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
                         Cultures (tags émergents)
                       </p>
                       <StatGrid items={cultures.slice(0, 8).map((c) => [c.label, c.count])} />
-                    </>
-                  )}
-                  {creeds.length > 0 && (
-                    <>
-                      <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
-                        Creeds / convictions
-                      </p>
-                      <StatGrid items={creeds.slice(0, 6).map((c) => [c.label, c.count])} />
                     </>
                   )}
                 </>
@@ -585,20 +760,25 @@ export const SimPanel = memo(function SimPanel({
 
         {tab === 'log' && (
           <div className="sim-stack">
-            <Section title="Faits marquants">
+            <Section title="Chronique de civilisation">
               {chronicle.length === 0 ? (
                 <p className="sim-empty">Rien ne s’est encore produit.</p>
               ) : (
-                <ol className="sim-log">
-                  {chronicle.map((entry, i) => (
-                    <li
-                      key={`${i}-${entry.slice(0, 28)}`}
-                      className={[i === 0 ? 'is-new' : '', entry.includes(' → ') ? 'is-causal' : ''].filter(Boolean).join(' ')}
-                    >
-                      {entry}
-                    </li>
-                  ))}
-                </ol>
+                <>
+                  <p className="sim-muted" style={{ marginBottom: '0.45rem' }}>
+                    Foi, pouvoirs, brigands, chantiers et faits marquants.
+                  </p>
+                  <ol className="sim-log">
+                    {chronicle.map((entry, i) => (
+                      <li
+                        key={`${i}-${entry.slice(0, 28)}`}
+                        className={[i === 0 ? 'is-new' : '', entry.includes(' → ') ? 'is-causal' : ''].filter(Boolean).join(' ')}
+                      >
+                        {entry}
+                      </li>
+                    ))}
+                  </ol>
+                </>
               )}
             </Section>
           </div>
@@ -807,6 +987,7 @@ const Portrait = memo(function Portrait({
         ) : (
           <p className="sim-empty">Pas encore de cercle ni de creed.</p>
         )}
+        {selected.religionNote ? <p className="sim-kit">{selected.religionNote}</p> : null}
         {selected.identity?.cultureTag && (
           <p className="sim-kit">
             Culture : {selected.identity.cultureTag}

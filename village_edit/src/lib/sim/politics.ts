@@ -2,9 +2,10 @@
  * Emergent social / political / historical substrate (v1).
  *
  * Mechanisms only — no preset factions, religions, monarchies or scripted wars.
- * Pipeline: individuals → relations → circles → institutions → pressures → chronicle.
+ * Pipeline: individuals → relations → circles → institutions → polities (village →
+ * chiefdom → kingdom) → territory claims / rivalries → pressures → chronicle.
  *
- * Deferred (extension points below): civil wars / territories, international war,
+ * Deferred (extension points below): full civil wars, international war armies,
  * espionage, propaganda media, elections UI, polygon borders.
  */
 
@@ -21,7 +22,13 @@ import { mindOf } from './cognition/mindPool'
 import { ensureLivelihood, GUILD_MIN_PRACTITIONERS, noteRecognition } from './livelihood'
 import type { Personality, Profession, SimState, TaskKind, Village, Villager } from './types'
 import { distance } from './world'
-import { enqueueBuildProject, intentFromReasons, type StructurePurpose } from './construction'
+import {
+  enqueueBuildProject,
+  fortifyIsBuilt,
+  intentFromReasons,
+  type StructurePurpose,
+} from './construction'
+import { tickReligionWorld } from './religion'
 
 // ── Beliefs & power ──────────────────────────────────────────────────────────
 
@@ -108,6 +115,29 @@ export interface Circle {
   qualityBar: number
 }
 
+/** Soft polity scale — crystallises from village institutions, never preset kingdoms. */
+export type PolityTier = 'camp' | 'village' | 'chiefdom' | 'kingdom'
+
+export interface Polity {
+  id: number
+  name: string
+  tier: PolityTier
+  /** Settlements under this polity's claim (capital first). */
+  villageIds: number[]
+  capitalVillageId: number
+  rulerId: number | null
+  legitimacy: number
+  /** Soft territorial reach in world units (grows with tier / institutions). */
+  claimRadius: number
+  /** Contested strength 0–1 (rises with enforcement & prosperity). */
+  claimStrength: number
+  rivalPolityIds: number[]
+  formedTick: number
+  lastRulerChangeTick: number
+  lastTierChangeTick: number
+  authorityBasis: AuthorityBasis
+}
+
 export type RumorKind =
   | 'theft'
   | 'death'
@@ -119,6 +149,8 @@ export type RumorKind =
   | 'shirk'
   | 'unreliable'
   | 'exclusion'
+  | 'territory'
+  | 'rivalry'
 
 export interface Rumor {
   id: number
@@ -177,6 +209,9 @@ export const MAX_CIRCLES = 48
 export const MAX_RUMORS = 40
 export const MAX_CIRCLE_MEMBERS = 12
 export const MAX_CIRCLE_MEMORY = 5
+/** Polity / claim / succession cadence (aligned with circle work). */
+export const POLITY_TICK = CIRCLE_TICK * 2
+export const MAX_POLITIES = 24
 
 const KIND_FR: Record<CircleKind, string> = {
   kin: 'cercle de parenté',
@@ -218,6 +253,29 @@ const AUTHORITY_FR: Record<AuthorityBasis, string> = {
   charisma: 'charisme',
   competence: 'compétence',
   fear: 'crainte',
+}
+
+const TIER_FR: Record<PolityTier, string> = {
+  camp: 'campement',
+  village: 'village',
+  chiefdom: 'chefferie',
+  kingdom: 'royaume',
+}
+
+const TIER_TITLE_FR: Record<PolityTier, string> = {
+  camp: 'guide',
+  village: 'doyen',
+  /** Chief of a chefferie. */
+  chiefdom: 'chef',
+  /** Lord of a realm (chief → seigneur when a royaume crystallises). */
+  kingdom: 'seigneur',
+}
+
+const TIER_RANK: Record<PolityTier, number> = {
+  camp: 0,
+  village: 1,
+  chiefdom: 2,
+  kingdom: 3,
 }
 
 export const CHILD_AGE = 220
@@ -311,10 +369,17 @@ export function villageCohesion(state: SimState, villageId: number | null): numb
   return vg?.cohesion ?? 0.35
 }
 
-/** Soft wealth proxy for inequality (coins + edible stock). */
+/** Soft wealth proxy for inequality (coins + edible stock + trade capital). */
 function wealthProxy(v: Villager): number {
   const coins = countOf(v.inventory, 'coin') + (v.chestInventory ? countOf(v.chestInventory, 'coin') : 0)
-  return coins + edibleValue(v.inventory) * 0.35 + (v.hasCart ? 2 : 0) + (v.hasHome && v.homeOwnerId === v.id ? 1.5 : 0)
+  return (
+    coins * 1.15 +
+    edibleValue(v.inventory) * 0.35 +
+    (v.hasCart ? 2.5 : 0) +
+    (v.boatId !== null ? 2 : 0) +
+    (v.hasHome && v.homeOwnerId === v.id ? 1.5 : 0) +
+    (v.profession === 'trader' ? 1.2 : 0)
+  )
 }
 
 function villageMembers(state: SimState, villageId: number): Villager[] {
@@ -843,13 +908,23 @@ function trySpawnCircles(state: SimState) {
       }
     }
 
-    // Soft faith circle — only if several high-piety people cluster (no canned religion)
-    const pious = sample.filter((v) => politicsOf(v).beliefs.piety > 0.62)
-    if (pious.length >= 3) {
-      const close = pious.filter((a) => pious.some((b) => a.id !== b.id && distance(a.x, a.y, b.x, b.y) < 20))
-      if (close.length >= 3) {
+    // Soft faith circle — piety cluster (no canned religion)
+    const pious = sample.filter((v) => {
+      const pol = politicsOf(v)
+      return pol.beliefs.piety > 0.48 || pol.creed === 'piete' || pol.creedWeight > 0.35
+    })
+    if (pious.length >= 2) {
+      const close = pious.filter((a) => pious.some((b) => a.id !== b.id && distance(a.x, a.y, b.x, b.y) < 24))
+      if (close.length >= 2) {
         const c = createCircle(state, 'faith', close.slice(0, 4), close[0].villageId, '', 'recueillement partagé')
-        if (c) c.creed = 'piete'
+        if (c) {
+          c.creed = 'piete'
+          for (const m of close.slice(0, 4)) {
+            const pol = politicsOf(m)
+            pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.03)
+            pol.creedWeight = clamp01(pol.creedWeight + 0.05)
+          }
+        }
       }
     }
 
@@ -1338,6 +1413,8 @@ export function handlePoliticalDeath(state: SimState, victim: Villager) {
     }
   }
 
+  handlePolityDeath(state, victim)
+
   POLITICS.delete(victim.id)
   POWER_CACHE.delete(victim.id)
 }
@@ -1345,6 +1422,8 @@ export function handlePoliticalDeath(state: SimState, victim: Villager) {
 // ── Beliefs / creeds / migration ─────────────────────────────────────────────
 
 function crystallizeCreed(pol: PoliticalState): CreedId | null {
+  // Soft faith path: high piety / creed weight can crystallise without grievance.
+  if (pol.beliefs.piety > 0.55 && pol.creedWeight >= 0.28) return 'piete'
   if (pol.grievance < 0.45 && pol.creedWeight < 0.5) return null
   if (pol.beliefs.fairness > 0.65 && pol.grievance > 0.3) return 'partage'
   if (pol.beliefs.greed > 0.6) return 'commerce_libre'
@@ -1467,11 +1546,12 @@ function tickIndividualPolitics(state: SimState, v: Villager) {
   if (next && next !== pol.creed) {
     pol.creed = next
     pol.creedWeight = 0.4
-    if (pol.grievance > 0.5) {
-      logCause(state, `griefs répétés de ${v.name}`, `creed : « ${CREED_FR[next]} »`)
-    }
+    logCause(state, `griefs ou convictions de ${v.name}`, `creed : « ${CREED_FR[next]} »`)
   } else if (pol.creed) {
     pol.creedWeight = clamp01(pol.creedWeight + 0.01)
+  } else if (pol.beliefs.piety > 0.48) {
+    // Soft accumulation toward a faith creed without requiring grievance.
+    pol.creedWeight = clamp01(pol.creedWeight + 0.018 * pol.beliefs.piety)
   }
 }
 
@@ -1496,18 +1576,28 @@ function tickPersonalDebts(state: SimState, v: Villager) {
 export function trySpreadCreed(state: SimState, a: Villager, b: Villager) {
   const pa = politicsOf(a)
   const pb = politicsOf(b)
-  if (!pa.creed || pa.creedWeight < 0.35) return
+  if (!pa.creed || pa.creedWeight < 0.28) return
   const rel = relationWith(b, a.id)
-  if (rel.trust < 0.3) return
+  if (rel.trust < 0.22) return
   if (pb.creed === pa.creed) {
     pb.creedWeight = clamp01(pb.creedWeight + 0.05)
     return
   }
-  const open = (1 - pb.beliefs.tradition) * 0.4 + rel.affinity * 0.3 + a.personality.sociability * 0.2
-  if (open > 0.45 && pa.creedWeight > pb.creedWeight) {
+  const open =
+    (1 - pb.beliefs.tradition) * 0.35 +
+    rel.affinity * 0.3 +
+    a.personality.sociability * 0.2 +
+    pa.beliefs.piety * 0.15 +
+    (pa.creed === 'piete' ? 0.08 : 0)
+  if (open > 0.4 && pa.creedWeight > pb.creedWeight * 0.85) {
+    const prev = pb.creed
     pb.creed = pa.creed
-    pb.creedWeight = 0.25
-    logCause(state, `${a.name} convainc ${b.name}`, `« ${CREED_FR[pa.creed]} » se répand`)
+    pb.creedWeight = 0.28
+    if (prev) {
+      logCause(state, `${a.name} convertit ${b.name}`, `« ${CREED_FR[pa.creed]} » remplace l'ancienne voie`)
+    } else {
+      logCause(state, `${a.name} convainc ${b.name}`, `« ${CREED_FR[pa.creed]} » se répand`)
+    }
   }
 }
 
@@ -1599,6 +1689,12 @@ export function politicalTaskBias(state: SimState, v: Villager, kind: TaskKind, 
         if (outgroup && (vgCoh > 0.55 || circleCoh > 0.55)) mult *= 1.35 + vgCoh * 0.45
         // Low cohesion → fragmentation: less collective confront, more personal feud only.
         if (!outgroup && vgCoh < 0.3) mult *= 1.15 + pol.grievance * 0.2
+        // Rival polities with overlapping claims.
+        if (outgroup && rival.villageId !== null && v.villageId !== null) {
+          const pa = polityOfVillage(state, v.villageId)
+          const pb = polityOfVillage(state, rival.villageId)
+          if (pa && pb && pa.id !== pb.id && pa.rivalPolityIds.includes(pb.id)) mult *= 1.4
+        }
         if (politicsOf(rival).grievance > 0.3) {
           for (const c of circles) {
             if (c.memberIds.includes(rival.id) && (c.leaderId === v.id || c.leaderId === rival.id)) {
@@ -1861,13 +1957,37 @@ export function onPoliticalFamine(state: SimState) {
 }
 
 export function onPoliticalTradeWindfall(state: SimState, trader: Villager) {
-  spawnRumor(state, 'windfall', trader, null, 0.5, `${trader.name} revient chargé de marchandises`)
-  politicsOf(trader).legitimacy = clamp01(politicsOf(trader).legitimacy + 0.04)
+  spawnRumor(state, 'windfall', trader, null, 0.55, `${trader.name} revient chargé de marchandises`)
+  const pol = politicsOf(trader)
+  pol.legitimacy = clamp01(pol.legitimacy + 0.05)
+  pol.beliefs.greed = clamp01(pol.beliefs.greed + 0.02)
   for (const c of circlesOf(state, trader)) {
     if (c.kind === 'trade') {
-      c.legitimacy = clamp01(c.legitimacy + 0.05)
+      c.legitimacy = clamp01(c.legitimacy + 0.06)
       c.problemCount += 1
       c.lastActiveTick = state.tick
+    }
+  }
+  // Windfall coins → envy among poorer villagers (Seshat inequality → politics).
+  const vg = villageOf(state, trader.villageId)
+  if (!vg) return
+  const traderWealth = wealthProxy(trader)
+  let n = 0
+  for (const o of state.villagers) {
+    if (!o.alive || o.villageId !== vg.id || o.id === trader.id) continue
+    const ow = wealthProxy(o)
+    if (ow < traderWealth * 0.55) {
+      const peer = politicsOf(o)
+      peer.grievance = clamp01(peer.grievance + 0.035)
+      peer.migrationUrge = clamp01(peer.migrationUrge + 0.015 * (1 - peer.beliefs.loyalty))
+      n++
+      if (n >= 4) break
+    }
+  }
+  if (n > 0) {
+    vg.inequalityStress = clamp01((vg.inequalityStress ?? 0) + 0.05 + n * 0.015)
+    if ((state.tick + vg.id) % 220 < 12) {
+      logCause(state, `fortune marchande de ${trader.name}`, 'jalousie et tensions au village')
     }
   }
 }
@@ -2004,11 +2124,42 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
     let purposes: StructurePurpose[] | undefined
     let wood: number | undefined
     let stone: number | undefined
-    if ((c.kind === 'threat' || c.norms.includes('protect_all')) && village && village.wallTier !== 'stone') {
-      reasons = [`institution ${c.name} (gardes)`, 'fortification']
-      purposes = ['fortify']
-      wood = village.wallTier === 'none' ? 0.65 : 0.3
-      stone = village.wallTier === 'wood' ? 0.8 : 0.45
+    if ((c.kind === 'threat' || c.norms.includes('protect_all')) && village) {
+      const alreadyKeep = state.projects.some(
+        (p) =>
+          p.villageId === village.id &&
+          p.phase === 'done' &&
+          p.intent.purposes.includes('fortify') &&
+          (p.params.towers || p.params.wallMaterial === 'stone'),
+      )
+      if (!alreadyKeep || village.wallTier !== 'stone') {
+        reasons = [`institution ${c.name} (gardes)`, 'fortification']
+        purposes = ['fortify']
+        wood = village.wallTier === 'none' ? 0.55 : 0.25
+        stone = village.wallTier === 'wood' || alreadyKeep ? 0.85 : 0.55
+      }
+    } else if (
+      village &&
+      village.memberIds.length >= 4 &&
+      ((village.prosperity ?? 0) >= 45 || (village.surplus.stone ?? 0) >= 0.75) &&
+      (c.kind === 'elder' || c.norms.includes('maintain_commons') || c.isInstitution)
+    ) {
+      const hasKeep = state.projects.some(
+        (p) => p.villageId === village.id && p.intent.purposes.includes('fortify') && p.phase !== 'done',
+      )
+      const doneKeep = state.projects.some(
+        (p) =>
+          p.villageId === village.id &&
+          p.phase === 'done' &&
+          p.intent.purposes.includes('fortify') &&
+          (p.params.towers || p.intent.scale >= 0.55),
+      )
+      if (!hasKeep && !doneKeep) {
+        reasons = [`institution ${c.name} (prospérité)`, 'donjon / fort']
+        purposes = ['fortify']
+        wood = 0.22
+        stone = 0.82
+      }
     } else if ((c.kind === 'trade' || c.norms.includes('favor_traders')) && village && village.memberIds.length >= 5) {
       reasons = [`institution ${c.name} (marchands)`, 'halle']
       purposes = ['gather']
@@ -2023,16 +2174,25 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
       purposes = ['gather']
       wood = 0.5
       stone = 0.55
+    } else if (c.kind === 'faith' || c.creed === 'piete') {
+      reasons = [`institution ${c.name} (foi)`, 'autel', 'sanctuaire', 'recueillement']
+      purposes = ['shrine']
+      wood = 0.45
+      stone = 0.7
     }
     if (reasons) {
+      const fortScale =
+        purposes?.includes('fortify') && (stone ?? 0) >= 0.7
+          ? 0.62 + c.legitimacy * 0.3
+          : 0.55 + c.legitimacy * 0.25
       const intent = intentFromReasons(reasons, {
         purposes,
-        scale: 0.55 + c.legitimacy * 0.25,
+        scale: fortScale,
         wood,
         stone,
       })
-      const nearX = village?.centerX ?? leader.x
-      const nearY = village?.centerY ?? leader.y
+      const nearX = (village?.centerX ?? leader.x) + (purposes?.includes('fortify') ? 12 : 0)
+      const nearY = (village?.centerY ?? leader.y) + (purposes?.includes('fortify') ? 10 : 0)
       const project = enqueueBuildProject(state, intent, {
         ownerId: null,
         villageId: leader.villageId,
@@ -2070,18 +2230,24 @@ function tickVillageCohesion(state: SimState) {
     for (const w of state.wolves) {
       if (w.alive && distance(w.x, w.y, vg.centerX, vg.centerY) < 42) wolvesNear++
     }
+    let banditsNear = 0
+    for (const b of state.bandits ?? []) {
+      if (b.alive && b.phase === 'raid' && distance(b.x, b.y, vg.centerX, vg.centerY) < 48) banditsNear++
+    }
     const externalFeud = members.some((m) => {
       if (m.grudgeTarget === null) return false
       const t = state.villagers.find((o) => o.id === m.grudgeTarget && o.alive)
       return t !== undefined && t.villageId !== vg.id
     })
-    const threatened = wolvesNear > 0 || externalFeud || state.famine
+    const threatened = wolvesNear > 0 || banditsNear > 0 || externalFeud || state.famine
 
     vg.inequalityStress = clamp01(vg.inequalityStress * 0.85 + villageInequality(state, vg.id) * 0.15)
 
     if (threatened) {
       vg.peaceTicks = 0
-      vg.cohesion = clamp01(vg.cohesion + COHESION_THREAT_GAIN + (wolvesNear > 1 ? 0.02 : 0))
+      vg.cohesion = clamp01(
+        vg.cohesion + COHESION_THREAT_GAIN + (wolvesNear > 1 ? 0.02 : 0) + (banditsNear > 0 ? 0.03 : 0),
+      )
     } else {
       vg.peaceTicks += 1
       // Long peace + prosperity/inequality → asabiya decay.
@@ -2161,34 +2327,41 @@ function tickCommonsAction(state: SimState, c: Circle) {
   }
 }
 
-/** Ritual / gathering: faith & village circles reinforce belonging near plaza. */
+/** Ritual / gathering: faith & village circles reinforce belonging near plaza / shrine. */
 function tickRitualGathering(state: SimState, c: Circle) {
   if (c.kind !== 'faith' && c.kind !== 'village' && c.kind !== 'kin') return
   const members = livingMembers(state, c)
-  if (members.length < 3) return
+  if (members.length < 2) return
   const vg = villageOf(state, c.villageId)
   if (!vg) return
-  if (state.tick - vg.lastRitualTick < 220) return
-  // Members clustered near centre → ritual.
+  if (vg.lastRitualTick === undefined) vg.lastRitualTick = 0
+  if (state.tick - vg.lastRitualTick < 180) return
+  const ax = vg.hasShrine && vg.shrineX >= 0 ? vg.shrineX : vg.centerX
+  const ay = vg.hasShrine && vg.shrineY >= 0 ? vg.shrineY : vg.centerY
   let near = 0
   for (const m of members) {
-    if (distance(m.x, m.y, vg.centerX, vg.centerY) < 16) near++
+    if (distance(m.x, m.y, ax, ay) < 16) near++
   }
-  if (near < 3) return
-  if (c.values.piety < 0.4 && c.kind === 'faith') return
+  if (near < 2) return
+  if (c.values.piety < 0.35 && c.kind === 'faith') return
   vg.lastRitualTick = state.tick
   vg.cohesion = clamp01(vg.cohesion + 0.035)
   c.cohesion = clamp01(c.cohesion + 0.05)
   for (const m of members) {
-    if (distance(m.x, m.y, vg.centerX, vg.centerY) >= 16) continue
+    if (distance(m.x, m.y, ax, ay) >= 16) continue
     const pol = politicsOf(m)
     pol.beliefs.loyalty = clamp01(pol.beliefs.loyalty + 0.015)
-    pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.01)
+    pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.015)
     pol.normInternalization = clamp01(pol.normInternalization + 0.012)
     pol.grievance = clamp01(pol.grievance - 0.02)
+    pol.creedWeight = clamp01(pol.creedWeight + 0.02)
   }
-  rememberCircle(c, 'rassemblement commun')
-  logCause(state, `rassemblement du ${c.name}`, `le sentiment d'appartenance se renforce`)
+  rememberCircle(c, c.kind === 'faith' ? 'rite de recueillement' : 'rassemblement commun')
+  if (c.kind === 'faith') {
+    logCause(state, `rite du ${c.name}`, `le cercle pieux honore le sacré près de la place`)
+  } else {
+    logCause(state, `rassemblement du ${c.name}`, `le sentiment d'appartenance se renforce`)
+  }
 }
 
 /**
@@ -2240,6 +2413,570 @@ function tickContactZones(state: SimState) {
   }
 }
 
+// ── Polities: village → chiefdom → kingdom (emergent) ────────────────────────
+
+export function polityTierLabel(tier: PolityTier): string {
+  return TIER_FR[tier]
+}
+
+export function polityTitleLabel(tier: PolityTier): string {
+  return TIER_TITLE_FR[tier]
+}
+
+function ensurePolitiesArray(state: SimState) {
+  if (!state.polities) state.polities = []
+  if (state.nextPolityId === undefined || state.nextPolityId < 1) state.nextPolityId = 1
+}
+
+function polityOfVillage(state: SimState, villageId: number): Polity | null {
+  ensurePolitiesArray(state)
+  for (const p of state.polities) {
+    if (p.villageIds.includes(villageId)) return p
+  }
+  return null
+}
+
+function polityCentre(state: SimState, p: Polity): { x: number; y: number } {
+  const cap = villageOf(state, p.capitalVillageId)
+  if (cap) return { x: cap.centerX, y: cap.centerY }
+  for (const vid of p.villageIds) {
+    const vg = villageOf(state, vid)
+    if (vg) return { x: vg.centerX, y: vg.centerY }
+  }
+  return { x: 0, y: 0 }
+}
+
+function polityPop(state: SimState, p: Polity): number {
+  let n = 0
+  for (const vid of p.villageIds) n += villageMembers(state, vid).length
+  return n
+}
+
+function polityInstitutions(state: SimState, p: Polity): Circle[] {
+  return state.circles.filter((c) => c.isInstitution && c.villageId !== null && p.villageIds.includes(c.villageId))
+}
+
+function polityPower(state: SimState, p: Polity): number {
+  const pop = polityPop(state, p)
+  const inst = polityInstitutions(state, p).length
+  const cap = villageOf(state, p.capitalVillageId)
+  const walls = cap && cap.wallTier !== 'none' ? 1.2 : 1
+  const dev = cap?.development ?? 0.2
+  const prosp = (cap?.prosperity ?? 30) / 100
+  return pop * 0.35 + inst * 1.4 + p.legitimacy * 2 + p.claimStrength * 1.5 + walls + Math.min(3, dev * 0.25) + prosp
+}
+
+function namePolity(state: SimState, tier: PolityTier, capitalId: number, ruler: Villager | null): string {
+  const place = `n°${capitalId}`
+  const who = ruler ? (ruler.surname ? ruler.surname : ruler.name) : place
+  if (tier === 'camp') return `campement ${place}`
+  if (tier === 'village') return `village de ${who}`
+  if (tier === 'chiefdom') return `chefferie de ${who}`
+  return `royaume de ${who}`
+}
+
+/** True when a polity capital (or any claimed village) has a stamped keep/donjon. */
+function polityHasKeep(state: SimState, p: Polity): boolean {
+  for (const vid of p.villageIds) {
+    for (const pr of state.projects) {
+      if (pr.villageId !== vid) continue
+      if (!fortifyIsBuilt(state, pr)) continue
+      if (pr.params.towers || pr.params.wallMaterial === 'stone' || pr.intent.scale >= 0.5) return true
+    }
+  }
+  return false
+}
+
+function countCastles(state: SimState): number {
+  let n = 0
+  for (const pr of state.projects) {
+    if (!fortifyIsBuilt(state, pr)) continue
+    if (pr.params.towers || pr.params.wallMaterial === 'stone' || pr.intent.scale >= 0.5) n++
+  }
+  return n
+}
+
+/**
+ * Mid-game / realm path: when pop + wealth (or chiefdom+) allow, sponsor a stone keep
+ * via the generative construction continuum — no Castle enum.
+ */
+function maybeSponsorPolityKeep(state: SimState, p: Polity) {
+  if (polityHasKeep(state, p)) return
+  const cap = villageOf(state, p.capitalVillageId)
+  if (!cap) return
+  const pop = polityPop(state, p)
+  const prosp = cap.prosperity ?? 0
+  const sol = cap.standardOfLiving ?? 0
+  const stoneSurplus = cap.surplus.stone ?? 0
+  const wealthOk = prosp >= 36 || sol >= 0.38 || stoneSurplus >= 0.5 || pop >= 7
+  const tierOk = TIER_RANK[p.tier] >= 2 || (pop >= 5 && (prosp >= 42 || stoneSurplus >= 0.65))
+  if (!wealthOk || !tierOk) return
+  // Soft mid-game gate: after ~day 12 of world age, or sooner if already a chiefdom.
+  const midGame = state.tick >= 12 * 48 || TIER_RANK[p.tier] >= 2
+  if (!midGame) return
+  if ((state.tick + p.id * 11) % (POLITY_TICK * 2) !== 0) return
+
+  const openFort = state.projects.some(
+    (pr) => pr.villageId === cap.id && pr.phase !== 'done' && pr.intent.purposes.includes('fortify'),
+  )
+  if (openFort) return
+
+  const scale =
+    TIER_RANK[p.tier] >= 3 ? 0.82 : TIER_RANK[p.tier] >= 2 ? 0.68 : pop >= 8 ? 0.62 : 0.52
+  const intent = intentFromReasons(
+    [
+      TIER_RANK[p.tier] >= 2 ? `autorité de ${p.name}` : `prospérité du village n°${cap.id}`,
+      'keep / donjon',
+      'siège du pouvoir',
+    ],
+    {
+      purposes: ['fortify'],
+      scale,
+      wood: 0.2,
+      stone: 0.88,
+    },
+  )
+  const project = enqueueBuildProject(state, intent, {
+    ownerId: null,
+    villageId: cap.id,
+    nearX: cap.centerX + 14,
+    nearY: cap.centerY + 12,
+    laborHint: 1.4 + p.legitimacy,
+  })
+  if (project) {
+    logCause(
+      state,
+      `richesse et population sous ${p.name}`,
+      `le ${TIER_TITLE_FR[p.tier]} ordonne un ${project.label}`,
+    )
+  }
+}
+
+function createPolityForVillage(state: SimState, vg: Village): Polity | null {
+  ensurePolitiesArray(state)
+  if (state.polities.length >= MAX_POLITIES) return null
+  if (polityOfVillage(state, vg.id)) return null
+  const members = villageMembers(state, vg.id)
+  if (members.length === 0) return null
+  const notable = villageNotable(state, vg.id)
+  const tier: PolityTier = members.length >= 4 && (vg.development ?? 0) > 0.5 ? 'village' : 'camp'
+  const p: Polity = {
+    id: state.nextPolityId++,
+    name: namePolity(state, tier, vg.id, notable),
+    tier,
+    villageIds: [vg.id],
+    capitalVillageId: vg.id,
+    rulerId: notable?.id ?? null,
+    legitimacy: 0.32 + (notable ? politicsOf(notable).legitimacy * 0.25 : 0),
+    claimRadius: tier === 'village' ? 22 : 14,
+    claimStrength: 0.2,
+    rivalPolityIds: [],
+    formedTick: state.tick,
+    lastRulerChangeTick: state.tick,
+    lastTierChangeTick: state.tick,
+    authorityBasis: notable
+      ? pickAuthorityBasis(state, notable, {
+          kind: 'village',
+          authorityBasis: 'tradition',
+        } as Circle)
+      : 'tradition',
+  }
+  state.polities.push(p)
+  logCause(
+    state,
+    `regroupement autour du village ${placeLabel(vg)}`,
+    `naissance du ${TIER_FR[tier]} « ${p.name} »`,
+  )
+  return p
+}
+
+function placeLabel(vg: Village): string {
+  return `n°${vg.id}`
+}
+
+function ensureVillagePolities(state: SimState) {
+  ensurePolitiesArray(state)
+  for (const vg of state.villages) {
+    if (villageMembers(state, vg.id).length === 0) continue
+    if (!polityOfVillage(state, vg.id)) createPolityForVillage(state, vg)
+  }
+  // Drop empty / orphan polities.
+  for (let i = state.polities.length - 1; i >= 0; i--) {
+    const p = state.polities[i]
+    p.villageIds = p.villageIds.filter((vid) => state.villages.some((v) => v.id === vid))
+    if (p.villageIds.length === 0 || polityPop(state, p) === 0) {
+      state.polities.splice(i, 1)
+      continue
+    }
+    if (!p.villageIds.includes(p.capitalVillageId)) p.capitalVillageId = p.villageIds[0]
+  }
+}
+
+function pickPolityRuler(state: SimState, p: Polity): Villager | null {
+  const inst = polityInstitutions(state, p).sort((a, b) => b.legitimacy - a.legitimacy)
+  for (const c of inst) {
+    if (c.leaderId === null) continue
+    const leader = state.villagers.find((v) => v.id === c.leaderId && v.alive)
+    if (leader && p.villageIds.includes(leader.villageId ?? -1)) return leader
+  }
+  let best: Villager | null = null
+  let bestScore = -Infinity
+  for (const vid of p.villageIds) {
+    const n = villageNotable(state, vid)
+    if (!n) continue
+    const s = influenceScore(state, n) + politicsOf(n).legitimacy * 0.5
+    if (s > bestScore) {
+      bestScore = s
+      best = n
+    }
+  }
+  return best
+}
+
+function setPolityRuler(state: SimState, p: Polity, next: Villager | null, reason: string) {
+  const prevId = p.rulerId
+  if (next === null) {
+    if (prevId !== null) {
+      p.rulerId = null
+      p.lastRulerChangeTick = state.tick
+      logCause(state, reason, `le ${TIER_FR[p.tier]} « ${p.name} » n'a plus de ${TIER_TITLE_FR[p.tier]}`)
+    }
+    return
+  }
+  if (prevId === next.id) return
+  const prev = prevId !== null ? state.villagers.find((v) => v.id === prevId) : null
+  p.rulerId = next.id
+  p.lastRulerChangeTick = state.tick
+  p.authorityBasis = pickAuthorityBasis(state, next, {
+    kind: 'village',
+    authorityBasis: p.authorityBasis,
+  } as Circle)
+  p.name = namePolity(state, p.tier, p.capitalVillageId, next)
+  p.legitimacy = clamp01(p.legitimacy * 0.7 + 0.2)
+  const title = TIER_TITLE_FR[p.tier]
+  if (prev && prev.alive) {
+    logCause(
+      state,
+      reason,
+      `${next.name} devient ${title} du ${TIER_FR[p.tier]} « ${p.name} » (succède à ${prev.name})`,
+    )
+    spawnRumor(state, 'succession', next, prev, 0.75, `${next.name} succède à ${prev.name} à la tête de ${p.name}`)
+  } else {
+    logCause(state, reason, `${next.name} devient ${title} du ${TIER_FR[p.tier]} « ${p.name} »`)
+    spawnRumor(state, 'succession', next, null, 0.55, `${next.name} prend la tête de ${p.name}`)
+  }
+}
+
+function refreshPolityRuler(state: SimState, p: Polity) {
+  const next = pickPolityRuler(state, p)
+  if (!next) {
+    setPolityRuler(state, p, null, 'vide de pouvoir')
+    return
+  }
+  if (p.rulerId === null) {
+    setPolityRuler(state, p, next, 'émergence d\'une figure d\'autorité')
+    return
+  }
+  if (p.rulerId === next.id) return
+  const current = state.villagers.find((v) => v.id === p.rulerId && v.alive)
+  if (!current) {
+    setPolityRuler(state, p, next, `disparition du ${TIER_TITLE_FR[p.tier]}`)
+    return
+  }
+  // Soft contest: only replace if challenger clearly stronger or legitimacy collapsed.
+  const curScore = influenceScore(state, current) + politicsOf(current).legitimacy
+  const nextScore = influenceScore(state, next) + politicsOf(next).legitimacy
+  if (p.legitimacy < 0.28 || nextScore > curScore + 0.22) {
+    setPolityRuler(state, p, next, `contestation d'autorité (${AUTHORITY_FR[p.authorityBasis]})`)
+  }
+}
+
+function desiredTier(state: SimState, p: Polity): PolityTier {
+  const pop = polityPop(state, p)
+  const inst = polityInstitutions(state, p).length
+  const villages = p.villageIds.length
+  const cap = villageOf(state, p.capitalVillageId)
+  const coh = cap?.cohesion ?? 0.35
+  const walls = cap && cap.wallTier !== 'none'
+  const keep = polityHasKeep(state, p)
+  const age = state.tick - p.formedTick
+  const prosp = cap?.prosperity ?? 0
+
+  // Keep + institutions crystallise a lord's realm (chief → seigneur).
+  if (
+    (villages >= 2 && inst >= 1 && p.legitimacy > 0.35) ||
+    (keep && inst >= 1 && pop >= 6 && p.legitimacy > 0.32) ||
+    (inst >= 2 && pop >= 8 && p.claimStrength > 0.4 && coh > 0.35) ||
+    (inst >= 2 && pop >= 7 && walls && prosp >= 40) ||
+    (inst >= 3 && pop >= 6 && walls)
+  ) {
+    return 'kingdom'
+  }
+  if (
+    (inst >= 1 && pop >= 4 && p.legitimacy > 0.3) ||
+    (inst >= 1 && walls && pop >= 3) ||
+    (keep && pop >= 4) ||
+    (pop >= 6 && age > 480 && coh > 0.4) ||
+    (prosp >= 48 && pop >= 5 && inst >= 1)
+  ) {
+    return 'chiefdom'
+  }
+  if (pop >= 3 || (cap && (cap.development ?? 0) > 0.8)) return 'village'
+  return 'camp'
+}
+
+function applyTierChange(state: SimState, p: Polity, next: PolityTier) {
+  if (next === p.tier) return
+  const prev = p.tier
+  const prevName = p.name
+  // Don't thrash: one rank step at a time unless long-stable.
+  if (Math.abs(TIER_RANK[next] - TIER_RANK[prev]) > 1 && state.tick - p.lastTierChangeTick < 400) {
+    if (TIER_RANK[next] > TIER_RANK[prev]) {
+      next = prev === 'camp' ? 'village' : prev === 'village' ? 'chiefdom' : prev === 'chiefdom' ? 'kingdom' : prev
+    } else {
+      next = prev === 'kingdom' ? 'chiefdom' : prev === 'chiefdom' ? 'village' : prev === 'village' ? 'camp' : prev
+    }
+  }
+  if (next === p.tier) return
+  p.tier = next
+  p.lastTierChangeTick = state.tick
+  const ruler = p.rulerId !== null ? state.villagers.find((v) => v.id === p.rulerId && v.alive) : null
+  p.name = namePolity(state, next, p.capitalVillageId, ruler ?? null)
+  if (TIER_RANK[next] > TIER_RANK[prev]) {
+    p.legitimacy = clamp01(p.legitimacy + 0.08)
+    p.claimStrength = clamp01(p.claimStrength + 0.1)
+    logCause(
+      state,
+      `institutions et influence du ${TIER_FR[prev]} « ${prevName} »`,
+      `le pouvoir se durcit en ${TIER_FR[next]} « ${p.name} »`,
+    )
+    if (
+      (next === 'chiefdom' || next === 'kingdom') &&
+      !state.milestones.firstRealm
+    ) {
+      state.milestones.firstRealm = true
+      const title = TIER_TITLE_FR[next]
+      logCause(
+        state,
+        `cristallisation d'un pouvoir territorial`,
+        `premier ${TIER_FR[next]} — ${ruler ? `${title} ${ruler.name}` : p.name}`,
+      )
+    }
+    if (next === 'kingdom' && prev === 'chiefdom' && ruler) {
+      logCause(
+        state,
+        `la chefferie de ${ruler.name} s'affirme`,
+        `${ruler.name} devient seigneur du ${p.name}`,
+      )
+    }
+  } else {
+    p.legitimacy = clamp01(p.legitimacy - 0.06)
+    logCause(
+      state,
+      `affaiblissement du ${TIER_FR[prev]} « ${prevName} »`,
+      `repli vers un ${TIER_FR[next]} « ${p.name} »`,
+    )
+  }
+}
+
+function refreshPolityClaims(state: SimState, p: Polity) {
+  const pop = polityPop(state, p)
+  const inst = polityInstitutions(state, p)
+  const enf = inst.reduce((a, c) => a + c.enforcement, 0) / Math.max(1, inst.length)
+  const keep = polityHasKeep(state, p)
+  const base =
+    p.tier === 'camp' ? 14 : p.tier === 'village' ? 22 : p.tier === 'chiefdom' ? 34 : 48
+  p.claimRadius = base + Math.min(18, pop * 0.9) + enf * 10 + (keep ? 10 : 0)
+  p.claimStrength = clamp01(
+    0.15 +
+      p.legitimacy * 0.35 +
+      enf * 0.25 +
+      Math.min(0.25, pop / 40) +
+      (inst.length > 0 ? 0.08 : 0) +
+      TIER_RANK[p.tier] * 0.06 +
+      (keep ? 0.12 : 0),
+  )
+  // Sync polity legitimacy toward institutions / ruler.
+  let instLeg = 0
+  for (const c of inst) instLeg += c.legitimacy
+  if (inst.length > 0) instLeg /= inst.length
+  else instLeg = 0.3
+  const ruler = p.rulerId !== null ? state.villagers.find((v) => v.id === p.rulerId && v.alive) : null
+  const rulerLeg = ruler ? politicsOf(ruler).legitimacy : 0.25
+  p.legitimacy = clamp01(p.legitimacy * 0.85 + instLeg * 0.1 + rulerLeg * 0.05)
+  if (state.famine) p.legitimacy = clamp01(p.legitimacy - 0.02)
+}
+
+function tickPolityRivals(state: SimState) {
+  ensurePolitiesArray(state)
+  for (const p of state.polities) p.rivalPolityIds = []
+  for (let i = 0; i < state.polities.length; i++) {
+    const a = state.polities[i]
+    const ac = polityCentre(state, a)
+    for (let j = i + 1; j < state.polities.length; j++) {
+      const b = state.polities[j]
+      const bc = polityCentre(state, b)
+      const d = distance(ac.x, ac.y, bc.x, bc.y)
+      const overlap = a.claimRadius + b.claimRadius - d
+      if (overlap < 4) continue
+      a.rivalPolityIds.push(b.id)
+      b.rivalPolityIds.push(a.id)
+      // Contested frontier pressure.
+      if ((state.tick + a.id * 7 + b.id) % (POLITY_TICK * 3) < POLITY_TICK) {
+        const tension = clamp01(overlap / Math.max(8, a.claimRadius + b.claimRadius))
+        a.legitimacy = clamp01(a.legitimacy - tension * 0.02)
+        b.legitimacy = clamp01(b.legitimacy - tension * 0.02)
+        for (const vid of a.villageIds.slice(0, 1)) {
+          for (const v of villageMembers(state, vid).slice(0, 2)) {
+            politicsOf(v).grievance = clamp01(politicsOf(v).grievance + tension * 0.03)
+          }
+        }
+        for (const vid of b.villageIds.slice(0, 1)) {
+          for (const v of villageMembers(state, vid).slice(0, 2)) {
+            politicsOf(v).grievance = clamp01(politicsOf(v).grievance + tension * 0.03)
+          }
+        }
+        logCause(
+          state,
+          `prétentions territoriales entre « ${a.name} » et « ${b.name} »`,
+          'rivalité de pouvoirs voisins',
+        )
+        const ar = a.rulerId !== null ? state.villagers.find((v) => v.id === a.rulerId && v.alive) : null
+        const br = b.rulerId !== null ? state.villagers.find((v) => v.id === b.rulerId && v.alive) : null
+        if (ar && br) {
+          spawnRumor(state, 'rivalry', ar, br, 0.55 + tension * 0.3, `${a.name} conteste les terres de ${b.name}`)
+        } else if (ar) {
+          spawnRumor(state, 'territory', ar, null, 0.5, `${a.name} étend ses prétentions`)
+        }
+      }
+    }
+  }
+}
+
+function maybeAbsorbPolities(state: SimState) {
+  ensurePolitiesArray(state)
+  // Stronger polity may absorb a weak rival whose capital sits inside its claim.
+  for (let i = state.polities.length - 1; i >= 0; i--) {
+    const weak = state.polities[i]
+    if (weak.tier === 'kingdom') continue
+    const wc = polityCentre(state, weak)
+    let absorber: Polity | null = null
+    let best = -Infinity
+    for (const strong of state.polities) {
+      if (strong.id === weak.id) continue
+      if (!strong.rivalPolityIds.includes(weak.id) && TIER_RANK[strong.tier] < 2) continue
+      const sc = polityCentre(state, strong)
+      const d = distance(sc.x, sc.y, wc.x, wc.y)
+      if (d > strong.claimRadius * 0.85) continue
+      if (weak.legitimacy > 0.42 && weak.claimStrength > strong.claimStrength * 0.7) continue
+      const gap = polityPower(state, strong) - polityPower(state, weak)
+      if (gap < 2.5) continue
+      if (gap > best) {
+        best = gap
+        absorber = strong
+      }
+    }
+    if (!absorber) continue
+    if ((state.tick + weak.id * 13) % (POLITY_TICK * 4) >= POLITY_TICK) continue
+    for (const vid of weak.villageIds) {
+      if (!absorber.villageIds.includes(vid)) absorber.villageIds.push(vid)
+    }
+    absorber.claimStrength = clamp01(absorber.claimStrength + 0.08)
+    absorber.legitimacy = clamp01(absorber.legitimacy + 0.04)
+    logCause(
+      state,
+      `faiblesse de « ${weak.name} » face à « ${absorber.name} »`,
+      `les villages passent sous la prétention de ${absorber.name}`,
+    )
+    const wr =
+      weak.rulerId !== null
+        ? (state.villagers.find((v) => v.id === weak.rulerId && v.alive) ?? null)
+        : null
+    const sr =
+      absorber.rulerId !== null
+        ? (state.villagers.find((v) => v.id === absorber.rulerId && v.alive) ?? null)
+        : null
+    if (sr) spawnRumor(state, 'territory', sr, wr, 0.7, `${absorber.name} absorbe ${weak.name}`)
+    // Promote absorber if multi-village.
+    if (absorber.villageIds.length >= 2 && absorber.tier === 'chiefdom') {
+      applyTierChange(state, absorber, 'kingdom')
+    } else if (absorber.villageIds.length >= 2 && TIER_RANK[absorber.tier] < 2) {
+      applyTierChange(state, absorber, 'chiefdom')
+    }
+    state.polities.splice(i, 1)
+  }
+}
+
+function tickSuccessionContests(state: SimState, p: Polity) {
+  if (p.rulerId === null) return
+  if (state.tick - p.lastRulerChangeTick < 350) return
+  const ruler = state.villagers.find((v) => v.id === p.rulerId && v.alive)
+  if (!ruler) return
+  // Ambitious rivals in institutions challenge weak rulers.
+  if (p.legitimacy > 0.45 && politicsOf(ruler).grievance < 0.5) return
+  const challengers: Villager[] = []
+  for (const c of polityInstitutions(state, p)) {
+    for (const m of livingMembers(state, c)) {
+      if (m.id === ruler.id) continue
+      if (m.personality.ambition < 0.55) continue
+      if (influenceScore(state, m) + 0.1 < influenceScore(state, ruler)) continue
+      challengers.push(m)
+    }
+  }
+  if (challengers.length === 0) {
+    // Fallback: any ambitious notable in the polity.
+    for (const vid of p.villageIds) {
+      for (const m of villageMembers(state, vid)) {
+        if (m.id === ruler.id || m.personality.ambition < 0.62) continue
+        if (influenceScore(state, m) > influenceScore(state, ruler) * 0.95) challengers.push(m)
+      }
+    }
+  }
+  if (challengers.length === 0) return
+  challengers.sort((a, b) => influenceScore(state, b) - influenceScore(state, a))
+  const ch = challengers[0]
+  politicsOf(ch).grievance = clamp01(politicsOf(ch).grievance + 0.08)
+  politicsOf(ruler).grievance = clamp01(politicsOf(ruler).grievance + 0.05)
+  adjustRelation(ch, ruler.id, -0.1, -0.06, state.tick)
+  adjustRelation(ruler, ch.id, -0.1, -0.06, state.tick)
+  if (influenceScore(state, ch) >= influenceScore(state, ruler) || p.legitimacy < 0.32) {
+    setPolityRuler(state, p, ch, `lutte d'influence dans ${p.name}`)
+  } else if ((state.tick + p.id) % (POLITY_TICK * 2) < POLITY_TICK) {
+    logCause(state, `ambition de ${ch.name}`, `tension de succession au ${TIER_FR[p.tier]} « ${p.name} »`)
+    spawnRumor(state, 'succession', ch, ruler, 0.6, `${ch.name} défie ${ruler.name}`)
+  }
+}
+
+function tickPolities(state: SimState) {
+  ensurePolitiesArray(state)
+  ensureVillagePolities(state)
+  for (const p of state.polities) {
+    refreshPolityClaims(state, p)
+    refreshPolityRuler(state, p)
+    applyTierChange(state, p, desiredTier(state, p))
+    maybeSponsorPolityKeep(state, p)
+    tickSuccessionContests(state, p)
+  }
+  tickPolityRivals(state)
+  maybeAbsorbPolities(state)
+}
+
+function handlePolityDeath(state: SimState, victim: Villager) {
+  ensurePolitiesArray(state)
+  for (const p of state.polities) {
+    if (p.rulerId !== victim.id) continue
+    p.legitimacy = clamp01(p.legitimacy - 0.2)
+    p.claimStrength = clamp01(p.claimStrength - 0.08)
+    const heir = pickPolityRuler(state, p)
+    if (heir && heir.id !== victim.id) {
+      setPolityRuler(state, p, heir, `mort de ${victim.name}`)
+    } else {
+      setPolityRuler(state, p, null, `mort de ${victim.name}`)
+      logCause(state, `mort du ${TIER_TITLE_FR[p.tier]} ${victim.name}`, `crise de succession au ${TIER_FR[p.tier]} « ${p.name} »`)
+    }
+  }
+}
+
 // ── Main tick ────────────────────────────────────────────────────────────────
 
 export function tickPolitics(state: SimState) {
@@ -2250,6 +2987,8 @@ export function tickPolitics(state: SimState) {
       tickIndividualPolitics(state, v)
       tickMigration(state, v)
     }
+    // Soft faith drift / creed crystallisation on belief cadence.
+    tickReligionWorld(state)
   }
 
   if (state.tick % RUMOR_TICK === 0) tickRumors(state)
@@ -2293,9 +3032,26 @@ export function tickPolitics(state: SimState) {
     }
     tickInstitutionEffects(state, c)
   }
+
+  // Polities evolve on a slower cadence after circles/institutions settle.
+  if (state.tick % POLITY_TICK === 0) tickPolities(state)
 }
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
+
+export type PolitySummaryRow = {
+  id: number
+  name: string
+  tier: PolityTier
+  tierLabel: string
+  titleLabel: string
+  rulerName: string | null
+  legitimacy: number
+  villages: number
+  rivals: number
+  claimRadius: number
+  claimStrength: number
+}
 
 export function politicsSummary(state: SimState): {
   circles: number
@@ -2303,7 +3059,13 @@ export function politicsSummary(state: SimState): {
   rumors: number
   leadingName: string | null
   leadingLegitimacy: number
+  polities: number
+  chiefdoms: number
+  kingdoms: number
+  castles: number
+  polityRows: PolitySummaryRow[]
 } {
+  ensurePolitiesArray(state)
   let leadingName: string | null = null
   let leadingLegitimacy = 0
   let institutions = 0
@@ -2315,13 +3077,49 @@ export function politicsSummary(state: SimState): {
       leadingName = leader ? `${leader.name} (${c.name})` : c.name
     }
   }
+
+  let chiefdoms = 0
+  let kingdoms = 0
+  const polityRows: PolitySummaryRow[] = []
+  for (const p of state.polities) {
+    if (p.tier === 'chiefdom') chiefdoms++
+    if (p.tier === 'kingdom') kingdoms++
+    const ruler = p.rulerId !== null ? state.villagers.find((v) => v.id === p.rulerId && v.alive) : null
+    if (p.legitimacy > leadingLegitimacy && ruler) {
+      leadingLegitimacy = p.legitimacy
+      leadingName = `${ruler.name} — ${TIER_TITLE_FR[p.tier]} de ${p.name}`
+    }
+    polityRows.push({
+      id: p.id,
+      name: p.name,
+      tier: p.tier,
+      tierLabel: TIER_FR[p.tier],
+      titleLabel: TIER_TITLE_FR[p.tier],
+      rulerName: ruler?.name ?? null,
+      legitimacy: p.legitimacy,
+      villages: p.villageIds.length,
+      rivals: p.rivalPolityIds.length,
+      claimRadius: Math.round(p.claimRadius),
+      claimStrength: p.claimStrength,
+    })
+  }
+  polityRows.sort((a, b) => {
+    if (TIER_RANK[b.tier] !== TIER_RANK[a.tier]) return TIER_RANK[b.tier] - TIER_RANK[a.tier]
+    return b.legitimacy - a.legitimacy
+  })
+
   return {
     circles: state.circles.length,
     institutions,
     rumors: state.rumors.length,
     leadingName,
     leadingLegitimacy,
+    polities: state.polities.length,
+    chiefdoms,
+    kingdoms,
+    castles: countCastles(state),
+    polityRows,
   }
 }
 
-export { CREED_FR, NORM_FR, KIND_FR }
+export { CREED_FR, NORM_FR, KIND_FR, TIER_FR }

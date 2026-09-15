@@ -150,6 +150,7 @@ export interface EpisodicMemory {
 
 export type SemanticFactKind =
   | 'wolves_near'
+  | 'bandits_near'
   | 'good_forage'
   | 'danger_spot'
   | 'market_high'

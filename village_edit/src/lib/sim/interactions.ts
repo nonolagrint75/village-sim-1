@@ -21,6 +21,7 @@ import {
   politicsOf,
   trySpreadCreed,
 } from './politics'
+import { noteSpiritualCounsel } from './religion'
 import {
   adjustRelation,
   broadcastWitness,
@@ -423,6 +424,7 @@ export function doCounsel(state: SimState, guide: Villager, seeker: Villager): v
   bumpRespect(seeker, guide.id, 0.07, state.tick)
   payForService(state, seeker, guide, 'conseil')
   noteRecognition(guide, 0.05)
+  noteSpiritualCounsel(state, guide, seeker)
   if ((state.tick + guide.id) % 80 === 0) {
     logEvent(state, `${guide.name} console ${seeker.name}`)
   }

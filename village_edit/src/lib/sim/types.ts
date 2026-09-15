@@ -7,7 +7,7 @@ import type { EquipmentLoadout } from './equipment'
 import type { FurnitureJob, FurniturePlacement } from './furniture'
 import type { ResourceType, Slot } from './inventory'
 import type { ResourceIndex } from './resourceIndex'
-import type { Circle, Rumor } from './politics'
+import type { Circle, Polity, Rumor } from './politics'
 import type { HouseLayout } from './rooms'
 import type { Ambition, Memory, Relation } from './social'
 import type { KnowledgeBit } from './technology'
@@ -468,6 +468,51 @@ export interface Wolf {
   alive: boolean
 }
 
+/** Medieval brigand phase — camp in woods, raid for food, slip away. */
+export type BanditPhase = 'camp' | 'raid' | 'flee'
+
+export interface Bandit {
+  id: number
+  bandId: number
+  name: string
+  x: number
+  y: number
+  health: number
+  hunger: number
+  starveTimer: number
+  healTimer: number
+  courage: number
+  targetVillageId: number | null
+  targetVillagerId: number | null
+  phase: BanditPhase
+  /** Stolen rations carried back to camp. */
+  loot: import('./inventory').Slot[]
+  foodStolen: number
+  originVillagerId: number | null
+  alive: boolean
+}
+
+/** Wilds hideout: rough camp → repaired lair (repaire). */
+export type BandHideoutTier = 'camp' | 'lair'
+
+export interface Band {
+  id: number
+  name: string
+  campX: number
+  campY: number
+  /** Tent → timber hideout repaired in the wilds. */
+  hideoutTier: BandHideoutTier
+  /** 0–12; repairs push camp → lair. */
+  campHealth: number
+  memberIds: number[]
+  formedTick: number
+  lastRaidTick: number
+  raids: number
+  /** Trade caravans ambushed (in addition to village razzias). */
+  tradeAmbushes: number
+  origin: 'outcasts' | 'vagabonds'
+}
+
 export type WallTier = 'none' | 'wood' | 'stone'
 
 export interface Village {
@@ -487,6 +532,10 @@ export interface Village {
   hasPort: boolean
   portX: number
   portY: number
+  /** Open market plaza founded after real trade + road connectivity. */
+  hasMarket: boolean
+  marketX: number
+  marketY: number
   /** Mine shaft mouth (TUNNEL entrance) claimed by the village. */
   hasMine: boolean
   mineX: number
@@ -528,6 +577,16 @@ export interface Village {
   inequalityStress: number
   /** Last communal gathering / ritual tick (belonging reinforcement). */
   lastRitualTick: number
+  /** Emergent sacred meeting place (faith circles / creeds) — not a canned temple type. */
+  hasShrine: boolean
+  shrineX: number
+  shrineY: number
+  /** French label, e.g. « autel de pierre ». */
+  shrineLabel: string | null
+  /** Soft creed id anchored at the shrine. */
+  shrineCreed: string | null
+  /** Last rite held at the shrine. */
+  lastShrineRiteTick: number
   /**
    * Soft EU-style development index (pop + infra + production) — drives construction / trade weight.
    * Not a player budget or map-painter score.
@@ -562,8 +621,13 @@ export interface SimStats {
   carts: number
   boats: number
   ports: number
+  markets: number
   tradeRunsTotal: number
   wolves: number
+  /** Living brigands on the map. */
+  bandits: number
+  /** Active brigand bands. */
+  bands: number
   totalCoins: number
   totalBread: number
   houses: number
@@ -579,6 +643,8 @@ export interface SimStats {
   deaths: number
   /** Villager deaths caused by wolves (hunt or fight). */
   deathsByWolf: number
+  /** Villager deaths caused by brigands. */
+  deathsByBandit: number
   thefts: number
   brawls: number
   friendships: number
@@ -591,6 +657,26 @@ export interface SimStats {
   rumors: number
   leadingCircle: string | null
   leadingLegitimacy: number
+  /** Emergent polities (campements → chefferies → royaumes). */
+  polities: number
+  chiefdoms: number
+  kingdoms: number
+  /** Finished keeps / donjons (fortify projects stamped on the map). */
+  castles: number
+  /** Compact rows for Royaume panel (rulers / claims). */
+  polityRows: {
+    id: number
+    name: string
+    tier: string
+    tierLabel: string
+    titleLabel: string
+    rulerName: string | null
+    legitimacy: number
+    villages: number
+    rivals: number
+    claimRadius: number
+    claimStrength: number
+  }[]
 }
 
 /** Sparse chronicle flags — each fires at most once per world. */
@@ -600,6 +686,7 @@ export interface SimMilestones {
   firstRoad: boolean
   firstMill: boolean
   firstPort: boolean
+  firstMarket: boolean
   firstBoatVoyage: boolean
   firstBirth: boolean
   firstMarriage: boolean
@@ -610,6 +697,18 @@ export interface SimMilestones {
   firstStorm: boolean
   /** First rare masterwork craft chronicled. */
   firstMasterwork: boolean
+  /** First crystallized creed / voie de foi. */
+  firstCreed: boolean
+  /** First emergent shrine / autel. */
+  firstShrine: boolean
+  /** First communal rite at a shrine or faith circle. */
+  firstRitual: boolean
+  /** First brigand band chronicled. */
+  firstBandits: boolean
+  /** First stone keep / donjon chronicled. */
+  firstKeep: boolean
+  /** First chiefdom / kingdom tier crystallised. */
+  firstRealm: boolean
 }
 
 export interface SimState {
@@ -625,13 +724,20 @@ export interface SimState {
   horses: Horse[]
   boats: Boat[]
   wolves: Wolf[]
+  /** Hostile human brigands (not villagers). */
+  bandits: Bandit[]
+  /** Brigand bands camping outside villages. */
+  bands: Band[]
   villages: Village[]
   nextId: number
   nextVillageId: number
+  nextBandId: number
   births: number
   deaths: number
   /** Villager deaths caused by wolves (hunt or fight). */
   deathsByWolf: number
+  /** Villager deaths caused by brigands. */
+  deathsByBandit: number
   bridges: number
   thefts: number
   brawls: number
@@ -645,6 +751,9 @@ export interface SimState {
   nextCircleId: number
   rumors: Rumor[]
   nextRumorId: number
+  /** Emergent polities (village → chiefdom → kingdom) — never preset kingdoms. */
+  polities: Polity[]
+  nextPolityId: number
   /** Generative build projects (composed footprints — see construction.ts). */
   projects: BuildProject[]
   nextProjectId: number

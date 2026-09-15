@@ -6,6 +6,7 @@ import {
   describeIntent,
   enqueueBuildProject,
   findProject,
+  fortifyIsBuilt,
   intentFromReasons,
   pickProjectForVillager,
   type StructureIntent,
@@ -26,6 +27,18 @@ export function constructionReasonFr(state: SimState, v: Villager): string | nul
   return `chantier : ${p.label} · ${p.phase}`
 }
 
+function villageHasOpenFortify(state: SimState, villageId: number): boolean {
+  return state.projects.some(
+    (p) => p.villageId === villageId && p.phase !== 'done' && p.intent.purposes.includes('fortify'),
+  )
+}
+
+function villageHasDoneKeep(state: SimState, villageId: number): boolean {
+  return state.projects.some(
+    (p) => p.villageId === villageId && fortifyIsBuilt(state, p) && (p.params.towers || p.params.wallMaterial === 'stone' || p.intent.scale >= 0.5),
+  )
+}
+
 /**
  * Life → soft StructureIntent. Returns null if no strong trigger.
  * Purpose tags only — never Castle/TownHall enums.
@@ -35,23 +48,69 @@ export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: Cogn
   const coins = countOf(v.inventory, 'coin')
   const wood = countOf(v.inventory, 'wood')
   const stone = countOf(v.inventory, 'stone')
-  const wolvesNear = mind.semantic.some((s) => s.kind === 'wolves_near' && s.confidence > 0.4)
-  const dangerMem = mind.semantic.some((s) => s.kind === 'danger_spot' && s.confidence > 0.45)
+  const wolvesNear = mind.semantic.some((s) => s.kind === 'wolves_near' && s.confidence > 0.28)
+  const dangerMem = mind.semantic.some((s) => s.kind === 'danger_spot' && s.confidence > 0.32)
   const fear = mind.emotions.fear
   const safety = mind.needs.safety
 
-  if (village && (wolvesNear || dangerMem || fear > 0.45 || safety > 0.5)) {
-    if (village.wallTier !== 'stone') {
-      const keepKnown =
-        hasKnowledge(v.knowledge, 'high_stone_keep', 0.3) ||
-        hasKnowledge(village.knowledge, 'high_stone_keep', 0.35)
-      const baseScale = village.memberIds.length >= 8 ? 0.7 : 0.45
-      return intentFromReasons([wolvesNear || fear > 0.4 ? 'loups' : 'menace', 'fortifier le village'], {
-        purposes: ['fortify'],
-        scale: keepKnown ? Math.min(1, baseScale + 0.2) : baseScale,
-        wood: wood > stone ? 0.55 : 0.3,
-        stone: stone >= wood || keepKnown ? 0.8 : 0.5,
-      })
+  if (village && !villageHasOpenFortify(state, village.id)) {
+    const stackKnown =
+      hasKnowledge(v.knowledge, 'stack_stone_high', 0.22) ||
+      hasKnowledge(village.knowledge, 'stack_stone_high', 0.25)
+    const keepKnown =
+      hasKnowledge(v.knowledge, 'high_stone_keep', 0.25) ||
+      hasKnowledge(village.knowledge, 'high_stone_keep', 0.28)
+    const stoneSurplus = village.surplus.stone ?? 0
+    const prosperous =
+      (village.prosperity ?? 0) >= 42 ||
+      (village.standardOfLiving ?? 0) >= 0.4 ||
+      stoneSurplus >= 0.7 ||
+      coins >= 3
+    const threatened =
+      wolvesNear ||
+      dangerMem ||
+      fear > 0.28 ||
+      safety > 0.32 ||
+      (village.recentDeaths ?? 0) > 0.15 ||
+      (village.security ?? 0.5) < 0.48
+    const midSettled = village.memberIds.length >= 3 && (v.hasHome || village.memberIds.length >= 5)
+    const wantsKeepUpgrade = keepKnown || (stackKnown && prosperous)
+    const alreadyKeep = villageHasDoneKeep(state, village.id)
+
+    // Threat → palissade / fort even before stone walls exist.
+    if (threatened && midSettled && (village.wallTier !== 'stone' || !alreadyKeep)) {
+      const baseScale = village.memberIds.length >= 6 ? 0.55 : 0.38
+      const stoneBias = stone >= wood || keepKnown || stackKnown || stoneSurplus > 0.5 ? 0.78 : 0.48
+      return intentFromReasons(
+        [wolvesNear || fear > 0.35 ? 'loups / menace' : 'sécurité du village', 'fortifier'],
+        {
+          purposes: ['fortify'],
+          scale: keepKnown ? Math.min(1, baseScale + 0.28) : stackKnown ? Math.min(1, baseScale + 0.12) : baseScale,
+          wood: stoneBias > 0.6 ? 0.28 : 0.58,
+          stone: stoneBias,
+        },
+      )
+    }
+
+    // Wealth / tech → stone keep / towers even after a wood enceinte.
+    if (
+      midSettled &&
+      !alreadyKeep &&
+      (wantsKeepUpgrade || (prosperous && (stone >= 2 || stoneSurplus >= 0.55 || stackKnown))) &&
+      (keepKnown || stackKnown || prosperous)
+    ) {
+      return intentFromReasons(
+        [
+          keepKnown ? 'technique du donjon' : stackKnown ? 'maçonnerie haute' : 'prospérité',
+          'keep / fort de pierre',
+        ],
+        {
+          purposes: ['fortify'],
+          scale: keepKnown ? 0.78 : stackKnown ? 0.62 : 0.5,
+          wood: 0.22,
+          stone: 0.85,
+        },
+      )
     }
   }
 
@@ -131,8 +190,13 @@ export function maybeProposeConstruction(
   mind: CognitiveState,
   rng: () => number,
 ): number | null {
-  if ((state.tick + v.id * 7) % 11 !== 0) return null
-  if (rng() > 0.72 && mind.needs.safety < 0.55 && mind.needs.status < 0.5) return null
+  if ((state.tick + v.id * 7) % 9 !== 0) return null
+  // Fortify / status drives pass the soft RNG gate more often.
+  const safetyPush = mind.needs.safety >= 0.3 || mind.emotions.fear >= 0.28
+  const statusPush = mind.needs.status >= 0.4
+  if (rng() > 0.82 && !safetyPush && !statusPush && mind.needs.safety < 0.55 && mind.needs.status < 0.5) {
+    return null
+  }
 
   const existing = pickProjectForVillager(state, v)
   if (existing && (existing.ownerId === v.id || existing.villageId === v.villageId)) {
@@ -159,6 +223,11 @@ export function maybeProposeConstruction(
   if ((intent.purposes.includes('mine') || intent.purposes.includes('mining_access')) && ore && (ore.x !== 0 || ore.y !== 0)) {
     nearX = ore.x
     nearY = ore.y
+  }
+  // Offset fort slightly from plaza so houses don't block the plot.
+  if (intent.purposes.includes('fortify')) {
+    nearX += 10 + (v.id % 5)
+    nearY += 8 + ((v.id * 3) % 5)
   }
 
   const project = enqueueBuildProject(state, intent, {

@@ -1,3 +1,4 @@
+import { tickBandits } from './bandits'
 import { HOUSE_SHAPES } from './architecture'
 import {
   tickCombat,
@@ -428,12 +429,16 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
     horses,
     boats: [],
     wolves,
+    bandits: [],
+    bands: [],
     villages: [],
     nextId,
     nextVillageId: 1,
+    nextBandId: 1,
     births: 0,
     deaths: 0,
     deathsByWolf: 0,
+    deathsByBandit: 0,
     bridges: 0,
     thefts: 0,
     brawls: 0,
@@ -447,6 +452,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       firstRoad: false,
       firstMill: false,
       firstPort: false,
+      firstMarket: false,
       firstBoatVoyage: false,
       firstBirth: false,
       firstMarriage: false,
@@ -455,11 +461,19 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       firstRegionalHub: false,
       firstStorm: false,
       firstMasterwork: false,
+      firstCreed: false,
+      firstShrine: false,
+      firstRitual: false,
+      firstBandits: false,
+      firstKeep: false,
+      firstRealm: false,
     },
     circles: [],
     nextCircleId: 1,
     rumors: [],
     nextRumorId: 1,
+    polities: [],
+    nextPolityId: 1,
     projects: [],
     nextProjectId: 1,
     families: [],
@@ -546,6 +560,7 @@ export function stepSimulation(state: SimState): SimState {
     if (w.alive) tickWolf(state, w, stepRng)
   }
   tickCombat(state, stepRng)
+  tickBandits(state, stepRng)
   if (state.tick % 3 === 0) {
     tickWolfReproduction(state)
     tickHorseBreeding(state)
@@ -571,6 +586,11 @@ export function stepSimulation(state: SimState): SimState {
     state.horses = state.horses.filter((h) => h.alive)
     state.wolves = state.wolves.filter((w) => w.alive)
     state.boats = state.boats.filter((b) => b.alive)
+    state.bandits = state.bandits.filter((b) => b.alive)
+    for (const band of state.bands) {
+      band.memberIds = band.memberIds.filter((id) => state.bandits.some((b) => b.id === id && b.alive))
+    }
+    state.bands = state.bands.filter((b) => b.memberIds.length > 0)
     const aliveIds = new Set<number>()
     for (let i = 0; i < state.villagers.length; i++) aliveIds.add(state.villagers[i].id)
     for (const village of state.villages) {
@@ -594,6 +614,7 @@ export function computeStats(state: SimState): SimStats {
   let carts = 0
   let boats = 0
   let ports = 0
+  let markets = 0
   let tradeRunsTotal = 0
   let totalCoins = 0
   let totalBread = 0
@@ -606,6 +627,7 @@ export function computeStats(state: SimState): SimStats {
   let naturalCover = 0
   let villagers = 0
   let wolves = 0
+  let bandits = 0
   const professions: Record<Profession, number> = {
     none: 0,
     forager: 0,
@@ -627,6 +649,7 @@ export function computeStats(state: SimState): SimStats {
 
   for (const s of state.sheep) if (s.alive) sheep++
   for (const w of state.wolves) if (w.alive) wolves++
+  for (const b of state.bandits) if (b.alive) bandits++
   for (const h of state.horses) {
     if (!h.alive) continue
     if (h.tamed) horsesTamed++
@@ -636,6 +659,7 @@ export function computeStats(state: SimState): SimStats {
   for (const vg of state.villages) {
     if (vg.hasMill) mills++
     if (vg.hasPort) ports++
+    if (vg.hasMarket) markets++
     tradeRunsTotal += vg.tradeRuns
     naturalCover += vg.naturalCover
   }
@@ -688,8 +712,11 @@ export function computeStats(state: SimState): SimStats {
     carts,
     boats,
     ports,
+    markets,
     tradeRunsTotal,
     wolves,
+    bandits,
+    bands: state.bands.length,
     totalCoins,
     totalBread,
     houses,
@@ -704,6 +731,7 @@ export function computeStats(state: SimState): SimStats {
     births: state.births,
     deaths: state.deaths,
     deathsByWolf: state.deathsByWolf ?? 0,
+    deathsByBandit: state.deathsByBandit ?? 0,
     thefts: state.thefts,
     brawls: state.brawls,
     friendships: Math.round(friendships / 2),
@@ -716,5 +744,10 @@ export function computeStats(state: SimState): SimStats {
     rumors: pol.rumors,
     leadingCircle: pol.leadingName,
     leadingLegitimacy: pol.leadingLegitimacy,
+    polities: pol.polities,
+    chiefdoms: pol.chiefdoms,
+    kingdoms: pol.kingdoms,
+    castles: pol.castles,
+    polityRows: pol.polityRows,
   }
 }

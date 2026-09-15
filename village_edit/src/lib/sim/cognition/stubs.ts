@@ -4,7 +4,7 @@
  */
 
 import { cultureSimilarity, deriveCultureTag, ensureCultureState, seedCultureFeaturesFromParents } from '../ethnos'
-import { circlesOf, politicsOf } from '../politics'
+import { CREED_FR, circlesOf, logCause, politicsOf } from '../politics'
 import { distance } from '../world'
 import type { SimState, TaskKind, Villager } from '../types'
 import { upsertSemantic } from './memory'
@@ -180,14 +180,18 @@ export function tickCultureMutation(
 export function tickReligionDepth(state: SimState, mind: CognitiveState, v: Villager): void {
   const pol = politicsOf(v)
   const faith = circlesOf(state, v).filter((c) => c.kind === 'faith' || c.creed === 'piete')
-  if (faith.length === 0 && pol.beliefs.piety < 0.55) {
+  const vg = state.villages.find((g) => g.id === v.villageId)
+  if (faith.length === 0 && pol.beliefs.piety < 0.45 && !(vg && vg.hasShrine)) {
     mind.sacredConf = clamp01(mind.sacredConf * 0.98)
     return
   }
 
   let sx = mind.sacredX
   let sy = mind.sacredY
-  if (faith.length > 0) {
+  if (vg && vg.hasShrine && vg.shrineX >= 0) {
+    sx = vg.shrineX
+    sy = vg.shrineY
+  } else if (faith.length > 0) {
     const c = faith[0]
     let ax = 0
     let ay = 0
@@ -215,19 +219,29 @@ export function tickReligionDepth(state: SimState, mind: CognitiveState, v: Vill
   mind.sacredY = sy
   const near = distance(v.x, v.y, sx, sy) < 14
   const rite =
-    near && (v.task?.kind === 'socialise' || v.task?.kind === 'rest' || v.task?.kind === 'giveFood')
+    near &&
+    (v.task?.kind === 'socialise' ||
+      v.task?.kind === 'rest' ||
+      v.task?.kind === 'giveFood' ||
+      v.task?.kind === 'counsel')
   if (rite) {
     mind.sacredConf = clamp01(mind.sacredConf + 0.06 + pol.beliefs.piety * 0.04)
-    pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.008)
+    pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.01)
+    pol.creedWeight = clamp01(pol.creedWeight + 0.02)
     mind.emotions.stress = clamp01(mind.emotions.stress - 0.04)
     mind.emotions.affection = clamp01(mind.emotions.affection + 0.03)
     upsertSemantic(mind.semantic, 'good_forage', 'lieu de recueillement', mind.sacredConf, state.tick, sx, sy)
   } else {
-    mind.sacredConf = clamp01(mind.sacredConf + (near ? 0.01 : -0.01) * pol.beliefs.piety)
+    mind.sacredConf = clamp01(mind.sacredConf + (near ? 0.015 : -0.008) * Math.max(0.2, pol.beliefs.piety))
   }
 
-  if (pol.beliefs.piety > 0.7 && !pol.creed && pol.grievance < 0.35) {
-    pol.creedWeight = clamp01(pol.creedWeight + 0.015)
+  if (pol.beliefs.piety > 0.55 && !pol.creed) {
+    pol.creedWeight = clamp01(pol.creedWeight + 0.02)
+  }
+  if (mind.sacredConf > 0.45 && pol.beliefs.piety > 0.5 && !pol.creed) {
+    pol.creed = 'piete'
+    pol.creedWeight = Math.max(pol.creedWeight, 0.4)
+    logCause(state, `recueillement de ${v.name}`, `creed : « ${CREED_FR.piete} »`)
   }
 }
 
@@ -360,6 +374,7 @@ export function stubStatus(mind: CognitiveState): string {
   const topHabit = (Object.entries(mind.habits) as [TaskKind, number][]).sort((a, b) => b[1] - a[1])[0]
   if (topHabit && topHabit[1] > 0.2) bits.push(`habitude ${topHabit[0]}`)
   if (mind.sacredConf > 0.25) bits.push(`lieu sacré ${Math.round(mind.sacredConf * 100)}%`)
+  if (mind.livelihood?.roleTag === 'gourou') bits.push('gourou')
   if (mind.rivalId !== null) bits.push(`rival #${mind.rivalId}`)
   return bits.length ? bits.join(' · ') : 'habitudes / culture en formation'
 }

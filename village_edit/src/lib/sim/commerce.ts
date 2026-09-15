@@ -4,7 +4,7 @@ import { villageCarryingPressure } from './ecology'
 import { addToInventory, countOf, edibleValue, ITEM_MASS, removeFromInventory } from './inventory'
 import { boatCargoCapacityKg, CART_CARGO_KG, HORSE_PACK_KG } from './physicsScale'
 import { politicalPriceBias, refuseTradeWith, tradeRelationModifier, logCause } from './politics'
-import { isWornRoad } from './roads'
+import { isWornRoad, stampPlaza } from './roads'
 import {
   BASE_PRICES,
   RESOURCE_LABELS_LOG,
@@ -21,6 +21,9 @@ export const TRADE_COOLDOWN = 420
 export const MAX_TRADE_DIST = 520
 /** Ports unlock after a few real trade runs — coastal access alone is not enough. */
 export const PORT_TRADE_THRESHOLD = 2
+/** Markets stamp after completed caravans + worn roads — regional development, not task noise. */
+export const MARKET_TRADE_THRESHOLD = 2
+export const MARKET_ROAD_THRESHOLD = 8
 
 /**
  * Every resource a village can hold a surplus of, be priced on the open market, and actually
@@ -166,6 +169,7 @@ export function computeLaborBalance(state: SimState, village: Village): number {
     village.development * 0.55 +
     (village.hasMill ? 1.2 : 0) +
     (village.hasPort ? 1.4 : 0) +
+    (village.hasMarket ? 1.1 : 0) +
     (village.hasMine ? 1.6 : 0) +
     (village.wallTier !== 'none' ? 0.8 : 0) +
     fields * 0.35 +
@@ -192,10 +196,11 @@ export function computeDevelopment(state: SimState, village: Village): number {
   const infra =
     (village.hasMill ? 2.2 : 0) +
     (village.hasPort ? 2.8 : 0) +
+    (village.hasMarket ? 2.4 : 0) +
     (village.hasMine ? 2.0 : 0) +
     (village.wallTier === 'stone' ? 2.2 : village.wallTier === 'wood' ? 1.1 : 0) +
     Math.min(6, roads * 0.08) +
-    Math.min(3, village.tradeRuns * 0.05)
+    Math.min(4, village.tradeRuns * 0.08)
   return Math.round((Math.log1p(pop) * 3.2 + infra + prod * 0.65 + village.cohesion * 1.2) * 10) / 10
 }
 
@@ -235,17 +240,22 @@ function villageFoodSurplus(village: Village): number {
   )
 }
 
-/** Local safety: walls, natural cover, fewer nearby wolves. */
+/** Local safety: walls, natural cover, fewer nearby wolves / brigands. */
 function villageSafety(state: SimState, village: Village): number {
   let wolves = 0
   for (const w of state.wolves) {
     if (w.alive && distance(w.x, w.y, village.centerX, village.centerY) < 45) wolves++
   }
+  let bandits = 0
+  for (const b of state.bandits ?? []) {
+    if (b.alive && distance(b.x, b.y, village.centerX, village.centerY) < 45) bandits++
+  }
   const wall =
     village.wallTier === 'stone' ? 1 : village.wallTier === 'wood' ? 0.55 : village.perimeter.length > 0 ? 0.25 : 0
   const cover = clampNum(village.naturalCover / 24, 0, 0.45)
   const wolfHit = clampNum(wolves * 0.18, 0, 0.85)
-  return clampNum(0.35 + wall + cover - wolfHit + (village.wallHealth > 0 ? 0.1 : 0), 0, 1.4)
+  const banditHit = clampNum(bandits * 0.22, 0, 0.9)
+  return clampNum(0.35 + wall + cover - wolfHit - banditHit + (village.wallHealth > 0 ? 0.1 : 0), 0, 1.4)
 }
 
 /** Soft security (0–1): Bannerlord — walls vs wolves, theft, recent deaths. */
@@ -345,6 +355,7 @@ export function computeVillageProsperity(state: SimState, village: Village): num
     links * 3.5 +
     (village.hasMill ? 6 : 0) +
     (village.hasPort ? 8 : 0) +
+    (village.hasMarket ? 7 : 0) +
     (village.hasMine ? 5 : 0) -
     (village.recentDeaths ?? 0) * 4.5 -
     (village.recentThefts ?? 0) * 3.2 -
@@ -405,6 +416,7 @@ export function villageAttractiveness(state: SimState, village: Village): number
     food * 7.5 +
     (village.hasMill ? 14 : 0) +
     (village.hasPort ? 20 : 0) +
+    (village.hasMarket ? 16 : 0) +
     (village.hasMine ? 8 : 0) +
     Math.min(42, roads * 0.55) +
     Math.log1p(pop) * 16 +
@@ -527,6 +539,9 @@ export function tickUrbanNetwork(state: SimState) {
     if (village.recentThefts === undefined) village.recentThefts = 0
     if (village.specialty === undefined) village.specialty = 'mixed'
     if (village.lastProsperLogTick === undefined) village.lastProsperLogTick = -9999
+    if (village.hasMarket === undefined) village.hasMarket = false
+    if (village.marketX === undefined) village.marketX = -1
+    if (village.marketY === undefined) village.marketY = -1
 
     // Decay crime / casualty pressure (recovery when peaceful).
     village.recentDeaths = Math.max(0, village.recentDeaths * 0.88 - 0.08)
@@ -534,6 +549,7 @@ export function tickUrbanNetwork(state: SimState) {
 
     village.specialty = detectVillageSpecialty(state, village)
     village.security = villageSecurity(state, village)
+    tryFoundMarket(state, village)
     village.development = computeDevelopment(state, village)
     village.laborBalance = computeLaborBalance(state, village)
 
@@ -859,6 +875,8 @@ export function conductTrade(
 
   const fulfilment = sourced / wanted
   const portBonus = (homeVillage?.hasPort ? 1.45 : 1) * (destVillage.hasPort ? 1.45 : 1)
+  const marketBonus =
+    (homeVillage?.hasMarket ? 1.18 : 1) * (destVillage.hasMarket ? 1.12 : 1)
   const millBonus =
     (resource === 'flour' || resource === 'bread' || resource === 'wheat') && homeVillage?.hasMill ? 1.2 : 1
   const market = state.prices[resource] ?? BASE_PRICE[resource] ?? 3
@@ -866,6 +884,7 @@ export function conductTrade(
   const reward = Math.round(
     Math.max(2, Math.min(72, sourced * market * (0.55 + 0.45 * fulfilment) + 2)) *
       portBonus *
+      marketBonus *
       millBonus *
       professionBonus *
       (trader.hasCart ? 1.2 : 1) *
@@ -879,6 +898,13 @@ export function conductTrade(
   if (homeVillage && sourced > 0) {
     homeVillage.prosperity = clampNum((homeVillage.prosperity ?? 35) + 0.35 + sourced * 0.04, 0, 100)
   }
+  // Trade windfalls concentrate coin with the caravaner → regional inequality pressure.
+  if (homeVillage && reward >= 8) {
+    homeVillage.inequalityStress = clamp01((homeVillage.inequalityStress ?? 0) + 0.04 + reward * 0.0015)
+  }
+  if (destVillage && sourced > 0) {
+    destVillage.prosperity = clampNum((destVillage.prosperity ?? 35) + 0.2 + sourced * 0.02, 0, 100)
+  }
 
   if (homeVillage) {
     const key = routeKey(homeVillage.id, destVillage.id)
@@ -887,7 +913,40 @@ export function conductTrade(
       logEvent(state, `${trader.name} ouvre une route commerciale (${RESOURCE_LABELS_LOG[resource]})`)
     }
     diffuseVillageKnowledge(state, homeVillage, destVillage, () => Math.random())
+    tryFoundMarket(state, homeVillage)
   }
+  tryFoundMarket(state, destVillage)
+}
+
+/** Whether this village has earned a market plaza: completed trade + road connectivity. */
+export function marketEligible(state: SimState, village: Village): boolean {
+  if (village.hasMarket) return false
+  if (village.tradeRuns < MARKET_TRADE_THRESHOLD) return false
+  const roads = countNearbyRoadTiles(state, village.centerX, village.centerY, 14)
+  return roads >= MARKET_ROAD_THRESHOLD || village.tradeRuns >= MARKET_TRADE_THRESHOLD + 2
+}
+
+/** Stamp a market plaza once trade + roads justify regional development. */
+export function tryFoundMarket(state: SimState, village: Village): boolean {
+  if (village.hasMarket === undefined) village.hasMarket = false
+  if (village.marketX === undefined) village.marketX = -1
+  if (village.marketY === undefined) village.marketY = -1
+  if (!marketEligible(state, village)) return false
+  const mx = village.centerX
+  const my = village.centerY
+  stampPlaza(state.grid, mx, my)
+  village.hasMarket = true
+  village.marketX = mx
+  village.marketY = my
+  village.development = (village.development ?? 1) + 1.8
+  village.prosperity = clampNum((village.prosperity ?? 35) + 4, 0, 100)
+  village.attractiveness = villageAttractiveness(state, village)
+  logEvent(state, `Un marché s'installe au village n°${village.id} (routes et caravanes)`)
+  if (!state.milestones.firstMarket) {
+    state.milestones.firstMarket = true
+    logEvent(state, `Premier marché fondé`)
+  }
+  return true
 }
 
 /** Whether this village has earned a port: enough trade, and water close enough to build on. */

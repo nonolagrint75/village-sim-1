@@ -12,6 +12,7 @@ import {
 import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
 import { type BiomeId } from '@/lib/sim/biomeVisual'
 import {
+  drawBanditSprite,
   drawEmbarkedVillagerSprite,
   drawHorseSprite,
   drawSheepSprite,
@@ -25,10 +26,13 @@ import {
   type DirtyFrame,
   type DrawFrame,
   type SelectedVillager,
+  type UiBandRow,
   type UiCountRow,
   type UiFrame,
   type UiGroupRow,
   type UiLineageRow,
+  type UiProjectRow,
+  type UiReligionSiteRow,
 } from '@/lib/sim/snapshot'
 import { DEFAULT_SIM_CONFIG, type SimConfig } from '@/lib/sim/simConfig'
 import { setWorldSize, type SimStats } from '@/lib/sim/types'
@@ -84,6 +88,7 @@ export function SimulationCanvas() {
     horses: [],
     boats: [],
     wolves: [],
+    bandits: [],
     villages: [],
     tradeLinks: [],
     lights: [],
@@ -116,6 +121,9 @@ export function SimulationCanvas() {
   const [lineages, setLineages] = useState<UiLineageRow[]>([])
   const [cultures, setCultures] = useState<UiCountRow[]>([])
   const [creeds, setCreeds] = useState<UiCountRow[]>([])
+  const [projects, setProjects] = useState<UiProjectRow[]>([])
+  const [bands, setBands] = useState<UiBandRow[]>([])
+  const [religionSites, setReligionSites] = useState<UiReligionSiteRow[]>([])
   const [fps, setFps] = useState(0)
   const [simTps, setSimTps] = useState(0)
   const [worldReady, setWorldReady] = useState(false)
@@ -286,6 +294,9 @@ export function SimulationCanvas() {
         if (frame.lineages && frame.lineages.length > 0) setLineages(frame.lineages)
         if (frame.cultures && frame.cultures.length > 0) setCultures(frame.cultures)
         if (frame.creeds && frame.creeds.length > 0) setCreeds(frame.creeds)
+        if (frame.projects) setProjects(frame.projects)
+        if (frame.bands) setBands(frame.bands)
+        if (frame.religionSites) setReligionSites(frame.religionSites)
         setSimTps(frame.ticksPerSec)
         // Ignore stale UI packs from before a newer local click/deselect.
         // Do not clear local selection when selected is null — packSelected can fail
@@ -368,7 +379,7 @@ export function SimulationCanvas() {
       ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
     }
 
-    const { villagers, sheep, horses, boats, wolves } = viewRef.current
+    const { villagers, sheep, horses, boats, wolves, bandits } = viewRef.current
     const tileS = TILE_PX * zoom
     const terrain = terrainRef.current
     const amount = amountRef.current
@@ -501,6 +512,14 @@ export function SimulationCanvas() {
       const sy = ty(w.y)
       if (off(sx, sy)) continue
       drawWolfSprite(ctx, sx, sy, size, simpleSprites, shadows)
+    }
+
+    for (const b of bandits ?? []) {
+      if (!b.alive) continue
+      const sx = tx(b.x)
+      const sy = ty(b.y)
+      if (off(sx, sy)) continue
+      drawBanditSprite(ctx, sx, sy, size, b.phase, simpleSprites, shadows)
     }
 
     for (const v of villagers) {
@@ -704,6 +723,9 @@ export function SimulationCanvas() {
     setLineages([])
     setCultures([])
     setCreeds([])
+    setProjects([])
+    setBands([])
+    setReligionSites([])
     setStats(EMPTY_STATS)
     setPlaying(!config.startPaused)
     workerRef.current?.postMessage({ type: 'select', id: null })
@@ -897,6 +919,9 @@ export function SimulationCanvas() {
           lineages={lineages}
           cultures={cultures}
           creeds={creeds}
+          projects={projects}
+          bands={bands}
+          religionSites={religionSites}
           selectedId={selectedId}
           selected={selected}
           nameOf={nameOf}

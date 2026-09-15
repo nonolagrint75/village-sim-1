@@ -4,7 +4,7 @@
  */
 import type { Memory } from '../social'
 import { activeNormsFor, circlesOf } from '../politics'
-import type { SimState, Task, TaskKind, Villager, Wolf } from '../types'
+import type { Bandit, SimState, Task, TaskKind, Villager, Wolf } from '../types'
 import { distance, isNight } from '../world'
 import { knownSpots, upsertSemantic } from './memory'
 import type { CognitiveState } from './types'
@@ -294,9 +294,32 @@ export function noteWolfDanger(mind: CognitiveState, wolf: Wolf, tick: number, w
   )
 }
 
-/** Combat heat: wolf near, or allies already fighting/fleeing a known wolf. */
-export function nearestTacticalThreat(state: SimState, v: Villager, radius: number): Wolf | null {
-  let best: Wolf | null = null
+export function noteBanditDanger(mind: CognitiveState, bandit: Bandit, tick: number, weight = 1): void {
+  upsertSemantic(
+    mind.semantic,
+    'bandits_near',
+    'brigands dans les parages',
+    Math.min(1, 0.55 + weight * 0.2),
+    tick,
+    bandit.x,
+    bandit.y,
+  )
+  upsertSemantic(
+    mind.semantic,
+    'danger_spot',
+    'endroit dangereux',
+    Math.min(1, 0.45 + weight * 0.25),
+    tick,
+    bandit.x,
+    bandit.y,
+  )
+}
+
+export type TacticalThreat = { id: number; x: number; y: number; kind: 'wolf' | 'bandit' }
+
+/** Combat heat: wolf or raiding brigand near, or allies already fighting one. */
+export function nearestTacticalThreat(state: SimState, v: Villager, radius: number): TacticalThreat | null {
+  let best: TacticalThreat | null = null
   let bestD = radius * radius
   for (const w of state.wolves) {
     if (!w.alive) continue
@@ -305,7 +328,19 @@ export function nearestTacticalThreat(state: SimState, v: Villager, radius: numb
     const d = dx * dx + dy * dy
     if (d <= bestD) {
       bestD = d
-      best = w
+      best = { id: w.id, x: w.x, y: w.y, kind: 'wolf' }
+    }
+  }
+  const bandits = state.bandits ?? []
+  for (const b of bandits) {
+    if (!b.alive) continue
+    const sense = b.phase === 'raid' ? radius : radius * 0.55
+    const dx = b.x - v.x
+    const dy = b.y - v.y
+    const d = dx * dx + dy * dy
+    if (d <= sense * sense && d <= bestD) {
+      bestD = d
+      best = { id: b.id, x: b.x, y: b.y, kind: 'bandit' }
     }
   }
   if (best) return best
@@ -319,7 +354,9 @@ export function nearestTacticalThreat(state: SimState, v: Villager, radius: numb
     if (dx * dx + dy * dy > senseR2) continue
     if (o.task.targetId === null) continue
     const w = state.wolves.find((ww) => ww.id === o.task!.targetId && ww.alive)
-    if (w) return w
+    if (w) return { id: w.id, x: w.x, y: w.y, kind: 'wolf' }
+    const b = bandits.find((bb) => bb.id === o.task!.targetId && bb.alive)
+    if (b) return { id: b.id, x: b.x, y: b.y, kind: 'bandit' }
   }
   return null
 }
