@@ -61,7 +61,14 @@ import {
   type Wolf,
 } from './types'
 import { createClimate, sampleBiome, tickClimate } from './climate'
-import { FAUNA_WEIGHT_MAX, faunaSpawnWeight, biomeSettlementScore, type FaunaKind } from './biomes'
+import {
+  BiomeId,
+  FAUNA_WEIGHT_MAX,
+  faunaSpawnWeight,
+  biomeSettlementScore,
+  biomeIsFoundable,
+  type FaunaKind,
+} from './biomes'
 import { applySimConfig, type SimConfigInput } from './simConfig'
 import { createWorldGrid, makeRng, randomWalkableTile, randomWalkableTileNear, resourceDensity } from './world'
 
@@ -106,9 +113,15 @@ function pickFoundingSite(
 ): { x: number; y: number } {
   let best: { x: number; y: number } | null = null
   let bestScore = -Infinity
-  for (let i = 0; i < FOUNDING_SITE_CANDIDATES; i++) {
+  let bestTemperate: { x: number; y: number } | null = null
+  let bestTemperateScore = -Infinity
+  // Extra samples so temperate farmland isn't lost to alpine/desert density spikes.
+  const attempts = FOUNDING_SITE_CANDIDATES * 3
+  for (let i = 0; i < attempts; i++) {
     const candidate = randomWalkableTile(grid, rng)
-    const biomeMul = biomeSettlementScore(sampleBiome(climate, candidate.x, candidate.y))
+    const biome = sampleBiome(climate, candidate.x, candidate.y)
+    if (biome === BiomeId.ocean) continue
+    const biomeMul = biomeSettlementScore(biome)
     const score =
       (resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
         resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
@@ -118,8 +131,12 @@ function pickFoundingSite(
       bestScore = score
       best = candidate
     }
+    if (biomeIsFoundable(biome) && score > bestTemperateScore) {
+      bestTemperateScore = score
+      bestTemperate = candidate
+    }
   }
-  return best ?? randomWalkableTile(grid, rng)
+  return bestTemperate ?? best ?? randomWalkableTile(grid, rng)
 }
 
 /**
@@ -135,10 +152,32 @@ function pickFaunaSpawnTile(
   const maxW = FAUNA_WEIGHT_MAX[kind]
   for (let attempt = 0; attempt < 120; attempt++) {
     const spot = randomWalkableTile(grid, rng)
-    const w = faunaSpawnWeight(sampleBiome(climate, spot.x, spot.y), kind)
+    const biome = sampleBiome(climate, spot.x, spot.y)
+    if (biome === BiomeId.ocean) continue
+    const w = faunaSpawnWeight(biome, kind)
     if (rng() * maxW <= w) return spot
   }
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const spot = randomWalkableTile(grid, rng)
+    if (sampleBiome(climate, spot.x, spot.y) !== BiomeId.ocean) return spot
+  }
   return randomWalkableTile(grid, rng)
+}
+
+function pickFaunaNear(
+  grid: ReturnType<typeof createWorldGrid>,
+  climate: NonNullable<SimState['climate']>,
+  rng: () => number,
+  kind: FaunaKind,
+  nearX: number,
+  nearY: number,
+  radius: number,
+): { x: number; y: number } {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const spot = randomWalkableTileNear(grid, rng, nearX, nearY, radius)
+    if (sampleBiome(climate, spot.x, spot.y) !== BiomeId.ocean) return spot
+  }
+  return pickFaunaSpawnTile(grid, climate, rng, kind)
 }
 
 export function createSimulation(seed = 1, configInput?: SimConfigInput): SimState {
@@ -286,7 +325,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   const herdCentres = Array.from({ length: HORSE_HERDS }, () => pickFaunaSpawnTile(grid, climate, rng, 'horse'))
   for (let i = 0; i < cfg.horseCount; i++) {
     const base = herdCentres[i % HORSE_HERDS]
-    const spot = randomWalkableTileNear(grid, rng, base.x, base.y, 10)
+    const spot = pickFaunaNear(grid, climate, rng, 'horse', base.x, base.y, 10)
     horses.push(makeHorse(nextId++, spot.x, spot.y, 3 + rng()))
   }
 

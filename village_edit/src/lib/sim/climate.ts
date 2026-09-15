@@ -212,16 +212,27 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
       moisture[i] = clamp(mSum * inv, 0, 1)
       waterFrac[i] = wCount * inv
       coast[i] = clamp(coastHits * inv, 0, 1)
+      // Prefer land biomes: ocean votes from WATER tiles used to dominate coastal
+      // cells and then label walkable shore as océan (farm/forage ≈ 0).
       let bestB: BiomeIdT = BiomeId.grassland
       let bestN = -1
+      let bestLandB: BiomeIdT = BiomeId.grassland
+      let bestLandN = -1
       for (let b = 0; b < BIOME_COUNT; b++) {
-        if (biomeVotes[b] > bestN) {
-          bestN = biomeVotes[b]
+        const n = biomeVotes[b]
+        if (n > bestN) {
+          bestN = n
           bestB = b as BiomeIdT
         }
+        if (b !== BiomeId.ocean && n > bestLandN) {
+          bestLandN = n
+          bestLandB = b as BiomeIdT
+        }
       }
-      biome[i] = bestB
-      biomeTempOffset[i] = biomeProfile(bestB).tempOffsetC
+      const landFrac = 1 - waterFrac[i]
+      const pick = landFrac >= 0.28 && bestLandN > 0 ? bestLandB : bestB
+      biome[i] = pick
+      biomeTempOffset[i] = biomeProfile(pick).tempOffsetC
     }
   }
 
@@ -494,14 +505,18 @@ export function sampleWaterFrac(climate: ClimateState, x: number, y: number): nu
 
 /**
  * Nearest climate-cell biome (not bilinear — IDs are categorical).
- * Prefer this over re-classifying when the lattice is the shared source of truth.
+ * Ocean on low-waterFrac cells is treated as a mislabel → live classify.
  */
 export function sampleBiome(climate: ClimateState, x: number, y: number): BiomeIdT {
   const fx = clamp(x / climate.cell, 0, climate.res - 1)
   const fy = clamp(y / climate.cell, 0, climate.res - 1)
   const cx = Math.min(climate.res - 1, Math.max(0, Math.floor(fx)))
   const cy = Math.min(climate.res - 1, Math.max(0, Math.floor(fy)))
-  const id = climate.biome[cellIndex(climate.res, cx, cy)] as BiomeIdT
+  const i = cellIndex(climate.res, cx, cy)
+  const id = climate.biome[i] as BiomeIdT
+  if (id === BiomeId.ocean && climate.waterFrac[i] < 0.55) {
+    return classifyBiomeAt(climate, x, y)
+  }
   if (id >= 0 && id < BIOME_COUNT) return id
   return BiomeId.grassland
 }

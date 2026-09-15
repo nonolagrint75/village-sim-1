@@ -356,7 +356,9 @@ export function classifyBiome(s: BiomeSamples): BiomeId {
   const { tempC: t, moisture: m, elev01: e, coast01: c, waterFrac: w } = s
   if (w > 0.55) return BiomeId.ocean
   if (c > 0.42 && w > 0.06) return BiomeId.coastal
-  if (e > 0.78) return BiomeId.alpine
+  // Peaks only when cold enough — warm high plateaus stay scrub/grass instead of blanketing alpine.
+  if (e > 0.92 && t < 8) return BiomeId.alpine
+  if (e > 0.97 && t < 14) return BiomeId.alpine
   if (t < -4) return BiomeId.tundra
   if (t < 2 && m < 0.38) return BiomeId.tundra
   if (t < 5 && m >= 0.38) return BiomeId.boreal
@@ -389,16 +391,23 @@ export function biomeSettlementScore(id: BiomeId): number {
     case BiomeId.savanna:
       return 0.8
     case BiomeId.boreal:
-      return 0.55
+      return 0.45
     case BiomeId.alpine:
-      return 0.4
+      return 0.12
     case BiomeId.desert:
-      return 0.35
+      return 0.1
     case BiomeId.tundra:
-      return 0.25
+      return 0.08
+    case BiomeId.ocean:
+      return 0.02
     default:
-      return 0.4
+      return 0.35
   }
+}
+
+/** True for biomes that can sustain a Nouveau-monde temperate-ish start. */
+export function biomeIsFoundable(id: BiomeId): boolean {
+  return biomeSettlementScore(id) >= 0.75 && biomeProfile(id).farm >= 0.5
 }
 
 export function biomeColdBias(id: BiomeId): number {

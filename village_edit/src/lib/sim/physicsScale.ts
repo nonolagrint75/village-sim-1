@@ -201,9 +201,10 @@ export function bodyMassKgFromPhenotype(ph: Phenotype): number {
   return bmi * h * h * meta
 }
 
-/** Surface corporelle soft (Mosteller) m² — thermo. */
+/** Surface corporelle soft (Mosteller) m² — thermo. Height arg is metres; Mosteller needs cm. */
 export function bodySurfaceM2(massKg: number, heightM: number): number {
-  return Math.sqrt((massKg * heightM) / 3600)
+  const heightCm = Math.max(50, heightM * 100)
+  return Math.sqrt((massKg * heightCm) / 3600)
 }
 
 /**

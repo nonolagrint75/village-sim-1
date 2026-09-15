@@ -509,7 +509,10 @@ function atHomeShelter(v: Villager): boolean {
 function warmthMultiplier(v: Villager, state: SimState): number {
   const temp = sampleTempC(state.climate, v.x, v.y)
   const biomeCold = biomeColdBias(sampleBiome(state.climate, v.x, v.y))
-  const cold = Math.min(1, coldStress01(temp) + (atHomeShelter(v) ? 0 : biomeCold * 0.85))
+  // Only layer biome chill when air is already cool — otherwise temperate forests
+  // with residual coldBias burn calories like tundra at 20 °C.
+  const airCold = coldStress01(temp)
+  const cold = Math.min(1, airCold + (atHomeShelter(v) || airCold < 0.08 ? 0 : biomeCold * 0.55))
   const heat = heatStress01(temp)
   const rain = !atHomeShelter(v) ? sampleRain(state.climate, v.x, v.y) : 0
   const massKg = bodyMassKgFromPhenotype(v.phenotype)
@@ -1669,10 +1672,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   if (bestEdible(v)) {
     // Eat urge ramps only when hunger is real — mild hunger must not drown craft/build/gather.
     const eatUrge =
-      v.hunger < 1.35
-        ? Math.max(starving * 260, 70 + (1.35 - v.hunger) * 110)
-        : v.hunger < 2.1
-          ? starving * 120 + (2.1 - v.hunger) * 35
+      v.hunger < 1.6
+        ? Math.max(starving * 280, 90 + (1.6 - v.hunger) * 130)
+        : v.hunger < 2.3
+          ? starving * 140 + (2.3 - v.hunger) * 45
           : starving * 55
     if (eatUrge > 8) {
       const table = eatSpot(v.furnitureQueue, v.homeLayout)
@@ -2117,7 +2120,11 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       if (veg) add('clearLand', veg.x, veg.y, (36 + p.ambition * 12) * reach(v, veg.x, veg.y))
       else if (bare) {
         const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
-        add('sowField', bare.x, bare.y, (30 + (season === 'spring' ? 45 : 20) + p.ambition * 15) * tFac * reach(v, bare.x, bare.y))
+        // Stronger spring sow urge — fields were claimed but never sown under rest/social lock.
+        const sowUrge =
+          (55 + (season === 'spring' ? 70 : 30) + p.ambition * 20 + (famine ? 40 : 0) + starving * 50) *
+          Math.max(0.45, tFac)
+        add('sowField', bare.x, bare.y, sowUrge * reach(v, bare.x, bare.y))
       }
     }
   }
@@ -2390,7 +2397,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       (1 - v.stamina / STAMINA_MAX) * 50 +
       (!atHomeShelter(v) && cold > 0.25 ? 50 : 0) +
       (bed && v.bedCount > 0 ? 18 : 0)
-    add('rest', restX, restY, restNeed * reach(v, restX, restY))
+    // Don't nap while carrying food and getting hungry — that was the mid-run starve path.
+    const hungryWithFood = v.hunger < 2.2 && bestEdible(v)
+    const restScore = hungryWithFood ? restNeed * 0.22 : restNeed
+    if (restScore > 6) add('rest', restX, restY, restScore * reach(v, restX, restY))
   } else if (exhausted || tired || cold > 0.4 || heat > 0.5) {
     // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
     add('rest', v.x, v.y, (exhausted ? 70 : 32) + (night ? 28 : 0) + cold * 40 + heat * 25)
@@ -3520,11 +3530,23 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const inChambre = v.homeLayout ? findRoomAt(v.homeLayout, v.x, v.y)?.kind === 'chambre' : false
       const bedBonus = v.bedCount > 0 && sheltered ? STAMINA_REST_BED : sheltered ? STAMINA_REST_HOME : STAMINA_IDLE * 1.6
       recoverStamina(v, bedBonus * (inChambre ? 1.15 : 1))
+      // Nibble while resting if genuinely hungry — avoids rest→starve with food in the bag.
+      if (v.hunger < 1.8) {
+        const snack = bestEdible(v)
+        if (snack) {
+          removeFromInventory(v.inventory, snack, 1)
+          const fromKcal = hungerRestoreFromFood(snack)
+          const legacy = NUTRITION[snack] ?? 0.5
+          v.hunger = Math.min(HUNGER_MAX, v.hunger + Math.max(legacy, fromKcal) * 0.85)
+        }
+      }
       if (sheltered && v.hunger > 0.5) {
         // Quiet recovery near the hearth — slight hunger cost of resting idle.
         if (state.season === 'winter') recoverStamina(v, 0.02)
       }
       const need = isNight(state.tick) ? 30 : v.stamina < STAMINA_TIRED ? 50 : 40
+      // Cut rest short when hungry with food so eat/farm can resume.
+      if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 8) return false
       return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.05
     }
     case 'socialise': {
@@ -3689,7 +3711,8 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
   // Cold / heat / wet outdoors drain stamina; hearth recovers a little even without a rest task.
   {
     const air = sampleTempC(state.climate, v.x, v.y)
-    const cold = coldStress01(air)
+    const biome = sampleBiome(state.climate, v.x, v.y)
+    const cold = Math.min(1, coldStress01(air) + (atHomeShelter(v) ? 0 : biomeColdBias(biome) * 0.85))
     const heat = heatStress01(air)
     const rain = sampleRain(state.climate, v.x, v.y)
     if (!atHomeShelter(v) && !v.embarked && (cold > 0.05 || heat > 0.05 || rain > 0.4)) {
@@ -3876,12 +3899,12 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'fish' &&
     v.task.kind !== 'harvestWheat'
   ) {
-    if (v.hunger < 1.15 && bestEdible(v)) {
+    if (v.hunger < 1.85 && bestEdible(v)) {
       stashInterruptedTask(v)
       setTask(v, 'eat', v.x, v.y)
       noteChosenAction(v, 'eat', 'faim — interruption')
     } else if (
-      v.hunger < 0.95 &&
+      v.hunger < 1.45 &&
       v.hasChest &&
       v.chestInventory &&
       edibleValue(v.chestInventory) > 0
@@ -3889,7 +3912,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       setTask(v, 'takeFromChest', v.chestX, v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
-    } else if (v.hunger < 0.55 || v.starveTimer > 12) {
+    } else if (v.hunger < 0.85 || v.starveTimer > 8) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
       stashInterruptedTask(v)
       v.task = null

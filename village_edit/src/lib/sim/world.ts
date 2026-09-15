@@ -484,7 +484,8 @@ function paintNaturalBiomes(
       const waterNear = waterCount > 0
       const shore = t === SAND || (waterNear && waterCount >= 2 && elevation[i] < seaLevel + 0.05)
       const biome = classifyBiome({
-        tempC: (temperature[i] - 0.5) * 40,
+        // 0..1 gen field → °C with cold poles and hot equator (tundra + desert both reachable).
+        tempC: temperature[i] * 50 - 18,
         moisture: moisture[i],
         elev01: Math.max(0, Math.min(1, (elevation[i] - seaLevel) / Math.max(0.01, mountainLevel - seaLevel))),
         coast01: shore ? 0.6 : waterNear ? 0.25 : 0,
