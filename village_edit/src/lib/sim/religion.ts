@@ -599,7 +599,8 @@ export function tickReligionWorld(state: SimState): void {
   }
 
   // Soft persistence so cult life stays visible mid-run (jours 30–60+).
-  if (state.tick % 360 === 0) {
+  // Cadence must align with BELIEF_TICK (48): 48*8 = 384 ≈ 5,3 jours.
+  if (state.tick > 0 && state.tick % 384 === 0) {
     for (const vg of state.villages) {
       ensureVillageShrine(vg)
       if (!vg.hasShrine || !vg.shrineLabel) continue
@@ -618,7 +619,7 @@ export function tickReligionWorld(state: SimState): void {
       if (c.kind !== 'faith') continue
       const members = livingMembers(state, c.memberIds)
       if (members.length < 2) continue
-      if ((state.tick + c.id * 17) % 720 !== 0) continue
+      if ((Math.floor(state.tick / 384) + c.id) % 2 !== 0) continue
       const leader = c.leaderId !== null ? members.find((m) => m.id === c.leaderId) : members[0]
       logCause(
         state,

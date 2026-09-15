@@ -21,8 +21,8 @@ export const TRADE_COOLDOWN = 420
 export const MAX_TRADE_DIST = 520
 /** Ports unlock after a few real trade runs — coastal access alone is not enough. */
 export const PORT_TRADE_THRESHOLD = 2
-/** Markets stamp after completed caravans + worn roads — regional development, not task noise. */
-export const MARKET_TRADE_THRESHOLD = 2
+/** Markets stamp after completed caravans — regional development, not task noise. */
+export const MARKET_TRADE_THRESHOLD = 1
 export const MARKET_ROAD_THRESHOLD = 8
 
 /**
