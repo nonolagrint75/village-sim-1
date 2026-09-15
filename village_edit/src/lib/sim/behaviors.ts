@@ -34,6 +34,7 @@ import {
   buildHouseLayout,
   describeLayoutFr,
   expandRoomKinds,
+  findRoomAt,
   ROOM_LABEL_FR,
   roomCountToSpan,
   type HouseLayout,
@@ -3472,8 +3473,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'rest': {
       const sheltered = atHomeShelter(v)
+      const inChambre = v.homeLayout ? findRoomAt(v.homeLayout, v.x, v.y)?.kind === 'chambre' : false
       const bedBonus = v.bedCount > 0 && sheltered ? STAMINA_REST_BED : sheltered ? STAMINA_REST_HOME : STAMINA_IDLE * 1.6
-      recoverStamina(v, bedBonus)
+      recoverStamina(v, bedBonus * (inChambre ? 1.15 : 1))
       if (sheltered && v.hunger > 0.5) {
         // Quiet recovery near the hearth — slight hunger cost of resting idle.
         if (state.season === 'winter') recoverStamina(v, 0.02)
@@ -4122,6 +4124,8 @@ export function tickReproduction(state: SimState, rng: () => number) {
         chestX: -1,
         chestY: -1,
         chestInventory: null,
+        homeFurniture: [],
+        cupboardInventory: null,
         villageId: a.villageId,
         hue: phenotype.hue,
         alive: true,
