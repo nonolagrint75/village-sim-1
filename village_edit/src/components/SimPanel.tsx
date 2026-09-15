@@ -352,15 +352,34 @@ export const SimPanel = memo(function SimPanel({
                 </>
               )}
             </Section>
-            <Section title="Religions & voies">
+            <Section title="Religions & cultes">
               {creeds.length === 0 && religionSites.length === 0 ? (
                 <p className="sim-empty">
                   Pas encore de voie de foi — piété, rites et autels émergent avec le temps.
                 </p>
               ) : (
                 <>
+                  <StatGrid
+                    items={[
+                      ['Voies de foi', creeds.length],
+                      [
+                        'Autels',
+                        religionSites.filter((s) => (s.sacredTier ?? 'none') === 'shrine' || (s.hasShrine && !s.sacredTier)).length,
+                      ],
+                      [
+                        'Chapelles',
+                        religionSites.filter((s) => s.sacredTier === 'chapel').length,
+                      ],
+                      [
+                        'Temples',
+                        religionSites.filter((s) => s.sacredTier === 'temple').length,
+                      ],
+                    ]}
+                  />
                   {creeds.length > 0 && (
-                    <StatGrid items={creeds.slice(0, 8).map((c) => [c.label, c.count])} />
+                    <StatGrid
+                      items={creeds.slice(0, 8).map((c) => [c.label, c.count])}
+                    />
                   )}
                   {religionSites.length > 0 && (
                     <ul className="sim-groups" style={{ marginTop: '0.55rem' }}>
@@ -369,13 +388,21 @@ export const SimPanel = memo(function SimPanel({
                           <div className="sim-group-card">
                             <div className="sim-group-top">
                               <strong>{s.label}</strong>
-                              {s.hasShrine && (
-                                <span className="sim-group-badge">{s.tierLabel || 'Autel'}</span>
-                              )}
+                              <span className="sim-group-badge">
+                                {s.tierLabel ||
+                                  (s.sacredTier === 'temple'
+                                    ? 'Temple'
+                                    : s.sacredTier === 'chapel'
+                                      ? 'Chapelle'
+                                      : 'Autel')}
+                              </span>
                             </div>
                             <p className="sim-group-meta">
                               Village n°{s.villageId}
                               {s.creedLabel ? ` · « ${s.creedLabel} »` : ''}
+                              {s.sacredTier && s.sacredTier !== 'none'
+                                ? ` · ${s.sacredTier === 'temple' ? 'sanctuaire élevé' : s.sacredTier === 'chapel' ? 'édifice de culte' : 'lieu de rite'}`
+                                : ''}
                             </p>
                           </div>
                         </li>
@@ -427,11 +454,12 @@ export const SimPanel = memo(function SimPanel({
                 </>
               )}
             </Section>
-            <Section title="Habitats & travail">
+            <Section title="Défrichement & habitats">
               <StatGrid
                 items={[
+                  ['Champs ouverts', stats.fields],
                   ['Maisons', stats.houses],
-                  ['Champs', stats.fields],
+                  ['Sentiers / routes', stats.roadTiles],
                   ['Enclos', stats.pens],
                   ['Moulins', stats.mills],
                   ['Ports', stats.ports],
@@ -439,6 +467,10 @@ export const SimPanel = memo(function SimPanel({
                   ['Bateaux', stats.boats],
                 ]}
               />
+              <p className="sim-muted" style={{ marginTop: '0.45rem' }}>
+                Les anneaux pâles autour des villages marquent la frontière de défrichement (champs,
+                routes, expansion).
+              </p>
             </Section>
             <Section title="Réseau & défense">
               <StatGrid
@@ -446,6 +478,7 @@ export const SimPanel = memo(function SimPanel({
                   ['Sentiers / routes', stats.roadTiles],
                   ['Ponts', stats.bridges],
                   ['Enceinte', stats.wallTiles],
+                  ['Châteaux / donjons', stats.castles ?? 0],
                   ['Couvert d’eau', stats.naturalCover],
                 ]}
               />
@@ -544,12 +577,29 @@ export const SimPanel = memo(function SimPanel({
                       <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
                         Autels, chapelles & temples
                       </p>
-                      <StatGrid
-                        items={religionSites.map((s) => [
-                          `${s.tierLabel}: ${s.label}`,
-                          s.hasShrine ? 1 : 0,
-                        ])}
-                      />
+                      <ul className="sim-groups">
+                        {religionSites.map((s) => (
+                          <li key={s.villageId}>
+                            <div className="sim-group-card">
+                              <div className="sim-group-top">
+                                <strong>{s.label}</strong>
+                                <span className="sim-group-badge">
+                                  {s.tierLabel ||
+                                    (s.sacredTier === 'temple'
+                                      ? 'Temple'
+                                      : s.sacredTier === 'chapel'
+                                        ? 'Chapelle'
+                                        : 'Autel')}
+                                </span>
+                              </div>
+                              <p className="sim-group-meta">
+                                Village n°{s.villageId}
+                                {s.creedLabel ? ` · « ${s.creedLabel} »` : ''}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     </>
                   )}
                   {cultures.length > 0 && (

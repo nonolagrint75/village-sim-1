@@ -918,12 +918,10 @@ export function conductTrade(
   tryFoundMarket(state, destVillage)
 }
 
-/** Whether this village has earned a market plaza: completed trade + road connectivity. */
+/** Whether this village has earned a market plaza: completed caravans (roads accelerate later growth). */
 export function marketEligible(state: SimState, village: Village): boolean {
   if (village.hasMarket) return false
-  if (village.tradeRuns < MARKET_TRADE_THRESHOLD) return false
-  const roads = countNearbyRoadTiles(state, village.centerX, village.centerY, 14)
-  return roads >= MARKET_ROAD_THRESHOLD || village.tradeRuns >= MARKET_TRADE_THRESHOLD + 2
+  return village.tradeRuns >= MARKET_TRADE_THRESHOLD
 }
 
 /** Stamp a market plaza once trade + roads justify regional development. */
