@@ -119,6 +119,7 @@ function boot(seed: number, config?: SimConfigInput) {
     height: grid.height,
     terrain: grid.terrain,
     amount: grid.amount,
+    biome: grid.biome,
     config: cfg,
     playing,
   })

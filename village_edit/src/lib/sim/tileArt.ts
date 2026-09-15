@@ -1,4 +1,11 @@
 import {
+  applyBiomeTintRgb,
+  biomeTintCss,
+  BiomeId,
+  type BiomeId as BiomeIdT,
+  type BiomeTintKind,
+} from '@/lib/sim/biomes'
+import {
   BED,
   BRIDGE,
   BUSH,
@@ -30,6 +37,38 @@ import {
   WORKBENCH,
   WORLD_SIZE,
 } from '@/lib/sim/types'
+
+/** Map terrain to biome tint channel (null = leave structures / furniture alone). */
+export function terrainBiomeTintKind(terrain: number): BiomeTintKind | null {
+  switch (terrain) {
+    case GRASS:
+    case FIELD:
+    case LOOT:
+    case WHEAT:
+      return 'grass'
+    case TREE:
+      return 'tree'
+    case BUSH:
+      return 'bush'
+    case WATER:
+      return 'water'
+    case SAND:
+      return 'sand'
+    case DIRT:
+    case PATH:
+    case TRAIL:
+    case ROAD:
+      return 'dirt'
+    case MOUNTAIN:
+      return 'mountain'
+    case STONE:
+    case GOLD:
+    case IRON:
+      return 'stone'
+    default:
+      return null
+  }
+}
 
 export const TILE_PX = 3
 
@@ -434,7 +473,13 @@ export function applyColdTintPacked(packed: number, tempC: number): number {
 }
 
 /** Packed little-endian RGBA for ImageData (one pixel per tile). */
-export function tilePixel32(terrain: number, amount: number, x: number, y: number): number {
+export function tilePixel32(
+  terrain: number,
+  amount: number,
+  x: number,
+  y: number,
+  biomeId: number = BiomeId.grassland,
+): number {
   let packed: number
   let vary = 0
   let kind = terrain
@@ -454,57 +499,70 @@ export function tilePixel32(terrain: number, amount: number, x: number, y: numbe
     packed = PACKED_BASE[terrain] || PACKED_BASE[GRASS]
     vary = PACKED_VARY[terrain]
   }
-  if (!vary) return packed
 
-  const n = tileNoise(x, y)
-  const n2 = tileNoise(x + 91, y + 47)
   let r = packed & 255
   let g = (packed >> 8) & 255
   let b = (packed >> 16) & 255
 
-  // Organic mottling: channel-biased so biomes stay readable from orbit.
-  if (kind === GRASS) {
-    const j = ((n - 0.5) * 28) | 0
-    r = clampByte(r + j - 4)
-    g = clampByte(g + j + ((n2 * 10) | 0))
-    b = clampByte(b + ((j * 0.4) | 0) - 2)
-  } else if (kind === TREE) {
-    const j = ((n - 0.45) * 22) | 0
-    r = clampByte(r + ((j * 0.5) | 0))
-    g = clampByte(g + j)
-    b = clampByte(b + ((j * 0.35) | 0) - 3)
-  } else if (kind === WATER) {
-    const j = ((n - 0.5) * 24) | 0
-    r = clampByte(r + ((j * 0.25) | 0))
-    g = clampByte(g + ((j * 0.55) | 0) + ((n2 * 8) | 0) - 4)
-    b = clampByte(b + j + 2)
-  } else if (kind === MOUNTAIN) {
-    const j = ((n - 0.4) * 30) | 0
-    const snow = n2 > 0.78 ? 28 : 0
-    r = clampByte(r + j + snow)
-    g = clampByte(g + j + snow)
-    b = clampByte(b + ((j * 0.85) | 0) + snow)
-  } else if (kind === TUNNEL) {
-    const j = ((n - 0.55) * 18) | 0
-    const mouth = amount >= 1 ? 10 : 0
-    r = clampByte(r + j + mouth)
-    g = clampByte(g + ((j * 0.7) | 0) + (amount >= 1 ? 6 : 0))
-    b = clampByte(b + ((j * 0.5) | 0))
-  } else if (kind === SAND) {
-    const j = ((n - 0.5) * 20) | 0
-    r = clampByte(r + j + 2)
-    g = clampByte(g + j)
-    b = clampByte(b + ((j * 0.6) | 0) - 2)
-  } else if (kind === FIELD || kind === WHEAT) {
-    const j = ((n - 0.5) * 18) | 0
-    r = clampByte(r + j)
-    g = clampByte(g + j + ((n2 * 6) | 0))
-    b = clampByte(b + ((j * 0.5) | 0))
-  } else {
-    const j = (n * 16) | 0
-    r = clampByte(r + j)
-    g = clampByte(g + j)
-    b = clampByte(b + j)
+  if (vary) {
+    const n = tileNoise(x, y)
+    const n2 = tileNoise(x + 91, y + 47)
+
+    // Organic mottling: channel-biased so biomes stay readable from orbit.
+    if (kind === GRASS) {
+      const j = ((n - 0.5) * 28) | 0
+      r = clampByte(r + j - 4)
+      g = clampByte(g + j + ((n2 * 10) | 0))
+      b = clampByte(b + ((j * 0.4) | 0) - 2)
+    } else if (kind === TREE) {
+      const j = ((n - 0.45) * 22) | 0
+      r = clampByte(r + ((j * 0.5) | 0))
+      g = clampByte(g + j)
+      b = clampByte(b + ((j * 0.35) | 0) - 3)
+    } else if (kind === WATER) {
+      const j = ((n - 0.5) * 24) | 0
+      r = clampByte(r + ((j * 0.25) | 0))
+      g = clampByte(g + ((j * 0.55) | 0) + ((n2 * 8) | 0) - 4)
+      b = clampByte(b + j + 2)
+    } else if (kind === MOUNTAIN) {
+      const j = ((n - 0.4) * 30) | 0
+      // Alpine / tundra: denser snow flecks on rock.
+      const snowThresh =
+        biomeId === BiomeId.alpine || biomeId === BiomeId.tundra ? 0.62 : 0.78
+      const snow = n2 > snowThresh ? (biomeId === BiomeId.alpine ? 42 : 34) : 0
+      r = clampByte(r + j + snow)
+      g = clampByte(g + j + snow)
+      b = clampByte(b + ((j * 0.85) | 0) + snow)
+    } else if (kind === TUNNEL) {
+      const j = ((n - 0.55) * 18) | 0
+      const mouth = amount >= 1 ? 10 : 0
+      r = clampByte(r + j + mouth)
+      g = clampByte(g + ((j * 0.7) | 0) + (amount >= 1 ? 6 : 0))
+      b = clampByte(b + ((j * 0.5) | 0))
+    } else if (kind === SAND) {
+      const j = ((n - 0.5) * 20) | 0
+      r = clampByte(r + j + 2)
+      g = clampByte(g + j)
+      b = clampByte(b + ((j * 0.6) | 0) - 2)
+    } else if (kind === FIELD || kind === WHEAT) {
+      const j = ((n - 0.5) * 18) | 0
+      r = clampByte(r + j)
+      g = clampByte(g + j + ((n2 * 6) | 0))
+      b = clampByte(b + ((j * 0.5) | 0))
+    } else {
+      const j = (n * 16) | 0
+      r = clampByte(r + j)
+      g = clampByte(g + j)
+      b = clampByte(b + j)
+    }
+  }
+
+  const tintKind = terrainBiomeTintKind(kind === WHEAT ? WHEAT : terrain === DIRT && amount > 0 ? DIRT : terrain)
+  // Wood piles / tunnel mouths stay structural — skip biome wash.
+  const skipTint =
+    (terrain === DIRT && amount > 0) || (terrain === TUNNEL && amount >= 1) || tintKind == null
+  if (!skipTint && tintKind) {
+    ;[r, g, b] = applyBiomeTintRgb(r, g, b, biomeId as BiomeIdT, tintKind)
   }
 
   return (255 << 24) | (b << 16) | (g << 8) | r
@@ -544,6 +602,7 @@ export function drawCloseupTerrain(
   viewSize: number,
   tilePx: number,
   nowMs: number,
+  biome?: Uint8Array | null,
 ) {
   const tileS = tilePx * zoom
   if (tileS < 7) return
@@ -566,13 +625,14 @@ export function drawCloseupTerrain(
       const t = terrain[row + gx]
       const px = (gx * tilePx - camX) * zoom
       const py = (gy * tilePx - camY) * zoom
+      const bid = (biome?.[row + gx] ?? BiomeId.grassland) as BiomeIdT
 
       if (t === WATER) {
         if (shimmer) {
           const n = tileNoise(gx, gy)
           if (n > 0.62) {
             const a = 0.07 + Math.sin(phase + n * 12 + gx * 0.3) * 0.05
-            ctx.fillStyle = `rgba(180, 220, 240, ${a.toFixed(3)})`
+            ctx.fillStyle = biomeTintCss(180, 220, 240, bid, 'water', Number(a.toFixed(3)))
             const hx = px + tileS * (0.15 + n * 0.5)
             const hy = py + tileS * (0.2 + tileNoise(gx + 3, gy) * 0.45)
             ctx.fillRect(hx, hy, Math.max(1, tileS * 0.28), Math.max(1, tileS * 0.1))
@@ -584,7 +644,9 @@ export function drawCloseupTerrain(
           const e = gx < WORLD_SIZE - 1 && !isWater(terrain[row + gx + 1])
           const w = gx > 0 && !isWater(terrain[row + gx - 1])
           if (n || s || e || w) {
-            ctx.fillStyle = 'rgba(220, 236, 244, 0.22)'
+            const foamA =
+              bid === BiomeId.wetland ? 0.14 : bid === BiomeId.coastal ? 0.28 : 0.22
+            ctx.fillStyle = biomeTintCss(220, 236, 244, bid, 'water', foamA)
             const f = Math.max(1, tileS * 0.12)
             if (n) ctx.fillRect(px, py, tileS, f)
             if (s) ctx.fillRect(px, py + tileS - f, tileS, f)
@@ -596,15 +658,25 @@ export function drawCloseupTerrain(
       }
 
       if (t === TREE && detail) {
-        // Canopy blob darker than grass base, with a trunk fleck.
-        ctx.fillStyle = 'rgba(20, 48, 26, 0.35)'
+        // Canopy blob darker than grass base, with a trunk fleck — tinted by biome.
+        ctx.fillStyle = biomeTintCss(20, 48, 26, bid, 'tree', 0.35)
         ctx.fillRect(px + tileS * 0.08, py + tileS * 0.08, tileS * 0.84, tileS * 0.84)
         if (tileS >= 14) {
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.42, py + tileS * 0.55, tileS * 0.16, tileS * 0.35)
-          ctx.fillStyle = '#2e6a38'
+          // Boreal/alpine: taller needle silhouette; desert/scrub: flatter scrub crown.
+          const tall =
+            bid === BiomeId.boreal || bid === BiomeId.alpine || bid === BiomeId.tundra
+          ctx.fillStyle = biomeTintCss(46, 106, 56, bid, 'tree')
           ctx.beginPath()
-          ctx.ellipse(px + tileS * 0.5, py + tileS * 0.38, tileS * 0.38, tileS * 0.32, 0, 0, Math.PI * 2)
+          if (tall) {
+            ctx.moveTo(px + tileS * 0.5, py + tileS * 0.08)
+            ctx.lineTo(px + tileS * 0.18, py + tileS * 0.58)
+            ctx.lineTo(px + tileS * 0.82, py + tileS * 0.58)
+            ctx.closePath()
+          } else {
+            ctx.ellipse(px + tileS * 0.5, py + tileS * 0.38, tileS * 0.38, tileS * 0.32, 0, 0, Math.PI * 2)
+          }
           ctx.fill()
         }
         continue
@@ -710,12 +782,19 @@ export function drawCloseupTerrain(
       }
 
       if (t === BUSH) {
-        ctx.fillStyle = '#3a6836'
+        ctx.fillStyle = biomeTintCss(58, 104, 54, bid, 'bush')
         ctx.beginPath()
         ctx.ellipse(px + tileS * 0.5, py + tileS * 0.55, tileS * 0.38, tileS * 0.28, 0, 0, Math.PI * 2)
         ctx.fill()
         if (detail) {
-          ctx.fillStyle = '#b03848'
+          // Tundra/alpine: pale berries; desert: duller; temperate: red.
+          const berry =
+            bid === BiomeId.tundra || bid === BiomeId.alpine
+              ? biomeTintCss(180, 190, 200, bid, 'bush')
+              : bid === BiomeId.desert || bid === BiomeId.scrub
+                ? '#9a6840'
+                : '#b03848'
+          ctx.fillStyle = berry
           ctx.fillRect(px + tileS * 0.28, py + tileS * 0.4, tileS * 0.1, tileS * 0.1)
           ctx.fillRect(px + tileS * 0.58, py + tileS * 0.48, tileS * 0.1, tileS * 0.1)
         }

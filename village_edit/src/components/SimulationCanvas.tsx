@@ -62,6 +62,7 @@ export function SimulationCanvas() {
   const worldPackedRef = useRef<Uint32Array | null>(null)
   const terrainRef = useRef<Uint8Array | null>(null)
   const amountRef = useRef<Uint16Array | null>(null)
+  const biomeRef = useRef<Uint8Array | null>(null)
   const viewRef = useRef<DrawFrame>({
     season: 'spring',
     hour: 12,
@@ -151,7 +152,7 @@ export function SimulationCanvas() {
     workerRef.current?.postMessage({ type: 'select', id: selectedId })
   }, [selectedId])
 
-  const paintBuffers = useCallback((terrain: Uint8Array, amount: Uint16Array) => {
+  const paintBuffers = useCallback((terrain: Uint8Array, amount: Uint16Array, biome: Uint8Array) => {
     const size = worldSizeRef.current
     const ctx = ensureWorldBuffer(size)
     const packed = worldPackedRef.current
@@ -161,7 +162,7 @@ export function SimulationCanvas() {
       const row = y * size
       for (let x = 0; x < size; x++) {
         const i = row + x
-        packed[i] = tilePixel32(terrain[i], amount[i], x, y)
+        packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
       }
     }
     ctx.putImageData(image, 0, 0)
@@ -173,7 +174,8 @@ export function SimulationCanvas() {
     const image = worldPixelsRef.current
     const terrain = terrainRef.current
     const amount = amountRef.current
-    if (!ctx || !packed || !image || !terrain || !amount) return
+    const biome = biomeRef.current
+    if (!ctx || !packed || !image || !terrain || !amount || !biome) return
     const w = worldSizeRef.current
     const n = dirty.indices.length
     let minX = w
@@ -186,7 +188,7 @@ export function SimulationCanvas() {
       amount[i] = dirty.amount[k]
       const x = i % w
       const y = (i / w) | 0
-      packed[i] = tilePixel32(terrain[i], amount[i], x, y)
+      packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
       if (x < minX) minX = x
       if (y < minY) minY = y
       if (x > maxX) maxX = x
@@ -227,6 +229,7 @@ export function SimulationCanvas() {
       height?: number
       terrain?: Uint8Array
       amount?: Uint16Array
+      biome?: Uint8Array
       dirty?: DirtyFrame
       frame?: DrawFrame | UiFrame
       playing?: boolean
@@ -240,7 +243,8 @@ export function SimulationCanvas() {
         ensureWorldBuffer(size)
         terrainRef.current = new Uint8Array(msg.terrain)
         amountRef.current = new Uint16Array(msg.amount)
-        paintBuffers(terrainRef.current, amountRef.current)
+        biomeRef.current = msg.biome ? new Uint8Array(msg.biome) : new Uint8Array(size * size)
+        paintBuffers(terrainRef.current, amountRef.current, biomeRef.current)
         const visible = DISPLAY_SIZE / zoomRef.current
         camRef.current = { x: worldPxOf(size) / 2 - visible / 2, y: worldPxOf(size) / 2 - visible / 2 }
         if (typeof msg.playing === 'boolean') setPlaying(msg.playing)
@@ -358,7 +362,18 @@ export function SimulationCanvas() {
       // roadView early-outs when zoomed far; close-up pass only when tiles are large enough.
       drawWornWays(ctx, terrain, camX, camY, zoom, visible, TILE_PX)
       if (amount && tileS >= 5.5) {
-        drawCloseupTerrain(ctx, terrain, amount, camX, camY, zoom, visible, TILE_PX, performance.now())
+        drawCloseupTerrain(
+          ctx,
+          terrain,
+          amount,
+          camX,
+          camY,
+          zoom,
+          visible,
+          TILE_PX,
+          performance.now(),
+          biomeRef.current,
+        )
       }
     }
 
