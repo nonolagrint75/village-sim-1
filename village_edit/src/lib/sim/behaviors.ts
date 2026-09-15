@@ -475,19 +475,19 @@ function earlyFoodRampDays(state: SimState): number {
 function forageYieldAmt(state: SimState): number {
   const ripe = berriesRipeIn(state.season)
   const day = earlyFoodRampDays(state)
-  if (day < 14) return ripe ? 4 : 2
-  // Taper: day 14–28 still above peacetime so bags refill between harvests.
-  if (day < 28) return ripe ? 3 : 2
-  return ripe ? 2 : 1
+  if (day < 14) return ripe ? 5 : 3
+  // Through pantry-cliff window (deaths clustered d21–27).
+  if (day < 40) return ripe ? 4 : 2
+  return ripe ? 3 : 1
 }
 /** Pantry target — stays elevated past week 2 so gather/sow don't fall off a cliff. */
 function foodStockTarget(state: SimState, season: Season): number {
   const day = earlyFoodRampDays(state)
   if (day < 14) return Math.max(FOOD_TARGET + 4, 8)
-  if (day < 28) return Math.max(FOOD_TARGET + 2, 6)
+  if (day < 40) return Math.max(FOOD_TARGET + 2, 6)
   if (season === 'autumn') return WINTER_STOCK_TARGET + 4
   if (season === 'winter') return WINTER_STOCK_TARGET * 0.85
-  return FOOD_TARGET
+  return Math.max(FOOD_TARGET + 1, 5)
 }
 /** Empty bag + low hunger — must seek food, not idle/rest (except brief night sleep). */
 function bagEmptyFoodCrisis(v: Villager): boolean {
@@ -499,52 +499,53 @@ function bagEmptyFoodCrisis(v: Villager): boolean {
  */
 function tryAssignFoodSeek(state: SimState, v: Villager): boolean {
   if (bestEdible(v)) return false
+  makeRoomForFood(v, state)
   const grid = state.grid
   const searchR = Math.max(LOCAL_SENSE_R, curiosityRadius(v, SHORT_BLIND_R))
-
-  if (
-    v.hasChest &&
-    v.chestInventory &&
-    edibleValue(v.chestInventory) > 0
-  ) {
-    const store = storeSpot(v.furnitureQueue, v.homeLayout)
-    setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
+  const owner = homeOwnerOf(v, state)
+  const ownChest = v.chestInventory && edibleValue(v.chestInventory) > 0
+  const ownerChest = owner.id !== v.id && owner.chestInventory && edibleValue(owner.chestInventory) > 0
+  if (ownChest || ownerChest) {
+    const host = ownChest ? v : owner
+    const store = storeSpot(host.furnitureQueue, host.homeLayout)
+    setTask(v, 'takeFromChest', store?.x ?? host.chestX, store?.y ?? host.chestY)
     noteChosenAction(v, 'takeFromChest', 'crise faim — garde-manger')
     return true
   }
 
-  if (v.fieldX !== -1) {
-    const ripe = findNearest(
+  // Own field first, then any nearby ripe crop (household / neighbour plots).
+  const fieldAnchorX = v.fieldX !== -1 ? v.fieldX : v.hasHome ? v.homeX : v.x
+  const fieldAnchorY = v.fieldY !== -1 ? v.fieldY : v.hasHome ? v.homeY : v.y
+  const ripe = findNearest(
+    grid,
+    fieldAnchorX,
+    fieldAnchorY,
+    FIELD_RADIUS + 8,
+    (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE,
+  )
+  if (ripe) {
+    setTask(v, 'harvestWheat', ripe.x, ripe.y)
+    noteChosenAction(v, 'harvestWheat', 'crise faim — moisson')
+    return true
+  }
+  if (v.hunger < 1.4 || v.starveTimer > 4) {
+    const green = findNearest(
       grid,
-      v.fieldX,
-      v.fieldY,
-      FIELD_RADIUS + 1,
-      (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE,
+      fieldAnchorX,
+      fieldAnchorY,
+      FIELD_RADIUS + 8,
+      (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_SPROUT,
     )
-    if (ripe) {
-      setTask(v, 'harvestWheat', ripe.x, ripe.y)
-      noteChosenAction(v, 'harvestWheat', 'crise faim — moisson')
+    if (green) {
+      setTask(v, 'harvestWheat', green.x, green.y)
+      noteChosenAction(v, 'harvestWheat', 'crise faim — récolte précoce')
       return true
-    }
-    if (v.hunger < 1.4 || v.starveTimer > 4) {
-      const green = findNearest(
-        grid,
-        v.fieldX,
-        v.fieldY,
-        FIELD_RADIUS + 1,
-        (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_SPROUT,
-      )
-      if (green) {
-        setTask(v, 'harvestWheat', green.x, green.y)
-        noteChosenAction(v, 'harvestWheat', 'crise faim — récolte précoce')
-        return true
-      }
     }
   }
 
   const bush =
-    findNearbyTerrain(grid, v.x, v.y, searchR, BUSH) ??
-    findNearbyTerrain(grid, v.x, v.y, Math.round(searchR * 1.6), BUSH)
+    findNearest(grid, v.x, v.y, Math.max(searchR, 48), (x, y) => getTerrain(grid, x, y) === BUSH) ??
+    findNearest(grid, v.x, v.y, 80, (x, y) => getTerrain(grid, x, y) === BUSH)
   if (bush) {
     setTask(v, 'gatherFood', bush.x, bush.y)
     noteChosenAction(v, 'gatherFood', 'crise faim — cueillette')
@@ -567,8 +568,8 @@ function tryAssignFoodSeek(state: SimState, v: Villager): boolean {
     return true
   }
 
-  // Last resort: walk toward distant bush / shore — still food-seeking, not plaza idle.
-  const farBush = findNearbyTerrain(grid, v.x, v.y, 70, BUSH)
+  // Last resort: walk toward distant bush — still food-seeking, not plaza idle.
+  const farBush = findNearest(grid, v.x, v.y, 100, (x, y) => getTerrain(grid, x, y) === BUSH)
   if (farBush) {
     setTask(v, 'gatherFood', farBush.x, farBush.y)
     noteChosenAction(v, 'gatherFood', 'crise faim — recherche buissons')
@@ -650,7 +651,7 @@ function villagerHungerDrain(state: SimState, v: Villager): number {
     metabolism01: v.phenotype.metabolism,
     activityMet,
     warmthMul: warmthMultiplier(v, state),
-  })
+  }) * (bagEmptyFoodCrisis(v) ? 0.72 : 1)
 }
 
 function atHomeShelter(v: Villager): boolean {
@@ -751,6 +752,17 @@ function canLift(v: Villager, type: ResourceType, amount: number, state?: SimSta
     }
   }
   return next <= cap + 0.05
+}
+
+/** Dump ballast so forage can land — full wood bags were starving gatherers mid-cliff. */
+function makeRoomForFood(v: Villager, state?: SimState): void {
+  if (canLift(v, 'food', 1, state)) return
+  for (const dump of ['wood', 'stone', 'iron', 'gold', 'hide', 'wool'] as const) {
+    while (countOf(v.inventory, dump) > 0 && !canLift(v, 'food', 1, state)) {
+      removeFromInventory(v.inventory, dump, 1)
+    }
+    if (canLift(v, 'food', 1, state)) return
+  }
 }
 
 function spendStamina(v: Villager, amount: number) {
@@ -1366,19 +1378,22 @@ function setTask(v: Villager, kind: TaskKind, targetX: number, targetY: number, 
 /** Survival-when-idle: eat-with-food / night rest first, then storm shelter / latrines. */
 function forceBiologicalRhythm(state: SimState, v: Villager): boolean {
   if (tryAssignSurvivalTask(state, v)) return true
+  // Empty-bag hunger beats storm/fatigue rest — keep seeking food.
+  if (bagEmptyFoodCrisis(v) && tryAssignFoodSeek(state, v)) return true
   const night = isNight(state.tick)
   const rain = sampleRain(state.climate, v.x, v.y)
   const stormy = state.climate.weather === 'storm' || rain > 0.5
   const cold = coldStress01(sampleTempC(state.climate, v.x, v.y))
   const exhausted = v.stamina < STAMINA_EXHAUSTED
   const tired = v.stamina < STAMINA_TIRED
+  if (bagEmptyFoodCrisis(v)) return false
   if (v.hasHome && !night && (exhausted || (stormy && !atHomeShelter(v)) || (cold > 0.4 && !atHomeShelter(v)))) {
     const t = restTarget(v)
     setTask(v, 'rest', t.x, t.y)
     noteChosenAction(v, 'rest', stormy ? 'tempête — foyer forcé' : 'fatigue — foyer forcé')
     return true
   }
-  if (!v.hasHome && !night && (exhausted || cold > 0.45 || stormy || tired)) {
+  if (!v.hasHome && !night && (exhausted || cold > 0.45 || stormy || tired) && !bagEmptyFoodCrisis(v)) {
     setTask(v, 'rest', v.x, v.y)
     noteChosenAction(v, 'rest', 'repos forcé')
     return true
@@ -1758,19 +1773,21 @@ function tryAssignSurvivalTask(state: SimState, v: Villager): boolean {
     noteChosenAction(v, 'eat', 'survie — manger')
     return true
   }
-  if (
-    v.hunger < CHEST_PULL &&
-    !bestEdible(v) &&
-    v.hasChest &&
-    v.chestInventory &&
-    edibleValue(v.chestInventory) > 0
-  ) {
-    const store = storeSpot(v.furnitureQueue, v.homeLayout)
-    setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
-    noteChosenAction(v, 'takeFromChest', 'survie — garde-manger')
-    return true
+  if (v.hunger < CHEST_PULL && !bestEdible(v)) {
+    const owner = homeOwnerOf(v, state)
+    const chest = v.chestInventory ?? owner.chestInventory
+    if (chest && edibleValue(chest) > 0) {
+      const host = v.chestInventory && edibleValue(v.chestInventory) > 0 ? v : owner
+      const store = storeSpot(host.furnitureQueue, host.homeLayout)
+      setTask(v, 'takeFromChest', store?.x ?? host.chestX, store?.y ?? host.chestY)
+      noteChosenAction(v, 'takeFromChest', 'survie — garde-manger')
+      return true
+    }
   }
-  if (night && v.hasHome && v.hunger >= 1.15) {
+  // Empty bag + low hunger: MUST forage — never prefer night rest over food seek.
+  if (bagEmptyFoodCrisis(v) && tryAssignFoodSeek(state, v)) return true
+  // Night rest only when bag has food (or hunger comfortable).
+  if (night && v.hasHome && v.hunger >= 1.15 && !bagEmptyFoodCrisis(v)) {
     const keeper = homeKeeper(state, v)
     if (!hearthIsLit(keeper, state.tick) && fuelCount(v.inventory) > 0) {
       const ha = hearthAnchor(keeper)
@@ -1788,14 +1805,14 @@ function tryAssignSurvivalTask(state: SimState, v: Villager): boolean {
     noteChosenAction(v, 'rest', 'survie — nuit')
     return true
   }
-  if (v.stamina < STAMINA_EXHAUSTED && v.hasHome) {
+  if (v.stamina < STAMINA_EXHAUSTED && v.hasHome && !bagEmptyFoodCrisis(v)) {
     const t = restTarget(v)
     setTask(v, 'rest', t.x, t.y)
     noteChosenAction(v, 'rest', 'survie — épuisement')
     return true
   }
   const air = sampleTempC(state.climate, v.x, v.y)
-  if (v.hasHome && !atHomeShelter(v) && coldStress01(air) > 0.5) {
+  if (v.hasHome && !atHomeShelter(v) && coldStress01(air) > 0.5 && !bagEmptyFoodCrisis(v)) {
     const keeper = homeKeeper(state, v)
     if (fuelCount(v.inventory) > 0 || hearthIsLit(keeper, state.tick)) {
       const ha = hearthAnchor(keeper)
@@ -2116,26 +2133,38 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const pantryNeed = Math.max(0, (stockTarget - larder) / stockTarget)
     const knowMul = bushKnown ? 1.15 : 0.72
     const ecoMul = gatherPressurePenalty(grid, bush.x, bush.y, state.climate)
+    const emptyBoost = bagEmptyFoodCrisis(v) ? 220 : larder < 1 ? 140 : larder < 2 ? 70 : 0
     add(
       'gatherFood',
       bush.x,
       bush.y,
-      (starving * 320 + pantryNeed * 140 + (famine ? 80 : 0) + (larder < 2 ? 90 : 0)) *
+      (starving * 320 + pantryNeed * 140 + (famine ? 80 : 0) + (larder < 2 ? 90 : 0) + emptyBoost) *
         seasonMul *
         knowMul *
-        ecoMul *
+        Math.max(0.55, ecoMul) *
         reach(v, bush.x, bush.y),
     )
-  } else if ((berriesRipeIn(season) || famine) && (starving > 0.2 || larder < stockTarget)) {
-    // Short exploratory idle toward curiosity when food is unknown locally.
-    const sx = clamp(v.x + Math.floor((rng() - 0.5) * searchR), 0, grid.width - 1)
-    const sy = clamp(v.y + Math.floor((rng() - 0.5) * searchR), 0, grid.height - 1)
-    add('idle', sx, sy, 4 + starving * 22 + p.curiosity * 12)
+  } else if (starving > 0.1 || larder < stockTarget || famine || bagEmptyFoodCrisis(v)) {
+    // Wide blind bush hunt — soft radar often goes blind after local depletion.
+    const farBush = findNearest(grid, v.x, v.y, Math.max(searchR * 2, 72), (x, y) => getTerrain(grid, x, y) === BUSH)
+    if (farBush) {
+      add(
+        'gatherFood',
+        farBush.x,
+        farBush.y,
+        (140 + starving * 280 + (bagEmptyFoodCrisis(v) ? 240 : larder < 1 ? 180 : 0) + (famine ? 80 : 0)) *
+          reach(v, farBush.x, farBush.y),
+      )
+    } else if (!bagEmptyFoodCrisis(v)) {
+      const sx = clamp(v.x + Math.floor((rng() - 0.5) * searchR), 0, grid.width - 1)
+      const sy = clamp(v.y + Math.floor((rng() - 0.5) * searchR), 0, grid.height - 1)
+      add('idle', sx, sy, 4 + starving * 22 + p.curiosity * 12)
+    }
   }
 
   const fishBoat = boatOf(state, v)
   // Once a boat exists, push embark→open-water fishing even if the owner isn't a fisher.
-  if (fishBoat || v.profession === 'fisher' || larder < stockTarget || season === 'winter') {
+  if (fishBoat || v.profession === 'fisher' || larder < stockTarget || season === 'winter' || bagEmptyFoodCrisis(v)) {
     let spot: { x: number; y: number } | null = null
     if (fishBoat) {
       // Phase 1: path to a land tile beside the hull so embark can fire; open water after boarding.
@@ -2157,10 +2186,28 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.fieldX !== -1) {
     const ripe = findNearest(grid, v.fieldX, v.fieldY, FIELD_RADIUS + 1, (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE)
-    if (ripe) add('harvestWheat', ripe.x, ripe.y, (55 + starving * 140 + (season === 'autumn' ? 95 : 0) + (famine ? 50 : 0)) * reach(v, ripe.x, ripe.y))
-    else if (famine) {
+    if (ripe)
+      add(
+        'harvestWheat',
+        ripe.x,
+        ripe.y,
+        (95 + starving * 140 + (season === 'autumn' ? 95 : 0) + (famine ? 50 : 0) + (bagEmptyFoodCrisis(v) ? 180 : larder < stockTarget ? 110 : 55)) *
+          reach(v, ripe.x, ripe.y),
+      )
+    else if (famine || bagEmptyFoodCrisis(v) || larder < 2) {
       const green = findNearest(grid, v.fieldX, v.fieldY, FIELD_RADIUS + 1, (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_SPROUT)
-      if (green) add('harvestWheat', green.x, green.y, starving * 120 * reach(v, green.x, green.y))
+      if (green) add('harvestWheat', green.x, green.y, (starving * 120 + (bagEmptyFoodCrisis(v) ? 160 : 40)) * reach(v, green.x, green.y))
+    }
+  } else {
+    // Household members without a claimed plot can still reap nearby ripe fields.
+    const nearRipe = findNearest(grid, v.x, v.y, 14, (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE)
+    if (nearRipe && (larder < stockTarget || bagEmptyFoodCrisis(v))) {
+      add(
+        'harvestWheat',
+        nearRipe.x,
+        nearRipe.y,
+        (70 + starving * 120 + (bagEmptyFoodCrisis(v) ? 160 : 40)) * reach(v, nearRipe.x, nearRipe.y),
+      )
     }
   }
 
@@ -2980,18 +3027,23 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       (hasHomeFurniture(owner, 'hearth') && cold > 0.2 ? 12 : 0)
     // Don't nap while carrying food and getting hungry — that was the mid-run starve path.
     const hungryWithFood = v.hunger < 2.2 && bestEdible(v)
+    const emptyHungry = bagEmptyFoodCrisis(v)
     // Unsowable field waiting: daytime rest must yield to clear/sow.
     const fieldWaiting = !night && v.fieldX !== -1 && !v.hasField && v.homeOwnerId === v.id
     let restScore = hungryWithFood && underdressed < 0.55 ? restNeed * 0.22 : restNeed
+    if (emptyHungry && !exhausted) restScore *= 0.04
     if (fieldWaiting && !exhausted) restScore *= 0.08
     if (restScore > 6) add('rest', restX, restY, restScore * reach(v, restX, restY))
     // Prefer drifting toward warm âtre when cold (night / cold survival).
     if (hearth && (cold > 0.25 || warmthPressure(state, v) > 0.35) && !fireWarm) {
       add('tendHearth', hearth.x, hearth.y, (48 + cold * 70 + warmthPressure(state, v) * 80) * reach(v, hearth.x, hearth.y))
-    } else if (hearth && fireWarm && cold > 0.2) {
-      add('rest', hearth.x, hearth.y, (restNeed + 18) * reach(v, hearth.x, hearth.y))
+    } else if (hearth && fireWarm && cold > 0.2 && !(emptyHungry && !night)) {
+      add('rest', hearth.x, hearth.y, (restNeed + 18) * (emptyHungry ? 0.25 : 1) * reach(v, hearth.x, hearth.y))
     }
-  } else if (exhausted || tired || cold > 0.4 || heat > 0.5 || underdressed * cold > 0.35) {
+  } else if (
+    (exhausted || tired || cold > 0.4 || heat > 0.5 || underdressed * cold > 0.35) &&
+    !(bagEmptyFoodCrisis(v) && !night)
+  ) {
     // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
     add(
       'rest',
@@ -3091,7 +3143,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     idleX = farX
     idleY = farY
     add('idle', idleX, idleY, 12 + migrate * 28 + p.curiosity * 14)
-  } else {
+  } else if (!bagEmptyFoodCrisis(v)) {
     add('idle', idleX, idleY, 3 + p.curiosity * 8 + migrate * 14)
   }
 
@@ -3120,6 +3172,16 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     ) {
       base *= 1.35
     }
+    // Pantry cliff: idle/rest must not beat forage when the bag is empty.
+    if ((o.kind === 'idle' || o.kind === 'rest') && bagEmptyFoodCrisis(v)) {
+      base *= 0.06
+    }
+    if (
+      (o.kind === 'gatherFood' || o.kind === 'fish' || o.kind === 'harvestWheat' || o.kind === 'takeFromChest' || o.kind === 'sowField') &&
+      bagEmptyFoodCrisis(v)
+    ) {
+      base *= 1.7
+    }
     return {
       kind: o.kind,
       x: o.x,
@@ -3131,6 +3193,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       ambitionMult: ambitionBonus(v, o.kind),
     }
   })
+  // Hard override: empty-bag hunger never soft-picks idle/rest via softmax.
+  if (bagEmptyFoodCrisis(v) && tryAssignFoodSeek(state, v)) return
   const pick = pickTaskByPolicy(state, v, policyOpts, rng)
   if (pick && pick.index >= 0) {
     const best = options[pick.index]
@@ -3509,10 +3573,16 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'gatherFood': {
       if (getTerrain(grid, task.targetX, task.targetY) !== BUSH) return false
-      const yieldAmt = forageYieldAmt(state)
+      if (bagEmptyFoodCrisis(v) || edibleValue(v.inventory) < 1) makeRoomForFood(v, state)
+      const yieldAmt = forageYieldAmt(state) + (bagEmptyFoodCrisis(v) ? 2 : 0)
       const { gained, remaining } = takeFromTile(grid, task.targetX, task.targetY, v, 'food', yieldAmt, BUSH, GRASS, state)
       if (gained <= 0 && remaining <= 0) return false
-      if (gained <= 0) return false
+      if (gained <= 0) {
+        // Still can't lift — dump ballast and retry once.
+        makeRoomForFood(v, state)
+        const retry = takeFromTile(grid, task.targetX, task.targetY, v, 'food', yieldAmt, BUSH, GRASS, state)
+        if (retry.gained <= 0) return false
+      }
       grantGatherExtras(v, 'bush', rng, state)
       if (rng() < 0.08) {
         remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.6, emotion: 0.4 })
@@ -4324,13 +4394,15 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'takeFromChest': {
-      if (!v.chestInventory) return false
+      const owner = homeOwnerOf(v, state)
+      const chest = v.chestInventory ?? owner.chestInventory
+      if (!chest) return false
       for (const res of EDIBLE_PRIORITY) {
-        const have = countOf(v.chestInventory, res)
+        const have = countOf(chest, res)
         if (have <= 0) continue
         const want = Math.min(4, have)
         const leftover = addToInventory(v.inventory, res, want)
-        removeFromInventory(v.chestInventory, res, want - leftover)
+        removeFromInventory(chest, res, want - leftover)
         break
       }
       return false
@@ -4491,7 +4563,8 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'idle':
       recoverStamina(v, STAMINA_IDLE)
-      return task.ageTicks < (isNight(state.tick) ? 6 : 10)
+      // Short idle — long bouts + post-task auto-idle reassignment locked the colony.
+      return task.ageTicks < (isNight(state.tick) ? 4 : 5)
     default:
       return false
   }
@@ -4820,6 +4893,16 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
     } else if (
+      (v.task.kind === 'rest' || v.task.kind === 'idle') &&
+      bagEmptyFoodCrisis(v)
+    ) {
+      // Smoking gun: d21–27 deaths were rest/idle with empty bags — never nap through it.
+      stashInterruptedTask(v)
+      if (!tryAssignFoodSeek(state, v)) {
+        v.task = null
+        v.nextThinkTick = state.tick
+      }
+    } else if (
       leisure &&
       (v.hunger < LEISURE_CUT || state.famine || edibleValue(v.inventory) < 1)
     ) {
@@ -4827,9 +4910,15 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
+    } else if (!foodWork && bagEmptyFoodCrisis(v)) {
+      // Empty-bag hunger: force forage well before the starve timer.
+      stashInterruptedTask(v)
+      if (!tryAssignFoodSeek(state, v)) {
+        v.task = null
+        v.nextThinkTick = state.tick
+      }
     } else if (!foodWork && (v.hunger < 0.85 || v.starveTimer > 8)) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
-      // Keep foodWork when bag is empty — gathering is the recovery path.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
@@ -4907,7 +4996,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     const stormy = state.climate.weather === 'storm' || rainNow > 0.55
     const coldNow = coldStress01(sampleTempC(state.climate, v.x, v.y))
     const night = isNight(state.tick)
-    const starvingNow = v.hunger < 1.2 && !bestEdible(v)
+    const starvingNow = bagEmptyFoodCrisis(v) || (v.hunger < 1.2 && !bestEdible(v))
     const mindNight = mindOf(v)
     const tgtId = v.task.targetId
     const kinNight =
@@ -4958,11 +5047,14 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     const forced = forceBiologicalRhythm(state, v)
     if (!forced) {
       if (state.tick < v.nextThinkTick) {
-        // Settle in place during cooldown — never freeze as a silent null agent.
-        if (v.stamina < STAMINA_TIRED || (isNight(state.tick) && !v.hasHome)) {
-          setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+        // Brief hold only — never spawn a full idle bout that re-locks chooseTask.
+        if (bagEmptyFoodCrisis(v) && tryAssignFoodSeek(state, v)) {
+          /* food seek */
+        } else if (v.stamina < STAMINA_EXHAUSTED || (isNight(state.tick) && v.hasHome)) {
+          const t = v.hasHome ? restTarget(v) : { x: Math.round(v.x), y: Math.round(v.y) }
+          setTask(v, 'rest', t.x, t.y)
         } else {
-          setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+          // Skip placeholder idle — rethink as soon as cooldown elapses next ticks.
         }
       } else {
         const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
@@ -5015,39 +5107,30 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     } else if (forceBiologicalRhythm(state, v)) {
       // Never end the tick null — survival interrupts need an active task next tick.
       v.nextThinkTick = state.tick
-    } else if (
-      micro &&
-      (active.kind.startsWith('craft') || active.kind.startsWith('build') || active.kind === 'experiment')
-    ) {
-      setTask(v, 'idle', v.x, v.y)
-      noteChosenAction(v, 'idle', 'pause après ' + active.kind)
-      v.nextThinkTick = state.tick + THINK_COOLDOWN
-    } else if (wasLeisure || micro) {
-      // Micro-fail / instant social used to leave null → hunger/night interrupts skipped.
-      if (v.stamina < STAMINA_TIRED || isNight(state.tick)) {
-        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
-        noteChosenAction(v, 'rest', wasLeisure ? 'pause après loisir' : 'pause micro-échec')
-      } else {
-        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
-        noteChosenAction(v, 'idle', wasLeisure ? 'pause après loisir' : 'pause micro-échec')
-      }
-      v.nextThinkTick = state.tick + (wasLeisure ? THINK_COOLDOWN + 5 : v.hunger < 2.2 ? 0 : 1)
     } else {
-      if (v.stamina < STAMINA_TIRED || (isNight(state.tick) && !v.hasHome)) {
-        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
-      } else {
-        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+      // CRITICAL: do NOT auto-reassign idle here. That locked the colony into perpetual
+      // midday idle (harvest=0, chests untouched) until the empty-bag starve cliff.
+      // Leave null and rethink immediately (or after a short leisure cool-down).
+      v.nextThinkTick =
+        wasLeisure || micro
+          ? state.tick + (wasLeisure ? THINK_COOLDOWN + 2 : 0)
+          : state.tick
+      if (state.tick >= v.nextThinkTick) {
+        const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
+        tickCognition(state, v, rng, depth)
+        chooseTask(state, v, rng)
+      } else if (isNight(state.tick) && v.hasHome) {
+        const t = restTarget(v)
+        setTask(v, 'rest', t.x, t.y)
       }
-      v.nextThinkTick = state.tick + THINK_COOLDOWN
     }
   } else if (!continued) {
     v.task = null
     if (!forceBiologicalRhythm(state, v)) {
-      if (v.stamina < STAMINA_TIRED || isNight(state.tick)) {
-        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
-      } else {
-        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
-      }
+      v.nextThinkTick = state.tick
+      const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
+      tickCognition(state, v, rng, depth)
+      chooseTask(state, v, rng)
     }
   }
 }
@@ -5701,7 +5784,7 @@ export function tickRegrowth(state: SimState, rng: () => number) {
   const vigourBase = state.season === 'summer' ? 4 : state.season === 'winter' ? 1 : 3
   const rainBoost = state.climate.weather === 'rain' || state.climate.weather === 'storm' ? 1 : 0
   const vigour = vigourBase + rainBoost
-  for (let i = 0; i < vigour; i++) {
+  for (let i = 0; i < vigour + (state.tick < TICKS_PER_DAY * 40 ? 3 : 0); i++) {
     const source = findRandomTile(grid, rng, TREE)
     if (source) {
       const tC = sampleTempC(state.climate, source.x, source.y)
