@@ -10,6 +10,7 @@ import {
   type ActorLight,
 } from '@/lib/sim/lighting'
 import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
+import { type BiomeId } from '@/lib/sim/biomeVisual'
 import {
   drawEmbarkedVillagerSprite,
   drawHorseSprite,
@@ -175,7 +176,7 @@ export function SimulationCanvas() {
       const row = y * size
       for (let x = 0; x < size; x++) {
         const i = row + x
-        packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
+        packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i] as BiomeId)
       }
     }
     ctx.putImageData(image, 0, 0)
@@ -201,7 +202,7 @@ export function SimulationCanvas() {
       amount[i] = dirty.amount[k]
       const x = i % w
       const y = (i / w) | 0
-      packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
+      packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i] as BiomeId)
       if (x < minX) minX = x
       if (y < minY) minY = y
       if (x > maxX) maxX = x

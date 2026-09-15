@@ -1370,7 +1370,12 @@ function jobBonus(v: Villager, kind: TaskKind): number {
   let base = 1
   switch (v.profession) {
     case 'forager':
-      base = kind === 'gatherFood' ? 2.0 : 1
+      base =
+        kind === 'gatherFood'
+          ? 2.0
+          : kind === 'buildBoat' || kind === 'fish'
+            ? 1.65
+            : 1
       break
     case 'farmer':
       base = kind === 'sowField' || kind === 'harvestWheat' ? 2.35 : 1
@@ -1383,11 +1388,13 @@ function jobBonus(v: Villager, kind: TaskKind): number {
             ? 1.9
             : 1
       break
-    case 'miller':
-      base = kind === 'buildMill' ? 2.6 : kind === 'grindFlour' || kind === 'bakeBread' ? 2.5 : 1
-      break
     case 'lumberjack':
-      base = kind === 'gatherWood' || kind === 'clearLand' ? 2.15 : 1
+      base =
+        kind === 'gatherWood' || kind === 'clearLand'
+          ? 2.15
+          : kind === 'buildBoat'
+            ? 1.55
+            : 1
       break
     case 'mason':
       base = kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' ? 2.0 : 1
@@ -1842,7 +1849,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   // Dock search must reach nearby shores — short radius left water-adjacent homes boatless.
-  // Once a dock exists, timber→boat outranks casual furniture so wood isn't bled away at ~1–2.
+  // Once a dock exists, timber→boat must beat plaza/social loops (often 100–200).
   if (
     v.hasHome &&
     v.homeOwnerId === v.id &&
@@ -1850,9 +1857,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     (v.profession === 'fisher' ||
       v.profession === 'trader' ||
       v.profession === 'forager' ||
-      p.curiosity > 0.42)
+      v.profession === 'lumberjack' ||
+      p.curiosity > 0.35)
   ) {
-    const dock = findMillSite(grid, v.homeX, v.homeY, 40)
+    const dock = findMillSite(grid, v.homeX, v.homeY, 55)
     if (dock) {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
@@ -1860,20 +1868,21 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const poolWood = householdStock(v, 'wood')
       const poolStone = householdStock(v, 'stone')
       const boatUrge =
-        78 +
-        p.ambition * 28 +
-        p.curiosity * 22 +
-        (v.profession === 'fisher' ? 42 : 0) +
-        (v.profession === 'trader' ? 34 : 0) +
-        (v.profession === 'forager' ? 16 : 0)
+        120 +
+        p.ambition * 30 +
+        p.curiosity * 28 +
+        (v.profession === 'fisher' ? 50 : 0) +
+        (v.profession === 'trader' ? 40 : 0) +
+        (v.profession === 'forager' ? 28 : 0) +
+        (v.profession === 'lumberjack' ? 22 : 0)
       if (poolWood >= needWood && poolStone >= needStone) {
-        add('buildBoat', dock.x, dock.y, boatUrge * 1.15 * reach(v, dock.x, dock.y))
+        // Ready to launch — outrank socialise/entertain soft loops.
+        add('buildBoat', dock.x, dock.y, (boatUrge + 200) * reach(v, dock.x, dock.y))
       } else if (poolWood < needWood && tree) {
-        // Strong timber drive — furniture gather is typically ~40–80; stay above that.
-        add('gatherWood', tree.x, tree.y, boatUrge * 1.2 * woodKnowMul * reach(v, tree.x, tree.y))
+        add('gatherWood', tree.x, tree.y, (boatUrge + 140) * woodKnowMul * reach(v, tree.x, tree.y))
       } else if (poolStone < needStone) {
         const rock = findNearbyTerrain(grid, v.x, v.y, searchR, STONE)
-        if (rock) add('gatherStone', rock.x, rock.y, boatUrge * 0.95 * reach(v, rock.x, rock.y))
+        if (rock) add('gatherStone', rock.x, rock.y, (boatUrge + 90) * reach(v, rock.x, rock.y))
       }
     }
   }
@@ -2162,9 +2171,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   if (v.hasWorkbench && v.toolTier === 'wood') {
-    const upgrade = 30 + p.courage * 45 + danger * 30
+    const upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
     if (stone >= STONE_SPEAR_COST) add('craftStoneSpear', v.x, v.y, upgrade)
-    else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 0.8 * reach(v, rock.x, rock.y))
+    else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 1.05 * reach(v, rock.x, rock.y))
   }
 
   if (v.hasWorkbench && v.toolTier === 'stone' && canPracticeCraft(v, 'iron')) {
@@ -2181,7 +2190,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const ironBoost = v.toolTier === 'iron' ? 18 : v.toolTier === 'stone' ? 8 : 0
     const woodToolPenalty = v.toolTier === 'wood' ? 0.55 : 1
     const deeperBoost = village?.hasMine ? 12 : 0
-    const mineUrge = (20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost) * woodToolPenalty
+    const benchReady = v.hasWorkbench ? 1.35 : 1
+    const mineUrge =
+      (28 + p.ambition * 28 + p.courage * 12 + minerBoost + ironBoost + deeperBoost) * woodToolPenalty * benchReady
     add('mineTunnel', mountainOre.x, mountainOre.y, mineUrge * reach(v, mountainOre.x, mountainOre.y))
   }
 
@@ -2327,7 +2338,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     for (const recipe of CRAFT_RECIPES) {
       if (recipe.station !== 'workbench') continue
       if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
-      const score = (recipe.urge + p.ambition * 12 + mindOf(v).skills.craft * 18) * reach(v, v.workbenchX, v.workbenchY)
+      const score =
+        (recipe.urge + 18 + p.ambition * 14 + mindOf(v).skills.craft * 22 + (v.hunger >= 2.2 ? 12 : 0)) *
+        reach(v, v.workbenchX, v.workbenchY)
       if (score > bestScore) {
         bestScore = score
         bestRecipe = recipe
