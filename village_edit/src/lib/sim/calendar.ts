@@ -117,16 +117,18 @@ export function isNightTick(tick: number): boolean {
 
 /**
  * Canvas lighting from calendar hour (visual only — sim night always runs).
- * `night` 0..1 darkens; `warm` 0..1 soft dawn/dusk orange.
+ * `night` 0..1 darkens; `warm` 0..1 soft dawn/dusk amber (not neon).
+ * Curves stay gentle so the map remains readable at midnight.
  */
 export function dayNightVisual(hour: number): { night: number; warm: number } {
   const h = ((hour % HOURS_PER_DAY) + HOURS_PER_DAY) % HOURS_PER_DAY
   // Peak light ~13h, peak dark ~1h — matches 20h–6h night window softly.
   const dayness = (Math.cos(((h - 13) / HOURS_PER_DAY) * Math.PI * 2) + 1) * 0.5
-  const night = Math.max(0, Math.min(1, (1 - dayness) * 0.92))
-  const dawn = Math.exp(-((h - 6) * (h - 6)) / 5)
-  const dusk = Math.exp(-((h - 19) * (h - 19)) / 5)
-  const warm = Math.max(dawn, dusk) * 0.65 * (0.35 + night * 0.65)
+  // Cap night intensity — soft slate multiply, not crushed blacks.
+  const night = Math.max(0, Math.min(1, (1 - dayness) * 0.78))
+  const dawn = Math.exp(-((h - 6.2) * (h - 6.2)) / 6.5)
+  const dusk = Math.exp(-((h - 18.8) * (h - 18.8)) / 6.5)
+  const warm = Math.max(dawn, dusk) * 0.55 * (0.4 + night * 0.55)
   return { night, warm }
 }
 

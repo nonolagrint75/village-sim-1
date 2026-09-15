@@ -80,7 +80,7 @@ interface TileArt {
 }
 
 /**
- * DF Premium–inspired ground materials: crisp tile silhouettes from orbit,
+ * DF Premium?inspired ground materials: crisp tile silhouettes from orbit,
  * richer soil / grass / rock / sand / snow mottling (not flat cartoon fills).
  */
 export const TILE_ART: Record<number, TileArt> = {
@@ -699,6 +699,18 @@ function isWater(t: number) {
   return t === WATER
 }
 
+/** Cheap height proxy for north-lit slope shade (no stored elevation). */
+function terrainRelief(t: number): number {
+  if (t === WATER) return 0
+  if (t === SAND || t === BRIDGE || t === PORT || t === PATH || t === ROAD || t === TRAIL) return 1.1
+  if (t === DIRT || t === FIELD || t === WHEAT || t === GRASS || t === BUSH) return 2
+  if (t === TREE || t === PLANK) return 2.6
+  if (t === HOUSE || t === MILL || t === FENCE || t === WALL_WOOD || t === WALL_STONE) return 3.2
+  if (t === STONE || t === GOLD || t === IRON || t === TUNNEL) return 4.2
+  if (t === MOUNTAIN) return 5
+  return 2
+}
+
 function drawGroundMaterial(
   ctx: CanvasRenderingContext2D,
   t: number,
@@ -804,9 +816,11 @@ export function drawCloseupTerrain(
 
   const detail = tileS >= 10
   const groundDetail = tileS >= 8 && tiles <= 11000
+  const elevShade = tileS >= 8.5 && tiles <= 11000
   const shimmer = tileS >= 11 && tiles <= 9000
   const foam = tileS >= 12 && tiles <= 7000
-  const phase = (nowMs * 0.0018) % (Math.PI * 2)
+  const phase = (nowMs * 0.00115) % (Math.PI * 2)
+  const foamPulse = 0.5 + 0.5 * Math.sin(nowMs * 0.0024)
 
   for (let gy = y0; gy < y1; gy++) {
     const row = gy * WORLD_SIZE
@@ -817,33 +831,103 @@ export function drawCloseupTerrain(
       const biomeId = (biome?.[row + gx] as BiomeIdT | undefined) ?? approxBiomeAt(gx, gy, t)
 
       if (t === WATER) {
+        // Open-water depth vs shore shallows from 4-neighbour openness.
+        let open = 0
+        if (gx > 0 && isWater(terrain[row + gx - 1])) open++
+        if (gx < WORLD_SIZE - 1 && isWater(terrain[row + gx + 1])) open++
+        if (gy > 0 && isWater(terrain[row - WORLD_SIZE + gx])) open++
+        if (gy < WORLD_SIZE - 1 && isWater(terrain[row + WORLD_SIZE + gx])) open++
+        if (open >= 4) {
+          ctx.fillStyle = 'rgba(10, 32, 52, 0.18)'
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (open >= 3) {
+          ctx.fillStyle = 'rgba(14, 40, 60, 0.1)'
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (open <= 1) {
+          ctx.fillStyle = 'rgba(150, 198, 210, 0.11)'
+          ctx.fillRect(px, py, tileS, tileS)
+        }
+
         if (shimmer) {
           const n = tileNoise(gx, gy)
-          if (n > 0.62) {
-            const a = 0.07 + Math.sin(phase + n * 12 + gx * 0.3) * 0.05
-            ctx.fillStyle = `rgba(180, 220, 240, ${a.toFixed(3)})`
-            ctx.fillRect(px + tileS * (0.15 + n * 0.5), py + tileS * (0.2 + tileNoise(gx + 3, gy) * 0.45), Math.max(1, tileS * 0.28), Math.max(1, tileS * 0.1))
+          const n2 = tileNoise(gx + 3, gy + 1)
+          if (n > 0.55) {
+            const a = 0.045 + Math.sin(phase + n * 9 + gx * 0.22 + gy * 0.08) * 0.035
+            if (a > 0.012) {
+              ctx.fillStyle = `rgba(190, 226, 238, ${a.toFixed(3)})`
+              const hx = px + tileS * (0.08 + n * 0.55)
+              const hy = py + tileS * (0.18 + n2 * 0.5)
+              ctx.fillRect(hx, hy, Math.max(1.2, tileS * (0.22 + n * 0.18)), Math.max(1, tileS * 0.07))
+            }
+          }
+          if (n2 > 0.72 && tileS >= 13) {
+            const a2 = 0.03 + Math.sin(phase * 1.3 + n2 * 14) * 0.025
+            if (a2 > 0.01) {
+              ctx.fillStyle = `rgba(210, 236, 246, ${a2.toFixed(3)})`
+              ctx.fillRect(
+                px + tileS * (0.2 + n2 * 0.4),
+                py + tileS * (0.35 + n * 0.3),
+                Math.max(1, tileS * 0.16),
+                Math.max(1, tileS * 0.05),
+              )
+            }
           }
         }
         if (foam) {
-          const n = gy > 0 && !isWater(terrain[row - WORLD_SIZE + gx])
-          const s = gy < WORLD_SIZE - 1 && !isWater(terrain[row + WORLD_SIZE + gx])
-          const e = gx < WORLD_SIZE - 1 && !isWater(terrain[row + gx + 1])
-          const w = gx > 0 && !isWater(terrain[row + gx - 1])
-          if (n || s || e || w) {
-            ctx.fillStyle = 'rgba(220, 236, 244, 0.22)'
-            const f = Math.max(1, tileS * 0.12)
-            if (n) ctx.fillRect(px, py, tileS, f)
-            if (s) ctx.fillRect(px, py + tileS - f, tileS, f)
-            if (w) ctx.fillRect(px, py, f, tileS)
-            if (e) ctx.fillRect(px + tileS - f, py, f, tileS)
+          const nEdge = gy > 0 && !isWater(terrain[row - WORLD_SIZE + gx])
+          const sEdge = gy < WORLD_SIZE - 1 && !isWater(terrain[row + WORLD_SIZE + gx])
+          const eEdge = gx < WORLD_SIZE - 1 && !isWater(terrain[row + gx + 1])
+          const wEdge = gx > 0 && !isWater(terrain[row + gx - 1])
+          if (nEdge || sEdge || eEdge || wEdge) {
+            const breath = 0.14 + foamPulse * 0.1
+            const f = Math.max(1, tileS * (0.1 + foamPulse * 0.04))
+            const drawFoam = (fx: number, fy: number, fw: number, fh: number, seed: number) => {
+              const speck = tileNoise(gx + seed, gy + seed * 3)
+              const a = breath * (0.7 + speck * 0.5)
+              ctx.fillStyle = `rgba(228, 240, 246, ${a.toFixed(3)})`
+              ctx.fillRect(fx, fy, fw, fh)
+              if (tileS >= 14 && speck > 0.55) {
+                ctx.fillStyle = `rgba(245, 250, 252, ${(a * 0.55).toFixed(3)})`
+                ctx.fillRect(fx + fw * speck * 0.4, fy + fh * 0.15, Math.max(1, fw * 0.35), Math.max(1, fh * 0.7))
+              }
+            }
+            if (nEdge) drawFoam(px, py, tileS, f, 1)
+            if (sEdge) drawFoam(px, py + tileS - f, tileS, f, 2)
+            if (wEdge) drawFoam(px, py, f, tileS, 3)
+            if (eEdge) drawFoam(px + tileS - f, py, f, tileS, 4)
           }
         }
         continue
       }
 
+      // Soft north-lit relief (fake elevation) on top of ground materials.
+      if (elevShade && !GROUND_CLOSEUP.has(t)) {
+        const hHere = terrainRelief(t)
+        const hN = gy > 0 ? terrainRelief(terrain[row - WORLD_SIZE + gx]) : hHere
+        const slope = hHere - hN
+        if (slope > 0.35) {
+          ctx.fillStyle = `rgba(255, 248, 232, ${Math.min(0.09, slope * 0.028).toFixed(3)})`
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (slope < -0.35) {
+          ctx.fillStyle = `rgba(18, 26, 34, ${Math.min(0.13, -slope * 0.032).toFixed(3)})`
+          ctx.fillRect(px, py, tileS, tileS)
+        }
+      }
+
       if (groundDetail && GROUND_CLOSEUP.has(t) && !(t === DIRT && amount[row + gx] > 0)) {
         drawGroundMaterial(ctx, t, px, py, tileS, gx, gy, biomeId)
+        if (elevShade) {
+          const hHere = terrainRelief(t)
+          const hN = gy > 0 ? terrainRelief(terrain[row - WORLD_SIZE + gx]) : hHere
+          const slope = hHere - hN
+          if (slope > 0.35) {
+            ctx.fillStyle = `rgba(255, 248, 232, ${Math.min(0.08, slope * 0.024).toFixed(3)})`
+            ctx.fillRect(px, py, tileS, tileS)
+          } else if (slope < -0.35) {
+            ctx.fillStyle = `rgba(18, 26, 34, ${Math.min(0.11, -slope * 0.028).toFixed(3)})`
+            ctx.fillRect(px, py, tileS, tileS)
+          }
+        }
         continue
       }
 

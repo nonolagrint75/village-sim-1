@@ -499,25 +499,51 @@ export function SimulationCanvas() {
     // Visual day/night only — sleep / temp / activity biases keep running in the worker.
     if (showDayNightRef.current) {
       const { night, warm } = dayNightVisual(viewRef.current.hour ?? 12)
-      if (warm > 0.02) {
-        ctx.fillStyle = `rgba(255, 148, 72, ${warm * 0.2})`
+      const prev = ctx.globalCompositeOperation
+
+      // Soft atmospheric vignette for depth (day and night) — cool slate, not purple.
+      {
+        ctx.globalCompositeOperation = 'multiply'
+        const vg = ctx.createRadialGradient(
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.46,
+          DISPLAY_SIZE * 0.2,
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.92,
+        )
+        const edgeA = 0.03 + night * 0.1
+        vg.addColorStop(0, 'rgba(255, 255, 255, 0)')
+        vg.addColorStop(0.55, `rgba(200, 205, 210, ${0.02 + night * 0.03})`)
+        vg.addColorStop(1, `rgba(36, 42, 52, ${edgeA.toFixed(3)})`)
+        ctx.fillStyle = vg
+        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
+        ctx.globalCompositeOperation = prev
+      }
+
+      if (warm > 0.015) {
+        // Amber wash — soft dawn/dusk, not neon orange.
+        ctx.fillStyle = `rgba(232, 168, 110, ${(warm * 0.13).toFixed(3)})`
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
       }
-      if (night > 0.04) {
-        const prev = ctx.globalCompositeOperation
+      if (night > 0.03) {
         ctx.globalCompositeOperation = 'multiply'
         const g = ctx.createRadialGradient(
           DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.42,
-          DISPLAY_SIZE * 0.12,
+          DISPLAY_SIZE * 0.4,
+          DISPLAY_SIZE * 0.14,
           DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.78,
+          DISPLAY_SIZE * 0.52,
+          DISPLAY_SIZE * 0.82,
         )
-        g.addColorStop(0, `rgba(28, 36, 72, ${0.08 + night * 0.22})`)
-        g.addColorStop(0.55, `rgba(10, 14, 36, ${0.22 + night * 0.42})`)
-        g.addColorStop(1, `rgba(2, 4, 14, ${0.45 + night * 0.5})`)
+        g.addColorStop(0, `rgba(52, 60, 74, ${(0.05 + night * 0.12).toFixed(3)})`)
+        g.addColorStop(0.5, `rgba(30, 36, 48, ${(0.12 + night * 0.26).toFixed(3)})`)
+        g.addColorStop(1, `rgba(14, 18, 28, ${(0.26 + night * 0.36).toFixed(3)})`)
         ctx.fillStyle = g
+        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
+        ctx.globalCompositeOperation = 'source-over'
+        // Thin cool lift so sprites stay readable under multiply.
+        ctx.fillStyle = `rgba(78, 96, 122, ${(night * 0.05).toFixed(3)})`
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
         ctx.globalCompositeOperation = prev
       }
