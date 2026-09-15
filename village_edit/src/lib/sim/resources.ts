@@ -23,6 +23,8 @@ export type ResourceTag =
   | 'herb'
   | 'store'
   | 'currency'
+  /** Portable light source (visual glow + fuel). */
+  | 'light'
 
 export interface ResourceDef {
   id: string
@@ -767,6 +769,24 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputCount: 1,
     station: 'workbench',
     urge: 46,
+  },
+  {
+    id: 'torch_resin',
+    labelFr: 'torche',
+    inputs: { wood: 1, resin: 1 },
+    output: 'torch',
+    outputCount: 2,
+    station: 'workbench',
+    urge: 26,
+  },
+  {
+    id: 'torch_pitch',
+    labelFr: 'torche',
+    inputs: { wood: 1, pitch: 1 },
+    output: 'torch',
+    outputCount: 2,
+    station: 'workbench',
+    urge: 26,
   },
   {
     id: 'basket_reed',

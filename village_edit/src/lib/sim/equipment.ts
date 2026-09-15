@@ -901,6 +901,44 @@ export function seedStarterKit(v: Villager, wealth01: number, role: Profession, 
   syncToolTierFromEquipment(v)
 }
 
+/** Compact worn kit for canvas sprites (readable DF-style layers). */
+export type WornGearVisual = {
+  head: GearId | null
+  torso: GearId | null
+  outer: GearId | null
+  feet: GearId | null
+  mainHand: GearId | null
+  offHand: GearId | null
+  belt: GearId | null
+}
+
+export function emptyWornGearVisual(): WornGearVisual {
+  return {
+    head: null,
+    torso: null,
+    outer: null,
+    feet: null,
+    mainHand: null,
+    offHand: null,
+    belt: null,
+  }
+}
+
+/** Pack body slots that draw on the villager sprite. */
+export function packWornGearForDraw(v: Pick<Villager, 'equipment'>): WornGearVisual {
+  const eq = v.equipment
+  if (!eq) return emptyWornGearVisual()
+  return {
+    head: eq.head ?? null,
+    torso: eq.torso ?? null,
+    outer: eq.outer ?? null,
+    feet: eq.feet ?? null,
+    mainHand: eq.mainHand ?? null,
+    offHand: eq.offHand ?? null,
+    belt: eq.belt ?? null,
+  }
+}
+
 export type PackedEquipmentSlot = {
   slot: BodySlot
   slotLabel: string

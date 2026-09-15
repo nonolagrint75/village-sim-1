@@ -265,6 +265,9 @@ export interface FaceMorph {
   cheek: number
 }
 
+/** Biological sex for sprites / pedigree — not culture or gender identity. */
+export type BiologicalSex = 'female' | 'male'
+
 /**
  * Phénotype exprimé — apparence / prédispositions continues.
  * Génétique ≠ culture ; génétique ≠ destin. Pas de races.
@@ -277,6 +280,10 @@ export interface Phenotype {
   eyeTone: number
   hairTone: number
   hairCurl: number
+  /**
+   * Prédisposition pilosité faciale 0–1 (expression effective gated by sex + age in packDraw).
+   */
+  facialHair: number
   face: FaceMorph
   metabolism: number
   fertilityPredisposition: number
@@ -293,6 +300,8 @@ export interface Phenotype {
 export interface Villager {
   id: number
   seed: number
+  /** Biological sex — sprite silhouette / hair / beard. */
+  sex: BiologicalSex
   /** Given name (prénom). */
   name: string
   /** Emergent family name — ancestor / craft / place / nickname. */

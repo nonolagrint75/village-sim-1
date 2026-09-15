@@ -1,22 +1,26 @@
 import {
   applyBiomeTintRgb,
-  biomeTintCss,
   BiomeId,
   type BiomeId as BiomeIdT,
   type BiomeTintKind,
-} from '@/lib/sim/biomes'
+} from '@/lib/sim/biomeVisual'
 import {
   BED,
+  BENCH,
   BRIDGE,
   BUSH,
   CHEST,
+  CRADLE,
+  CUPBOARD,
   DIRT,
   FENCE,
   FIELD,
   GOLD,
   GRASS,
+  HEARTH,
   HOUSE,
   IRON,
+  LOOM,
   LOOT,
   MILL,
   MOUNTAIN,
@@ -25,13 +29,16 @@ import {
   PORT,
   ROAD,
   SAND,
+  SHELF,
   STONE,
+  STOOL,
   TABLE,
   TRAIL,
   TREE,
   TUNNEL,
   WALL_STONE,
   WALL_WOOD,
+  WASHING_TUB,
   WATER,
   WHEAT,
   WORKBENCH,
@@ -81,104 +88,155 @@ interface TileArt {
 }
 
 /**
- * Satellite-first palette: readable at 1px/tile when zoomed out,
- * with enough contrast that forests sit darker than grass and water
- * reads as deep inland seas rather than flat blue paint.
+ * DF Premium?inspired ground materials: crisp tile silhouettes from orbit,
+ * richer soil / grass / rock / sand / snow mottling (not flat cartoon fills).
  */
 export const TILE_ART: Record<number, TileArt> = {
   [GRASS]: {
-    base: '#6f9a4e',
+    base: '#5f8a42',
     detail: [
-      [0, 2, '#628a44'],
-      [2, 0, '#7eaa58'],
-      [1, 1, '#769f52'],
+      [0, 0, '#4a7234'],
+      [1, 0, '#6e9a4c'],
+      [2, 0, '#547e38'],
+      [0, 1, '#6a9448'],
+      [1, 1, '#3e6230'],
+      [2, 1, '#72a050'],
+      [0, 2, '#56823c'],
+      [1, 2, '#7aac56'],
+      [2, 2, '#4c7636'],
     ],
     vary: true,
   },
   [DIRT]: {
-    base: '#7a5f42',
+    base: '#6e5236',
     detail: [
-      [1, 1, '#6a5138'],
-      [2, 2, '#8a6d4c'],
-      [0, 0, '#705638'],
+      [0, 0, '#5a422c'],
+      [1, 0, '#7a5e40'],
+      [2, 0, '#4e3824'],
+      [0, 1, '#826448'],
+      [1, 1, '#3e2c1c'],
+      [2, 1, '#6a4e32'],
+      [0, 2, '#584028'],
+      [1, 2, '#8a6c4c'],
+      [2, 2, '#624830'],
     ],
     vary: true,
   },
   [SAND]: {
-    base: '#d4c28a',
+    base: '#cbb888',
     detail: [
-      [0, 1, '#c8b478'],
-      [2, 2, '#e0d09c'],
-      [1, 0, '#bba86c'],
+      [0, 0, '#b8a474'],
+      [1, 0, '#d8c898'],
+      [2, 0, '#a89468'],
+      [0, 1, '#d4c090'],
+      [1, 1, '#c0ac7c'],
+      [2, 1, '#e0d0a4'],
+      [0, 2, '#b49e70'],
+      [1, 2, '#cfc094'],
+      [2, 2, '#a08860'],
     ],
     vary: true,
   },
   [WATER]: {
-    base: '#2a6a8e',
+    base: '#255a76',
     detail: [
-      [0, 0, '#3480a4'],
-      [2, 1, '#245c7c'],
-      [1, 2, '#3a88ac'],
+      [0, 0, '#2f6e8c'],
+      [2, 1, '#1e4a64'],
+      [1, 2, '#347898'],
     ],
     vary: true,
   },
   [TREE]: {
-    base: '#244f2c',
+    base: '#1e4a28',
     detail: [
-      [1, 2, '#4a3420'],
-      [0, 0, '#2f6438'],
-      [2, 0, '#1c4024'],
-      [1, 0, '#356c3c'],
-      [0, 1, '#1a3820'],
+      [0, 0, '#163820'],
+      [1, 0, '#2a5e34'],
+      [2, 0, '#142c1a'],
+      [0, 1, '#245830'],
+      [1, 1, '#3a2818'],
+      [2, 1, '#1a4024'],
+      [0, 2, '#18341c'],
+      [1, 2, '#2e6438'],
+      [2, 2, '#122818'],
     ],
     vary: true,
   },
   [BUSH]: {
-    base: '#3a6836',
+    base: '#356834',
     detail: [
-      [0, 1, '#a83248'],
-      [2, 0, '#b84050'],
-      [1, 2, '#2e562c'],
-      [1, 0, '#488044'],
+      [0, 0, '#2a5428'],
+      [1, 0, '#428040'],
+      [2, 0, '#a83848'],
+      [0, 1, '#b84454'],
+      [1, 1, '#2e5a2c'],
+      [2, 1, '#3e743c'],
+      [0, 2, '#3a6c38'],
+      [1, 2, '#264c24'],
+      [2, 2, '#4a8848'],
     ],
+    vary: true,
   },
   [STONE]: {
-    base: '#8a8880',
+    base: '#7a7872',
     detail: [
-      [0, 0, '#9a9890'],
-      [2, 1, '#74726c'],
-      [1, 2, '#a4a29a'],
+      [0, 0, '#8e8c84'],
+      [1, 0, '#686660'],
+      [2, 0, '#9a9890'],
+      [0, 1, '#5e5c56'],
+      [1, 1, '#84827a'],
+      [2, 1, '#706e68'],
+      [0, 2, '#949288'],
+      [1, 2, '#626058'],
+      [2, 2, '#86847c'],
     ],
     vary: true,
   },
   [GOLD]: {
-    base: '#7e7a72',
+    base: '#6e6a62',
     detail: [
-      [1, 1, '#e8c245'],
-      [2, 0, '#f0d367'],
-      [0, 2, '#c9a534'],
+      [0, 0, '#7a766e'],
+      [1, 0, '#e8c245'],
+      [2, 0, '#5a564e'],
+      [0, 1, '#c9a534'],
+      [1, 1, '#8a8680'],
+      [2, 1, '#f0d367'],
+      [0, 2, '#646058'],
+      [1, 2, '#d4b040'],
+      [2, 2, '#747068'],
     ],
+    vary: true,
   },
   [IRON]: {
-    base: '#6a635c',
+    base: '#5e5852',
     detail: [
-      [1, 1, '#b56a3c'],
-      [2, 0, '#c97a46'],
-      [0, 2, '#8a4a28'],
+      [0, 0, '#6a645c'],
+      [1, 0, '#b56a3c'],
+      [2, 0, '#4a443e'],
+      [0, 1, '#8a4a28'],
+      [1, 1, '#726a62'],
+      [2, 1, '#c97a46'],
+      [0, 2, '#54504a'],
+      [1, 2, '#a45a32'],
+      [2, 2, '#68625a'],
     ],
+    vary: true,
   },
   [MOUNTAIN]: {
-    base: '#56524c',
+    base: '#4e4a44',
     detail: [
-      [1, 0, '#8e887e'],
-      [0, 1, '#3c3832'],
-      [2, 2, '#6a645a'],
-      [1, 1, '#d4cec0'],
+      [0, 0, '#3a3630'],
+      [1, 0, '#8a847a'],
+      [2, 0, '#5a564e'],
+      [0, 1, '#6a645c'],
+      [1, 1, '#d8d2c6'],
+      [2, 1, '#2e2a26'],
+      [0, 2, '#58544c'],
+      [1, 2, '#e8e4dc'],
+      [2, 2, '#424038'],
     ],
     vary: true,
   },
   [TUNNEL]: {
-    // Deep gallery — darker than mountain so corridors read from orbit.
     base: '#14110e',
     detail: [
       [0, 0, '#0a0806'],
@@ -191,117 +249,294 @@ export const TILE_ART: Record<number, TileArt> = {
     vary: true,
   },
   [LOOT]: {
-    base: '#6f9a4e',
+    base: '#5f8a42',
     detail: [
       [1, 1, '#f2d65e'],
       [0, 1, '#d8b944'],
+      [2, 0, '#4a7234'],
     ],
+    vary: true,
   },
-  // Roof-forward house: warm clay ridge, dark eaves — reads as a structure from orbit.
+  // Thatched cottage orbit glyph ? straw ridge / timber eaves (no biome wash).
   [HOUSE]: {
     base: '#8b4e32',
     detail: [
-      [0, 0, '#6e3c26'],
-      [1, 0, '#a45a38'],
-      [2, 0, '#6e3c26'],
-      [0, 1, '#c4a878'],
-      [1, 1, '#d8bc8c'],
-      [2, 1, '#c4a878'],
+      [0, 0, '#6a4820'],
+      [1, 0, '#c4a050'],
+      [2, 0, '#6a4820'],
+      [0, 1, '#b89a68'],
+      [1, 1, '#d4bc88'],
+      [2, 1, '#a88858'],
       [0, 2, '#5a3420'],
       [1, 2, '#7a4a2e'],
-      [2, 2, '#5a3420'],
+      [2, 2, '#4a2c18'],
     ],
   },
+  // Floorboards: alternating grain columns.
   [PLANK]: {
     base: '#a88452',
     detail: [
-      [0, 0, '#967444'],
-      [0, 1, '#b89462'],
-      [0, 2, '#967444'],
+      [0, 0, '#8e6e3c'],
+      [1, 0, '#b8945c'],
+      [2, 0, '#967444'],
+      [0, 1, '#967444'],
+      [1, 1, '#c4a468'],
+      [2, 1, '#8a6a38'],
+      [0, 2, '#8e6e3c'],
+      [1, 2, '#b08c50'],
+      [2, 2, '#9a7848'],
     ],
   },
   [FENCE]: {
     base: '#6a4a2c',
     detail: [
-      [1, 0, '#866038'],
-      [1, 2, '#866038'],
-      [0, 1, '#543820'],
+      [0, 0, '#543820'],
+      [1, 0, '#8a6440'],
+      [2, 0, '#543820'],
+      [0, 1, '#6a4a2c'],
+      [1, 1, '#866038'],
+      [2, 1, '#6a4a2c'],
+      [0, 2, '#543820'],
+      [1, 2, '#8a6440'],
+      [2, 2, '#543820'],
     ],
   },
+  // Vertical timber boards + seam shadow.
   [WALL_WOOD]: {
     base: '#5e4024',
     detail: [
       [0, 0, '#725030'],
-      [2, 2, '#4a321c'],
-      [1, 1, '#684828'],
+      [1, 0, '#4a321c'],
+      [2, 0, '#684828'],
+      [0, 1, '#6a4a2c'],
+      [1, 1, '#3e2814'],
+      [2, 1, '#725030'],
+      [0, 2, '#5a3c22'],
+      [1, 2, '#4a321c'],
+      [2, 2, '#644428'],
     ],
   },
+  // Ashlar: light face / dark mortar joints.
   [WALL_STONE]: {
     base: '#6e6a64',
     detail: [
-      [0, 1, '#7e7a72'],
-      [2, 0, '#5a5650'],
-      [1, 2, '#86827a'],
-      [1, 0, '#4e4a44'],
+      [0, 0, '#8a8680'],
+      [1, 0, '#5a5650'],
+      [2, 0, '#7e7a74'],
+      [0, 1, '#4e4a44'],
+      [1, 1, '#74706a'],
+      [2, 1, '#4e4a44'],
+      [0, 2, '#82807a'],
+      [1, 2, '#5a5650'],
+      [2, 2, '#8e8a84'],
     ],
   },
   [WORKBENCH]: {
     base: '#9a582c',
     detail: [
-      [0, 0, '#b86a38'],
-      [2, 2, '#744420'],
+      [0, 0, '#c47a40'],
+      [1, 0, '#b86a38'],
+      [2, 0, '#8a4e24'],
+      [0, 1, '#7a4420'],
       [1, 1, '#a86032'],
+      [2, 1, '#6e3c1c'],
+      [0, 2, '#5a3018'],
+      [1, 2, '#744420'],
+      [2, 2, '#5a3018'],
     ],
   },
   [CHEST]: {
     base: '#a87230',
     detail: [
-      [0, 1, '#865820'],
-      [2, 1, '#865820'],
-      [1, 0, '#d09844'],
+      [0, 0, '#8a5c24'],
+      [1, 0, '#d4a050'],
+      [2, 0, '#8a5c24'],
+      [0, 1, '#c09040'],
+      [1, 1, '#e8c060'],
+      [2, 1, '#c09040'],
+      [0, 2, '#6e4818'],
+      [1, 2, '#865820'],
+      [2, 2, '#6e4818'],
     ],
   },
   [BED]: {
     base: '#9a3a48',
     detail: [
-      [0, 0, '#e4ded0'],
-      [1, 0, '#e4ded0'],
-      [2, 2, '#7c2e3a'],
+      [0, 0, '#e8e2d4'],
+      [1, 0, '#f0eadc'],
+      [2, 0, '#d8d0c0'],
+      [0, 1, '#b8505c'],
+      [1, 1, '#c4606c'],
+      [2, 1, '#a8404c'],
+      [0, 2, '#6e2a32'],
+      [1, 2, '#7c2e3a'],
+      [2, 2, '#5a242c'],
     ],
   },
   [TABLE]: {
     base: '#8a5a28',
     detail: [
-      [0, 0, '#a46e34'],
-      [2, 0, '#a46e34'],
-      [0, 2, '#6e441c'],
-      [2, 2, '#6e441c'],
-      [1, 1, '#b87838'],
+      [0, 0, '#b87838'],
+      [1, 0, '#c88848'],
+      [2, 0, '#b87838'],
+      [0, 1, '#6e441c'],
+      [1, 1, '#a46e34'],
+      [2, 1, '#6e441c'],
+      [0, 2, '#5a3818'],
+      [1, 2, '#7a4c20'],
+      [2, 2, '#5a3818'],
+    ],
+  },
+  [HEARTH]: {
+    base: '#6a4a3c',
+    detail: [
+      [0, 0, '#8a7a6c'],
+      [1, 0, '#5a4a40'],
+      [2, 0, '#8a7a6c'],
+      [0, 1, '#4a3a30'],
+      [1, 1, '#e87830'],
+      [2, 1, '#4a3a30'],
+      [0, 2, '#3a2e26'],
+      [1, 2, '#c45820'],
+      [2, 2, '#3a2e26'],
+    ],
+  },
+  [BENCH]: {
+    base: '#7a522c',
+    detail: [
+      [0, 0, '#9a6a38'],
+      [1, 0, '#a87844'],
+      [2, 0, '#9a6a38'],
+      [0, 1, '#5a3c20'],
+      [1, 1, '#8a5c30'],
+      [2, 1, '#5a3c20'],
+      [0, 2, '#4a3018'],
+      [1, 2, '#6a4424'],
+      [2, 2, '#4a3018'],
+    ],
+  },
+  [STOOL]: {
+    base: '#8a5a30',
+    detail: [
+      [1, 0, '#b07840'],
+      [0, 1, '#6a4424'],
+      [1, 1, '#9a6838'],
+      [2, 1, '#6a4424'],
+      [1, 2, '#5a381c'],
+    ],
+  },
+  [SHELF]: {
+    base: '#7a5634',
+    detail: [
+      [0, 0, '#9a7448'],
+      [1, 0, '#a88050'],
+      [2, 0, '#9a7448'],
+      [0, 1, '#5a3e24'],
+      [1, 1, '#c4a878'],
+      [2, 1, '#5a3e24'],
+      [0, 2, '#9a7448'],
+      [1, 2, '#8a6840'],
+      [2, 2, '#9a7448'],
+    ],
+  },
+  [CUPBOARD]: {
+    base: '#6e4a28',
+    detail: [
+      [0, 0, '#8a6238'],
+      [1, 0, '#5a3a1c'],
+      [2, 0, '#8a6238'],
+      [0, 1, '#7a542c'],
+      [1, 1, '#c4a050'],
+      [2, 1, '#7a542c'],
+      [0, 2, '#5a3a1c'],
+      [1, 2, '#4a2e16'],
+      [2, 2, '#5a3a1c'],
+    ],
+  },
+  [CRADLE]: {
+    base: '#a87848',
+    detail: [
+      [0, 0, '#c49860'],
+      [1, 0, '#e8dcc8'],
+      [2, 0, '#c49860'],
+      [0, 1, '#8a5c30'],
+      [1, 1, '#d8c8a8'],
+      [2, 1, '#8a5c30'],
+      [0, 2, '#6a4424'],
+      [1, 2, '#7a5230'],
+      [2, 2, '#6a4424'],
+    ],
+  },
+  [LOOM]: {
+    base: '#7a4a28',
+    detail: [
+      [0, 0, '#9a6440'],
+      [1, 0, '#d8c8a0'],
+      [2, 0, '#9a6440'],
+      [0, 1, '#5a3420'],
+      [1, 1, '#c4a878'],
+      [2, 1, '#5a3420'],
+      [0, 2, '#4a2818'],
+      [1, 2, '#6a3e24'],
+      [2, 2, '#4a2818'],
+    ],
+  },
+  [WASHING_TUB]: {
+    base: '#6a5a48',
+    detail: [
+      [0, 0, '#8a7a64'],
+      [1, 0, '#5a4a38'],
+      [2, 0, '#8a7a64'],
+      [0, 1, '#4a3e30'],
+      [1, 1, '#7aa0b8'],
+      [2, 1, '#4a3e30'],
+      [0, 2, '#3a3024'],
+      [1, 2, '#5a4a38'],
+      [2, 2, '#3a3024'],
     ],
   },
   [TRAIL]: {
-    base: '#a8824c',
+    base: '#8a6438',
     detail: [
-      [1, 0, '#947040'],
-      [1, 2, '#b89458'],
+      [0, 0, '#6e4e28'],
+      [1, 0, '#9a7448'],
+      [2, 0, '#7a5a30'],
+      [0, 1, '#a88250'],
+      [1, 1, '#5a4020'],
+      [2, 1, '#8e6a40'],
+      [0, 2, '#7a5a32'],
+      [1, 2, '#b08a54'],
+      [2, 2, '#684828'],
     ],
     vary: true,
   },
   [PATH]: {
-    base: '#c09a5e',
+    base: '#b08a52',
     detail: [
-      [0, 2, '#ac864c'],
-      [2, 0, '#ccaa6e'],
+      [0, 0, '#9a7440'],
+      [1, 0, '#c49a62'],
+      [2, 0, '#8a6438'],
+      [0, 1, '#c8a66c'],
+      [1, 1, '#7a5430'],
+      [2, 1, '#b89458'],
+      [0, 2, '#a07a48'],
+      [1, 2, '#d0b074'],
+      [2, 2, '#8e6a3c'],
     ],
     vary: true,
   },
   [ROAD]: {
-    base: '#c8b898',
+    base: '#b8a888',
     detail: [
-      [0, 0, '#b4a484'],
-      [2, 2, '#b4a484'],
-      [1, 1, '#d8c8a8'],
-      [2, 0, '#a89878'],
+      [0, 0, '#a49474'],
+      [1, 0, '#c8b898'],
+      [2, 0, '#8e7a58'],
+      [0, 1, '#d0c0a0'],
+      [1, 1, '#6e5a3e'],
+      [2, 1, '#b4a484'],
+      [0, 2, '#9a8a6a'],
+      [1, 2, '#c4b494'],
+      [2, 2, '#84745a'],
     ],
     vary: true,
   },
@@ -314,7 +549,6 @@ export const TILE_ART: Record<number, TileArt> = {
       [1, 1, '#6a4a2c'],
     ],
   },
-  // Stone tower + dark roof ridge — not a yellow logo blob.
   [MILL]: {
     base: '#7a7268',
     detail: [
@@ -329,7 +563,6 @@ export const TILE_ART: Record<number, TileArt> = {
       [2, 2, '#6a6258'],
     ],
   },
-  // Weathered pier: dark deck, lighter planks.
   [PORT]: {
     base: '#5a3e24',
     detail: [
@@ -345,11 +578,17 @@ export const TILE_ART: Record<number, TileArt> = {
     ],
   },
   [FIELD]: {
-    base: '#6a5234',
+    base: '#5c4630',
     detail: [
-      [0, 1, '#5a442c'],
-      [2, 1, '#7a6240'],
-      [1, 0, '#624a30'],
+      [0, 0, '#4a3824'],
+      [1, 0, '#6e563c'],
+      [2, 0, '#3e2e1c'],
+      [0, 1, '#7a6244'],
+      [1, 1, '#342416'],
+      [2, 1, '#624a32'],
+      [0, 2, '#544028'],
+      [1, 2, '#8a6e4c'],
+      [2, 2, '#46341e'],
     ],
     vary: true,
   },
@@ -361,20 +600,20 @@ export const WHEAT_RIPE = 300
 
 const WHEAT_STAGES: TileArt[] = [
   {
-    base: '#6a5234',
+    base: '#5c4630',
     detail: [
       [0, 1, '#c8b888'],
       [2, 0, '#c8b888'],
-      [1, 2, '#5a442c'],
+      [1, 2, '#4a3824'],
     ],
   },
   {
-    base: '#5a7a3e',
+    base: '#4e7238',
     detail: [
-      [0, 0, '#78a04c'],
-      [1, 1, '#88b056'],
-      [2, 0, '#78a04c'],
-      [1, 2, '#4e6c36'],
+      [0, 0, '#6a9448'],
+      [1, 1, '#7aa854'],
+      [2, 0, '#5a843c'],
+      [1, 2, '#3e5e2c'],
     ],
   },
   {
@@ -388,9 +627,8 @@ const WHEAT_STAGES: TileArt[] = [
   },
 ]
 
-/** Logs left on cleared ground after a tree is felled. */
 const WOOD_PILE_ART: TileArt = {
-  base: '#7a5f42',
+  base: '#6e5236',
   detail: [
     [1, 1, '#c4a06a'],
     [0, 2, '#4a3420'],
@@ -398,7 +636,6 @@ const WOOD_PILE_ART: TileArt = {
   ],
 }
 
-/** Timber lintel / shaft mouth — distinguishable from deep TUNNEL. */
 const TUNNEL_ENTRANCE_ART: TileArt = {
   base: '#1a1612',
   detail: [
@@ -432,6 +669,25 @@ export function tileNoise(x: number, y: number): number {
   return ((m ^ (m >>> 16)) >>> 0) / 4294967296
 }
 
+export function approxBiomeAt(x: number, y: number, terrain: number): BiomeIdT {
+  const lat = Math.abs((y / Math.max(1, WORLD_SIZE - 1)) * 2 - 1)
+  const n = tileNoise(x, y)
+  if (terrain === WATER) return lat > 0.72 ? BiomeId.tundra : BiomeId.ocean
+  if (terrain === SAND) return lat < 0.35 ? BiomeId.desert : BiomeId.coastal
+  if (terrain === MOUNTAIN) return lat > 0.55 || n > 0.62 ? BiomeId.alpine : BiomeId.boreal
+  if (terrain === STONE || terrain === GOLD || terrain === IRON) {
+    return lat > 0.65 ? BiomeId.alpine : BiomeId.temperateForest
+  }
+  if (lat > 0.82) return BiomeId.tundra
+  if (lat > 0.68) return n > 0.45 ? BiomeId.boreal : BiomeId.tundra
+  if (lat > 0.48) return n > 0.55 ? BiomeId.temperateForest : BiomeId.boreal
+  if (lat < 0.22) return n > 0.5 ? BiomeId.desert : BiomeId.savanna
+  if (lat < 0.38) return n > 0.6 ? BiomeId.scrub : BiomeId.savanna
+  if (terrain === TREE || terrain === BUSH) return BiomeId.temperateForest
+  if (n > 0.78) return BiomeId.wetland
+  return BiomeId.grassland
+}
+
 function hexToRgba32(hex: string): number {
   const n = parseInt(hex.slice(1), 16)
   const r = (n >> 16) & 255
@@ -456,10 +712,6 @@ function clampByte(v: number) {
   return v < 0 ? 0 : v > 255 ? 255 : v
 }
 
-/**
- * Optional cheap cold tint for grass/water base colors (no per-frame climate sample in hot path —
- * call only from debug/LOD overlays with a pre-sampled tempC).
- */
 export function applyColdTintPacked(packed: number, tempC: number): number {
   if (tempC > 4) return packed
   const frost = tempC > -2 ? 0.18 : 0.32
@@ -472,13 +724,12 @@ export function applyColdTintPacked(packed: number, tempC: number): number {
   return (255 << 24) | (b << 16) | (g << 8) | r
 }
 
-/** Packed little-endian RGBA for ImageData (one pixel per tile). */
 export function tilePixel32(
   terrain: number,
   amount: number,
   x: number,
   y: number,
-  biomeId: number = BiomeId.grassland,
+  biomeId?: BiomeIdT,
 ): number {
   let packed: number
   let vary = 0
@@ -507,32 +758,55 @@ export function tilePixel32(
   if (vary) {
     const n = tileNoise(x, y)
     const n2 = tileNoise(x + 91, y + 47)
+    const n3 = tileNoise(x + 17, y + 133)
 
-    // Organic mottling: channel-biased so biomes stay readable from orbit.
     if (kind === GRASS) {
-      const j = ((n - 0.5) * 28) | 0
-      r = clampByte(r + j - 4)
-      g = clampByte(g + j + ((n2 * 10) | 0))
-      b = clampByte(b + ((j * 0.4) | 0) - 2)
+      const j = ((n - 0.5) * 34) | 0
+      const dry = n2 > 0.72 ? 10 : n2 < 0.22 ? -8 : 0
+      r = clampByte(r + j - 6 + dry)
+      g = clampByte(g + j + ((n3 * 12) | 0) + (dry >> 1))
+      b = clampByte(b + ((j * 0.35) | 0) - 4)
+    } else if (kind === DIRT || kind === TRAIL || kind === PATH || kind === ROAD) {
+      const j = ((n - 0.5) * 26) | 0
+      const mud = n2 > 0.7 ? -14 : n2 < 0.2 ? 12 : 0
+      r = clampByte(r + j + mud + 2)
+      g = clampByte(g + ((j * 0.85) | 0) + mud)
+      b = clampByte(b + ((j * 0.55) | 0) + ((mud * 0.6) | 0) - 2)
     } else if (kind === TREE) {
-      const j = ((n - 0.45) * 22) | 0
-      r = clampByte(r + ((j * 0.5) | 0))
+      const j = ((n - 0.45) * 24) | 0
+      r = clampByte(r + ((j * 0.45) | 0))
       g = clampByte(g + j)
-      b = clampByte(b + ((j * 0.35) | 0) - 3)
+      b = clampByte(b + ((j * 0.3) | 0) - 4)
+    } else if (kind === BUSH) {
+      const j = ((n - 0.5) * 20) | 0
+      r = clampByte(r + j + (n2 > 0.75 ? 18 : 0))
+      g = clampByte(g + j)
+      b = clampByte(b + ((j * 0.4) | 0))
     } else if (kind === WATER) {
-      const j = ((n - 0.5) * 24) | 0
-      r = clampByte(r + ((j * 0.25) | 0))
-      g = clampByte(g + ((j * 0.55) | 0) + ((n2 * 8) | 0) - 4)
-      b = clampByte(b + j + 2)
+      const deep = tileNoise(x >> 2, y >> 2)
+      const j = ((n - 0.5) * 18) | 0
+      const depthPush = ((deep - 0.42) * 34) | 0
+      r = clampByte(r + ((j * 0.2) | 0) - Math.max(0, depthPush) - 2)
+      g = clampByte(g + ((j * 0.45) | 0) + ((n2 * 6) | 0) - 4 - ((depthPush * 0.7) | 0))
+      b = clampByte(b + j + 4 - ((depthPush * 0.35) | 0))
+      if (deep < 0.36) {
+        r = clampByte(r + 5)
+        g = clampByte(g + 9)
+        b = clampByte(b + 3)
+      }
     } else if (kind === MOUNTAIN) {
-      const j = ((n - 0.4) * 30) | 0
-      // Alpine / tundra: denser snow flecks on rock.
-      const snowThresh =
-        biomeId === BiomeId.alpine || biomeId === BiomeId.tundra ? 0.62 : 0.78
-      const snow = n2 > snowThresh ? (biomeId === BiomeId.alpine ? 42 : 34) : 0
-      r = clampByte(r + j + snow)
-      g = clampByte(g + j + snow)
-      b = clampByte(b + ((j * 0.85) | 0) + snow)
+      const j = ((n - 0.4) * 32) | 0
+      const snow = n2 > 0.62 ? 22 + ((n3 * 28) | 0) : n2 > 0.48 ? 10 : 0
+      const shade = n3 < 0.28 ? -12 : 0
+      r = clampByte(r + j + snow + shade)
+      g = clampByte(g + j + snow + shade)
+      b = clampByte(b + ((j * 0.85) | 0) + snow + 2 + shade)
+    } else if (kind === STONE || kind === GOLD || kind === IRON) {
+      const j = ((n - 0.5) * 28) | 0
+      const facet = n2 > 0.65 ? 14 : n2 < 0.3 ? -12 : 0
+      r = clampByte(r + j + facet)
+      g = clampByte(g + j + facet)
+      b = clampByte(b + ((j * 0.9) | 0) + facet)
     } else if (kind === TUNNEL) {
       const j = ((n - 0.55) * 18) | 0
       const mouth = amount >= 1 ? 10 : 0
@@ -540,15 +814,17 @@ export function tilePixel32(
       g = clampByte(g + ((j * 0.7) | 0) + (amount >= 1 ? 6 : 0))
       b = clampByte(b + ((j * 0.5) | 0))
     } else if (kind === SAND) {
-      const j = ((n - 0.5) * 20) | 0
-      r = clampByte(r + j + 2)
-      g = clampByte(g + j)
-      b = clampByte(b + ((j * 0.6) | 0) - 2)
+      const j = ((n - 0.5) * 22) | 0
+      const dune = ((n2 - 0.5) * 16) | 0
+      r = clampByte(r + j + dune + 3)
+      g = clampByte(g + j + ((dune * 0.8) | 0))
+      b = clampByte(b + ((j * 0.55) | 0) + ((dune * 0.4) | 0) - 3)
     } else if (kind === FIELD || kind === WHEAT) {
-      const j = ((n - 0.5) * 18) | 0
-      r = clampByte(r + j)
-      g = clampByte(g + j + ((n2 * 6) | 0))
-      b = clampByte(b + ((j * 0.5) | 0))
+      const j = ((n - 0.5) * 22) | 0
+      const furrow = (x + y) & 1 ? -6 : 4
+      r = clampByte(r + j + furrow)
+      g = clampByte(g + j + ((n2 * 6) | 0) + (furrow >> 1))
+      b = clampByte(b + ((j * 0.45) | 0))
     } else {
       const j = (n * 16) | 0
       r = clampByte(r + j)
@@ -557,12 +833,10 @@ export function tilePixel32(
     }
   }
 
-  const tintKind = terrainBiomeTintKind(kind === WHEAT ? WHEAT : terrain === DIRT && amount > 0 ? DIRT : terrain)
-  // Wood piles / tunnel mouths stay structural — skip biome wash.
-  const skipTint =
-    (terrain === DIRT && amount > 0) || (terrain === TUNNEL && amount >= 1) || tintKind == null
-  if (!skipTint && tintKind) {
-    ;[r, g, b] = applyBiomeTintRgb(r, g, b, biomeId as BiomeIdT, tintKind)
+  const tintKind = terrainBiomeTintKind(kind)
+  if (tintKind) {
+    const id = biomeId ?? approxBiomeAt(x, y, kind)
+    ;[r, g, b] = applyBiomeTintRgb(r, g, b, id, tintKind)
   }
 
   return (255 << 24) | (b << 16) | (g << 8) | r
@@ -576,22 +850,207 @@ const STRUCTURE = new Set([
   WALL_STONE,
   FENCE,
   BRIDGE,
+  PLANK,
   WORKBENCH,
   CHEST,
   BED,
   TABLE,
+  HEARTH,
+  BENCH,
+  STOOL,
+  SHELF,
+  CUPBOARD,
+  CRADLE,
+  LOOM,
+  WASHING_TUB,
   BUSH,
   TREE,
 ])
+
+const FURNITURE = new Set([
+  WORKBENCH,
+  CHEST,
+  BED,
+  TABLE,
+  HEARTH,
+  BENCH,
+  STOOL,
+  SHELF,
+  CUPBOARD,
+  CRADLE,
+  LOOM,
+  WASHING_TUB,
+])
+
+const GROUND_CLOSEUP = new Set([GRASS, DIRT, SAND, STONE, MOUNTAIN, FIELD, GOLD, IRON])
 
 function isWater(t: number) {
   return t === WATER
 }
 
-/**
- * Close-up structure / canopy / shore pass. Only call when tileS is large
- * and the viewport is small enough — gated by the caller.
- */
+/** Indoor / crafted timber grain ? fixed colors, never biome-washed. */
+function fillWoodGrain(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seedX: number,
+  seedY: number,
+  light = 'rgba(210, 180, 120, 0.22)',
+  dark = 'rgba(40, 26, 12, 0.2)',
+) {
+  const lines = Math.max(2, Math.min(6, (h / 3) | 0))
+  for (let i = 0; i < lines; i++) {
+    const n = tileNoise(seedX + i * 3, seedY + i)
+    const yy = y + h * ((i + 0.35) / lines)
+    ctx.fillStyle = n > 0.5 ? light : dark
+    const inset = w * (0.04 + n * 0.08)
+    ctx.fillRect(x + inset, yy, w - inset * 2, Math.max(0.7, h * 0.06))
+  }
+}
+
+function fillBoardSeams(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  boards: number,
+  seam = 'rgba(30, 20, 10, 0.28)',
+) {
+  ctx.fillStyle = seam
+  const step = w / boards
+  for (let i = 1; i < boards; i++) {
+    ctx.fillRect(x + i * step, y, Math.max(0.7, w * 0.04), h)
+  }
+}
+
+function fillStoneCourses(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seedX: number,
+  seedY: number,
+) {
+  const rows = Math.max(2, Math.min(4, (h / 4) | 0))
+  const rowH = h / rows
+  for (let r = 0; r < rows; r++) {
+    const yy = y + r * rowH
+    const n = tileNoise(seedX, seedY + r)
+    ctx.fillStyle = n > 0.55 ? 'rgba(160, 156, 148, 0.28)' : 'rgba(50, 46, 40, 0.22)'
+    ctx.fillRect(x + w * 0.04, yy + rowH * 0.15, w * 0.42, rowH * 0.55)
+    ctx.fillRect(x + w * 0.52, yy + rowH * 0.2, w * 0.4, rowH * 0.5)
+    ctx.fillStyle = 'rgba(35, 32, 28, 0.35)'
+    ctx.fillRect(x, yy + rowH - Math.max(0.6, rowH * 0.12), w, Math.max(0.6, rowH * 0.12))
+  }
+}
+
+function fillThatchBands(ctx: CanvasRenderingContext2D, px: number, py: number, tileS: number, bands = 4) {
+  for (let i = 0; i < bands; i++) {
+    const t = (i + 1) / (bands + 1)
+    const y = py + tileS * (0.08 + t * 0.34)
+    const half = tileS * (0.08 + t * 0.42)
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(196, 160, 80, 0.35)' : 'rgba(90, 60, 28, 0.28)'
+    ctx.fillRect(px + tileS * 0.5 - half, y, half * 2, Math.max(1, tileS * 0.055))
+  }
+}
+
+/** Cheap height proxy for north-lit slope shade (no stored elevation). */
+function terrainRelief(t: number): number {
+  if (t === WATER) return 0
+  if (t === SAND || t === BRIDGE || t === PORT || t === PATH || t === ROAD || t === TRAIL) return 1.1
+  if (t === DIRT || t === FIELD || t === WHEAT || t === GRASS || t === BUSH) return 2
+  if (t === TREE || t === PLANK) return 2.6
+  if (t === HOUSE || t === MILL || t === FENCE || t === WALL_WOOD || t === WALL_STONE) return 3.2
+  if (t === STONE || t === GOLD || t === IRON || t === TUNNEL) return 4.2
+  if (t === MOUNTAIN) return 5
+  return 2
+}
+
+function drawGroundMaterial(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  px: number,
+  py: number,
+  tileS: number,
+  gx: number,
+  gy: number,
+  biomeId: BiomeIdT,
+) {
+  const cell = Math.max(1, (tileS / 3) | 0)
+  const art = tileArtFor(t)
+  const kind = terrainBiomeTintKind(t) ?? 'dirt'
+
+  for (let dy = 0; dy < 3; dy++) {
+    for (let dx = 0; dx < 3; dx++) {
+      let hex = art.base
+      for (const [lx, ly, col] of art.detail) {
+        if (lx === dx && ly === dy) {
+          hex = col
+          break
+        }
+      }
+      const n = parseInt(hex.slice(1), 16)
+      let r = (n >> 16) & 255
+      let g = (n >> 8) & 255
+      let b = n & 255
+      ;[r, g, b] = applyBiomeTintRgb(r, g, b, biomeId, kind)
+      const jitter = ((tileNoise(gx + dx * 3, gy + dy * 5) - 0.5) * 18) | 0
+      r = clampByte(r + jitter)
+      g = clampByte(g + jitter)
+      b = clampByte(b + ((jitter * 0.7) | 0))
+      ctx.fillStyle = `rgb(${r},${g},${b})`
+      ctx.fillRect(px + dx * cell, py + dy * cell, cell + 0.5, cell + 0.5)
+    }
+  }
+
+  if (tileS < 12) return
+
+  if (t === GRASS) {
+    for (let i = 0; i < 4; i++) {
+      const n = tileNoise(gx + i * 11, gy + i * 7)
+      if (n < 0.35) continue
+      const [rr, gg, bb] = applyBiomeTintRgb(70, 110, 48, biomeId, 'grass')
+      ctx.fillStyle = `rgba(${rr},${gg},${bb},0.55)`
+      ctx.fillRect(px + n * tileS * 0.7, py + tileNoise(gx, gy + i) * tileS * 0.7, Math.max(1, tileS * 0.06), Math.max(1, tileS * 0.18))
+    }
+  } else if (t === DIRT || t === FIELD) {
+    const mud = tileNoise(gx, gy) > 0.55
+    const [rr, gg, bb] = applyBiomeTintRgb(mud ? 48 : 110, mud ? 34 : 88, mud ? 22 : 58, biomeId, 'dirt')
+    ctx.fillStyle = `rgba(${rr},${gg},${bb},0.4)`
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.35, tileS * 0.45, tileS * 0.2)
+  } else if (t === SAND) {
+    for (let i = 0; i < 5; i++) {
+      const n = tileNoise(gx + i * 3, gy + 9)
+      const [rr, gg, bb] = applyBiomeTintRgb(200, 180, 130, biomeId, 'sand')
+      ctx.fillStyle = `rgba(${rr},${gg},${bb},0.35)`
+      ctx.fillRect(px + n * tileS * 0.8, py + tileNoise(gx + 2, gy + i) * tileS * 0.8, Math.max(1, tileS * 0.08), Math.max(1, tileS * 0.06))
+    }
+  } else if (t === STONE || t === GOLD || t === IRON) {
+    const [rr, gg, bb] = applyBiomeTintRgb(55, 54, 50, biomeId, 'stone')
+    ctx.fillStyle = `rgba(${rr},${gg},${bb},0.45)`
+    ctx.fillRect(px + tileS * 0.15, py + tileS * 0.2, tileS * 0.35, tileS * 0.12)
+    ctx.fillRect(px + tileS * 0.5, py + tileS * 0.55, tileS * 0.3, tileS * 0.15)
+    if (t === GOLD || t === IRON) {
+      ctx.fillStyle = t === GOLD ? 'rgba(232,194,69,0.7)' : 'rgba(181,106,60,0.7)'
+      ctx.fillRect(px + tileS * 0.4, py + tileS * 0.4, tileS * 0.18, tileS * 0.14)
+    }
+  } else if (t === MOUNTAIN) {
+    if (tileNoise(gx, gy) > 0.42) {
+      const [rr, gg, bb] = applyBiomeTintRgb(220, 226, 232, biomeId, 'mountain')
+      ctx.fillStyle = `rgba(${rr},${gg},${bb},0.55)`
+      ctx.fillRect(px + tileS * 0.1, py + tileS * 0.08, tileS * 0.55, tileS * 0.22)
+      ctx.fillRect(px + tileS * 0.45, py + tileS * 0.28, tileS * 0.35, tileS * 0.14)
+    }
+    const [sr, sg, sb] = applyBiomeTintRgb(40, 38, 34, biomeId, 'mountain')
+    ctx.fillStyle = `rgba(${sr},${sg},${sb},0.4)`
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.55, tileS * 0.5, tileS * 0.2)
+  }
+}
+
 export function drawCloseupTerrain(
   ctx: CanvasRenderingContext2D,
   terrain: Uint8Array,
@@ -615,9 +1074,12 @@ export function drawCloseupTerrain(
   if (tiles > 14000) return
 
   const detail = tileS >= 10
+  const groundDetail = tileS >= 8 && tiles <= 11000
+  const elevShade = tileS >= 8.5 && tiles <= 11000
   const shimmer = tileS >= 11 && tiles <= 9000
   const foam = tileS >= 12 && tiles <= 7000
-  const phase = (nowMs * 0.0018) % (Math.PI * 2)
+  const phase = (nowMs * 0.00115) % (Math.PI * 2)
+  const foamPulse = 0.5 + 0.5 * Math.sin(nowMs * 0.0024)
 
   for (let gy = y0; gy < y1; gy++) {
     const row = gy * WORLD_SIZE
@@ -625,58 +1087,118 @@ export function drawCloseupTerrain(
       const t = terrain[row + gx]
       const px = (gx * tilePx - camX) * zoom
       const py = (gy * tilePx - camY) * zoom
-      const bid = (biome?.[row + gx] ?? BiomeId.grassland) as BiomeIdT
+      const biomeId = (biome?.[row + gx] as BiomeIdT | undefined) ?? approxBiomeAt(gx, gy, t)
 
       if (t === WATER) {
+        // Open-water depth vs shore shallows from 4-neighbour openness.
+        let open = 0
+        if (gx > 0 && isWater(terrain[row + gx - 1])) open++
+        if (gx < WORLD_SIZE - 1 && isWater(terrain[row + gx + 1])) open++
+        if (gy > 0 && isWater(terrain[row - WORLD_SIZE + gx])) open++
+        if (gy < WORLD_SIZE - 1 && isWater(terrain[row + WORLD_SIZE + gx])) open++
+        if (open >= 4) {
+          ctx.fillStyle = 'rgba(10, 32, 52, 0.18)'
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (open >= 3) {
+          ctx.fillStyle = 'rgba(14, 40, 60, 0.1)'
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (open <= 1) {
+          ctx.fillStyle = 'rgba(150, 198, 210, 0.11)'
+          ctx.fillRect(px, py, tileS, tileS)
+        }
+
         if (shimmer) {
           const n = tileNoise(gx, gy)
-          if (n > 0.62) {
-            const a = 0.07 + Math.sin(phase + n * 12 + gx * 0.3) * 0.05
-            ctx.fillStyle = biomeTintCss(180, 220, 240, bid, 'water', Number(a.toFixed(3)))
-            const hx = px + tileS * (0.15 + n * 0.5)
-            const hy = py + tileS * (0.2 + tileNoise(gx + 3, gy) * 0.45)
-            ctx.fillRect(hx, hy, Math.max(1, tileS * 0.28), Math.max(1, tileS * 0.1))
+          const n2 = tileNoise(gx + 3, gy + 1)
+          if (n > 0.55) {
+            const a = 0.045 + Math.sin(phase + n * 9 + gx * 0.22 + gy * 0.08) * 0.035
+            if (a > 0.012) {
+              ctx.fillStyle = `rgba(190, 226, 238, ${a.toFixed(3)})`
+              const hx = px + tileS * (0.08 + n * 0.55)
+              const hy = py + tileS * (0.18 + n2 * 0.5)
+              ctx.fillRect(hx, hy, Math.max(1.2, tileS * (0.22 + n * 0.18)), Math.max(1, tileS * 0.07))
+            }
+          }
+          if (n2 > 0.72 && tileS >= 13) {
+            const a2 = 0.03 + Math.sin(phase * 1.3 + n2 * 14) * 0.025
+            if (a2 > 0.01) {
+              ctx.fillStyle = `rgba(210, 236, 246, ${a2.toFixed(3)})`
+              ctx.fillRect(
+                px + tileS * (0.2 + n2 * 0.4),
+                py + tileS * (0.35 + n * 0.3),
+                Math.max(1, tileS * 0.16),
+                Math.max(1, tileS * 0.05),
+              )
+            }
           }
         }
         if (foam) {
-          const n = gy > 0 && !isWater(terrain[row - WORLD_SIZE + gx])
-          const s = gy < WORLD_SIZE - 1 && !isWater(terrain[row + WORLD_SIZE + gx])
-          const e = gx < WORLD_SIZE - 1 && !isWater(terrain[row + gx + 1])
-          const w = gx > 0 && !isWater(terrain[row + gx - 1])
-          if (n || s || e || w) {
-            const foamA =
-              bid === BiomeId.wetland ? 0.14 : bid === BiomeId.coastal ? 0.28 : 0.22
-            ctx.fillStyle = biomeTintCss(220, 236, 244, bid, 'water', foamA)
-            const f = Math.max(1, tileS * 0.12)
-            if (n) ctx.fillRect(px, py, tileS, f)
-            if (s) ctx.fillRect(px, py + tileS - f, tileS, f)
-            if (w) ctx.fillRect(px, py, f, tileS)
-            if (e) ctx.fillRect(px + tileS - f, py, f, tileS)
+          const nEdge = gy > 0 && !isWater(terrain[row - WORLD_SIZE + gx])
+          const sEdge = gy < WORLD_SIZE - 1 && !isWater(terrain[row + WORLD_SIZE + gx])
+          const eEdge = gx < WORLD_SIZE - 1 && !isWater(terrain[row + gx + 1])
+          const wEdge = gx > 0 && !isWater(terrain[row + gx - 1])
+          if (nEdge || sEdge || eEdge || wEdge) {
+            const breath = 0.14 + foamPulse * 0.1
+            const f = Math.max(1, tileS * (0.1 + foamPulse * 0.04))
+            const drawFoam = (fx: number, fy: number, fw: number, fh: number, seed: number) => {
+              const speck = tileNoise(gx + seed, gy + seed * 3)
+              const a = breath * (0.7 + speck * 0.5)
+              ctx.fillStyle = `rgba(228, 240, 246, ${a.toFixed(3)})`
+              ctx.fillRect(fx, fy, fw, fh)
+              if (tileS >= 14 && speck > 0.55) {
+                ctx.fillStyle = `rgba(245, 250, 252, ${(a * 0.55).toFixed(3)})`
+                ctx.fillRect(fx + fw * speck * 0.4, fy + fh * 0.15, Math.max(1, fw * 0.35), Math.max(1, fh * 0.7))
+              }
+            }
+            if (nEdge) drawFoam(px, py, tileS, f, 1)
+            if (sEdge) drawFoam(px, py + tileS - f, tileS, f, 2)
+            if (wEdge) drawFoam(px, py, f, tileS, 3)
+            if (eEdge) drawFoam(px + tileS - f, py, f, tileS, 4)
+          }
+        }
+        continue
+      }
+
+      // Soft north-lit relief (fake elevation) on top of ground materials.
+      if (elevShade && !GROUND_CLOSEUP.has(t)) {
+        const hHere = terrainRelief(t)
+        const hN = gy > 0 ? terrainRelief(terrain[row - WORLD_SIZE + gx]) : hHere
+        const slope = hHere - hN
+        if (slope > 0.35) {
+          ctx.fillStyle = `rgba(255, 248, 232, ${Math.min(0.09, slope * 0.028).toFixed(3)})`
+          ctx.fillRect(px, py, tileS, tileS)
+        } else if (slope < -0.35) {
+          ctx.fillStyle = `rgba(18, 26, 34, ${Math.min(0.13, -slope * 0.032).toFixed(3)})`
+          ctx.fillRect(px, py, tileS, tileS)
+        }
+      }
+
+      if (groundDetail && GROUND_CLOSEUP.has(t) && !(t === DIRT && amount[row + gx] > 0)) {
+        drawGroundMaterial(ctx, t, px, py, tileS, gx, gy, biomeId)
+        if (elevShade) {
+          const hHere = terrainRelief(t)
+          const hN = gy > 0 ? terrainRelief(terrain[row - WORLD_SIZE + gx]) : hHere
+          const slope = hHere - hN
+          if (slope > 0.35) {
+            ctx.fillStyle = `rgba(255, 248, 232, ${Math.min(0.08, slope * 0.024).toFixed(3)})`
+            ctx.fillRect(px, py, tileS, tileS)
+          } else if (slope < -0.35) {
+            ctx.fillStyle = `rgba(18, 26, 34, ${Math.min(0.11, -slope * 0.028).toFixed(3)})`
+            ctx.fillRect(px, py, tileS, tileS)
           }
         }
         continue
       }
 
       if (t === TREE && detail) {
-        // Canopy blob darker than grass base, with a trunk fleck — tinted by biome.
-        ctx.fillStyle = biomeTintCss(20, 48, 26, bid, 'tree', 0.35)
+        ctx.fillStyle = 'rgba(20, 48, 26, 0.35)'
         ctx.fillRect(px + tileS * 0.08, py + tileS * 0.08, tileS * 0.84, tileS * 0.84)
         if (tileS >= 14) {
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.42, py + tileS * 0.55, tileS * 0.16, tileS * 0.35)
-          // Boreal/alpine: taller needle silhouette; desert/scrub: flatter scrub crown.
-          const tall =
-            bid === BiomeId.boreal || bid === BiomeId.alpine || bid === BiomeId.tundra
-          ctx.fillStyle = biomeTintCss(46, 106, 56, bid, 'tree')
+          ctx.fillStyle = '#2e6a38'
           ctx.beginPath()
-          if (tall) {
-            ctx.moveTo(px + tileS * 0.5, py + tileS * 0.08)
-            ctx.lineTo(px + tileS * 0.18, py + tileS * 0.58)
-            ctx.lineTo(px + tileS * 0.82, py + tileS * 0.58)
-            ctx.closePath()
-          } else {
-            ctx.ellipse(px + tileS * 0.5, py + tileS * 0.38, tileS * 0.38, tileS * 0.32, 0, 0, Math.PI * 2)
-          }
+          ctx.ellipse(px + tileS * 0.5, py + tileS * 0.38, tileS * 0.38, tileS * 0.32, 0, 0, Math.PI * 2)
           ctx.fill()
         }
         continue
@@ -685,29 +1207,33 @@ export function drawCloseupTerrain(
       if (!STRUCTURE.has(t) && t !== WHEAT && !(t === DIRT && amount[row + gx] > 0)) continue
 
       if (t === HOUSE) {
-        // Shadow
         if (detail) {
           ctx.fillStyle = 'rgba(0,0,0,0.22)'
           ctx.fillRect(px + tileS * 0.12, py + tileS * 0.55, tileS * 0.78, tileS * 0.38)
         }
-        // Walls
         ctx.fillStyle = '#c8b48a'
         ctx.fillRect(px + tileS * 0.12, py + tileS * 0.38, tileS * 0.76, tileS * 0.48)
-        // Roof ridge
-        ctx.fillStyle = '#8a4428'
+        if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.4, tileS * 0.72, tileS * 0.42, gx, gy, 'rgba(232, 214, 170, 0.28)', 'rgba(90, 60, 32, 0.18)')
+          fillBoardSeams(ctx, px + tileS * 0.14, py + tileS * 0.4, tileS * 0.72, tileS * 0.42, 4)
+        }
+        ctx.fillStyle = '#a87838'
         ctx.beginPath()
         ctx.moveTo(px + tileS * 0.08, py + tileS * 0.42)
-        ctx.lineTo(px + tileS * 0.5, py + tileS * 0.08)
+        ctx.lineTo(px + tileS * 0.5, py + tileS * 0.06)
         ctx.lineTo(px + tileS * 0.92, py + tileS * 0.42)
         ctx.closePath()
         ctx.fill()
+        if (detail) fillThatchBands(ctx, px, py, tileS)
         ctx.fillStyle = '#6e3420'
-        ctx.fillRect(px + tileS * 0.18, py + tileS * 0.42, tileS * 0.64, tileS * 0.1)
+        ctx.fillRect(px + tileS * 0.18, py + tileS * 0.4, tileS * 0.64, tileS * 0.08)
         if (tileS >= 14) {
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.42, py + tileS * 0.58, tileS * 0.16, tileS * 0.28)
           ctx.fillStyle = '#6ab0c8'
           ctx.fillRect(px + tileS * 0.22, py + tileS * 0.52, tileS * 0.14, tileS * 0.14)
+          ctx.fillStyle = 'rgba(255,255,255,0.25)'
+          ctx.fillRect(px + tileS * 0.24, py + tileS * 0.54, tileS * 0.05, tileS * 0.05)
         }
         continue
       }
@@ -719,10 +1245,10 @@ export function drawCloseupTerrain(
         }
         ctx.fillStyle = '#8a8478'
         ctx.fillRect(px + tileS * 0.28, py + tileS * 0.28, tileS * 0.44, tileS * 0.58)
+        if (detail) fillStoneCourses(ctx, px + tileS * 0.28, py + tileS * 0.28, tileS * 0.44, tileS * 0.58, gx, gy)
         ctx.fillStyle = '#4a3a28'
         ctx.fillRect(px + tileS * 0.24, py + tileS * 0.2, tileS * 0.52, tileS * 0.14)
         if (tileS >= 12) {
-          // Windmill arms — cheap cross
           ctx.strokeStyle = '#d8c8a8'
           ctx.lineWidth = Math.max(1, tileS * 0.07)
           const cx = px + tileS * 0.5
@@ -746,27 +1272,60 @@ export function drawCloseupTerrain(
           ctx.fillRect(px + tileS * 0.1, py + tileS * 0.4 + i * plank * 1.35, tileS * 0.8, plank)
         }
         if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.1, py + tileS * 0.4, tileS * 0.8, tileS * 0.36, gx, gy)
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.72, py + tileS * 0.18, tileS * 0.1, tileS * 0.28)
+          ctx.fillStyle = '#8a6840'
+          ctx.fillRect(px + tileS * 0.7, py + tileS * 0.16, tileS * 0.14, tileS * 0.05)
         }
         continue
       }
 
-      if (t === WALL_STONE || t === WALL_WOOD) {
-        ctx.fillStyle = t === WALL_STONE ? '#7a7670' : '#6a4a2c'
-        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.15, tileS * 0.7, tileS * 0.7)
+      if (t === PLANK) {
+        ctx.fillStyle = '#a88452'
+        ctx.fillRect(px + tileS * 0.04, py + tileS * 0.04, tileS * 0.92, tileS * 0.92)
         if (detail) {
-          ctx.fillStyle = t === WALL_STONE ? '#5a5650' : '#4a321c'
-          ctx.fillRect(px + tileS * 0.15, py + tileS * 0.15, tileS * 0.7, tileS * 0.12)
+          ctx.fillStyle = '#b8945c'
+          ctx.fillRect(px + tileS * 0.06, py + tileS * 0.06, tileS * 0.88, tileS * 0.88)
+          fillBoardSeams(ctx, px + tileS * 0.06, py + tileS * 0.06, tileS * 0.88, tileS * 0.88, 3)
+          fillWoodGrain(ctx, px + tileS * 0.08, py + tileS * 0.08, tileS * 0.84, tileS * 0.84, gx, gy)
+        }
+        continue
+      }
+
+      if (t === WALL_STONE) {
+        ctx.fillStyle = '#7a7670'
+        ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76)
+        if (detail) {
+          fillStoneCourses(ctx, px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76, gx, gy)
+          ctx.fillStyle = '#5a5650'
+          ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.1)
+        }
+        continue
+      }
+
+      if (t === WALL_WOOD) {
+        ctx.fillStyle = '#6a4a2c'
+        ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76)
+        if (detail) {
+          ctx.fillStyle = '#7a5838'
+          ctx.fillRect(px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72)
+          fillBoardSeams(ctx, px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72, 3)
+          fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72, gx, gy)
+          ctx.fillStyle = '#4a321c'
+          ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.1)
         }
         continue
       }
 
       if (t === FENCE) {
         ctx.fillStyle = '#6a4a2c'
-        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.35, tileS * 0.7, tileS * 0.12)
-        ctx.fillRect(px + tileS * 0.22, py + tileS * 0.25, tileS * 0.1, tileS * 0.45)
-        ctx.fillRect(px + tileS * 0.68, py + tileS * 0.25, tileS * 0.1, tileS * 0.45)
+        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.35, tileS * 0.7, tileS * 0.1)
+        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.52, tileS * 0.7, tileS * 0.08)
+        ctx.fillStyle = '#866038'
+        ctx.fillRect(px + tileS * 0.22, py + tileS * 0.22, tileS * 0.1, tileS * 0.5)
+        ctx.fillRect(px + tileS * 0.68, py + tileS * 0.22, tileS * 0.1, tileS * 0.5)
+        if (detail) fillWoodGrain(ctx, px + tileS * 0.18, py + tileS * 0.34, tileS * 0.64, tileS * 0.12, gx, gy)
         continue
       }
 
@@ -778,23 +1337,22 @@ export function drawCloseupTerrain(
         for (let i = 0; i < 3; i++) {
           ctx.fillRect(px + tileS * 0.12 + i * plank * 1.4, py + tileS * 0.32, plank, tileS * 0.36)
         }
+        if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.1, py + tileS * 0.3, tileS * 0.8, tileS * 0.4, gx, gy)
+          ctx.fillStyle = '#4a3420'
+          ctx.fillRect(px + tileS * 0.08, py + tileS * 0.28, Math.max(1, tileS * 0.06), tileS * 0.44)
+          ctx.fillRect(px + tileS * 0.86, py + tileS * 0.28, Math.max(1, tileS * 0.06), tileS * 0.44)
+        }
         continue
       }
 
       if (t === BUSH) {
-        ctx.fillStyle = biomeTintCss(58, 104, 54, bid, 'bush')
+        ctx.fillStyle = '#3a6836'
         ctx.beginPath()
         ctx.ellipse(px + tileS * 0.5, py + tileS * 0.55, tileS * 0.38, tileS * 0.28, 0, 0, Math.PI * 2)
         ctx.fill()
         if (detail) {
-          // Tundra/alpine: pale berries; desert: duller; temperate: red.
-          const berry =
-            bid === BiomeId.tundra || bid === BiomeId.alpine
-              ? biomeTintCss(180, 190, 200, bid, 'bush')
-              : bid === BiomeId.desert || bid === BiomeId.scrub
-                ? '#9a6840'
-                : '#b03848'
-          ctx.fillStyle = berry
+          ctx.fillStyle = '#b03848'
           ctx.fillRect(px + tileS * 0.28, py + tileS * 0.4, tileS * 0.1, tileS * 0.1)
           ctx.fillRect(px + tileS * 0.58, py + tileS * 0.48, tileS * 0.1, tileS * 0.1)
         }
@@ -820,21 +1378,166 @@ export function drawCloseupTerrain(
         ctx.fillRect(px + tileS * 0.2, py + tileS * 0.45, tileS * 0.6, tileS * 0.22)
         ctx.fillStyle = '#c4a06a'
         ctx.fillRect(px + tileS * 0.25, py + tileS * 0.4, tileS * 0.5, tileS * 0.12)
+        if (detail) fillWoodGrain(ctx, px + tileS * 0.22, py + tileS * 0.4, tileS * 0.56, tileS * 0.24, gx, gy)
         continue
       }
 
-      if (t === WORKBENCH || t === CHEST || t === BED || t === TABLE) {
-        const art = tileArtFor(t)
-        ctx.fillStyle = art.base
-        ctx.fillRect(px + tileS * 0.2, py + tileS * 0.3, tileS * 0.6, tileS * 0.45)
-        if (detail && art.detail.length) {
-          const s = tileS / 3
-          for (const [dx, dy, col] of art.detail) {
-            ctx.fillStyle = col
-            ctx.fillRect(px + dx * s, py + dy * s, s, s)
-          }
-        }
+      if (FURNITURE.has(t)) {
+        drawFurnitureCloseup(ctx, t, px, py, tileS, detail, tileS >= 14, gx, gy)
       }
+    }
+  }
+}
+
+function drawFurnitureCloseup(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  px: number,
+  py: number,
+  tileS: number,
+  detail: boolean,
+  rich: boolean,
+  gx: number,
+  gy: number,
+) {
+  if (t === BED) {
+    ctx.fillStyle = '#6e4428'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.28, tileS * 0.72, tileS * 0.52)
+    ctx.fillStyle = '#c45864'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.4, tileS * 0.64, tileS * 0.34)
+    ctx.fillStyle = '#e8e2d4'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.3, tileS * 0.28, tileS * 0.14)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.28, tileS * 0.72, tileS * 0.12, gx, gy)
+    return
+  }
+  if (t === CHEST) {
+    ctx.fillStyle = '#8a5c24'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.35, tileS * 0.64, tileS * 0.4)
+    ctx.fillStyle = '#c09040'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.35, tileS * 0.64, tileS * 0.12)
+    ctx.fillStyle = '#e8c060'
+    ctx.fillRect(px + tileS * 0.44, py + tileS * 0.48, tileS * 0.12, tileS * 0.1)
+    if (detail) {
+      ctx.fillStyle = '#6e4818'
+      ctx.fillRect(px + tileS * 0.18, py + tileS * 0.52, tileS * 0.64, Math.max(1, tileS * 0.05))
+      fillWoodGrain(ctx, px + tileS * 0.2, py + tileS * 0.38, tileS * 0.6, tileS * 0.32, gx, gy)
+    }
+    return
+  }
+  if (t === TABLE) {
+    ctx.fillStyle = '#b87838'
+    ctx.fillRect(px + tileS * 0.16, py + tileS * 0.32, tileS * 0.68, tileS * 0.16)
+    ctx.fillStyle = '#6e441c'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.48, tileS * 0.1, tileS * 0.28)
+    ctx.fillRect(px + tileS * 0.7, py + tileS * 0.48, tileS * 0.1, tileS * 0.28)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.16, py + tileS * 0.32, tileS * 0.68, tileS * 0.16, gx, gy)
+    return
+  }
+  if (t === WORKBENCH) {
+    ctx.fillStyle = '#7a4420'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.42, tileS * 0.72, tileS * 0.32)
+    ctx.fillStyle = '#c47a40'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.3, tileS * 0.72, tileS * 0.16)
+    if (detail) {
+      fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.3, tileS * 0.72, tileS * 0.16, gx, gy)
+      ctx.fillStyle = '#d8d0c0'
+      ctx.fillRect(px + tileS * 0.55, py + tileS * 0.22, tileS * 0.08, tileS * 0.12)
+    }
+    return
+  }
+  if (t === HEARTH) {
+    ctx.fillStyle = '#6a5a50'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.28, tileS * 0.64, tileS * 0.5)
+    if (detail) fillStoneCourses(ctx, px + tileS * 0.18, py + tileS * 0.28, tileS * 0.64, tileS * 0.5, gx, gy)
+    ctx.fillStyle = '#e87830'
+    ctx.fillRect(px + tileS * 0.32, py + tileS * 0.48, tileS * 0.36, tileS * 0.22)
+    if (rich) {
+      ctx.fillStyle = '#f0c050'
+      ctx.fillRect(px + tileS * 0.4, py + tileS * 0.42, tileS * 0.2, tileS * 0.12)
+    }
+    return
+  }
+  if (t === BENCH) {
+    ctx.fillStyle = '#9a6a38'
+    ctx.fillRect(px + tileS * 0.12, py + tileS * 0.4, tileS * 0.76, tileS * 0.14)
+    ctx.fillStyle = '#5a3c20'
+    ctx.fillRect(px + tileS * 0.16, py + tileS * 0.54, tileS * 0.1, tileS * 0.22)
+    ctx.fillRect(px + tileS * 0.74, py + tileS * 0.54, tileS * 0.1, tileS * 0.22)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.12, py + tileS * 0.4, tileS * 0.76, tileS * 0.14, gx, gy)
+    return
+  }
+  if (t === STOOL) {
+    ctx.fillStyle = '#b07840'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.4, tileS * 0.22, tileS * 0.1, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#6a4424'
+    ctx.fillRect(px + tileS * 0.44, py + tileS * 0.48, tileS * 0.12, tileS * 0.28)
+    return
+  }
+  if (t === SHELF) {
+    ctx.fillStyle = '#5a3e24'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.22, tileS * 0.6, tileS * 0.56)
+    ctx.fillStyle = '#a88050'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.3, tileS * 0.56, tileS * 0.06)
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.48, tileS * 0.56, tileS * 0.06)
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.66, tileS * 0.56, tileS * 0.06)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.2, py + tileS * 0.22, tileS * 0.6, tileS * 0.56, gx, gy)
+    return
+  }
+  if (t === CUPBOARD) {
+    ctx.fillStyle = '#6e4a28'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.18, tileS * 0.6, tileS * 0.66)
+    ctx.fillStyle = '#8a6238'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.22, tileS * 0.26, tileS * 0.56)
+    ctx.fillRect(px + tileS * 0.52, py + tileS * 0.22, tileS * 0.26, tileS * 0.56)
+    ctx.fillStyle = '#c4a050'
+    ctx.fillRect(px + tileS * 0.4, py + tileS * 0.44, tileS * 0.06, tileS * 0.08)
+    ctx.fillRect(px + tileS * 0.54, py + tileS * 0.44, tileS * 0.06, tileS * 0.08)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.22, py + tileS * 0.22, tileS * 0.56, tileS * 0.56, gx, gy)
+    return
+  }
+  if (t === CRADLE) {
+    ctx.fillStyle = '#8a5c30'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.35, tileS * 0.6, tileS * 0.38)
+    ctx.fillStyle = '#e8dcc8'
+    ctx.fillRect(px + tileS * 0.26, py + tileS * 0.4, tileS * 0.48, tileS * 0.18)
+    ctx.fillStyle = '#c49860'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.28, tileS * 0.12, tileS * 0.2)
+    ctx.fillRect(px + tileS * 0.7, py + tileS * 0.28, tileS * 0.12, tileS * 0.2)
+    return
+  }
+  if (t === LOOM) {
+    ctx.fillStyle = '#5a3420'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.2, tileS * 0.1, tileS * 0.6)
+    ctx.fillRect(px + tileS * 0.68, py + tileS * 0.2, tileS * 0.1, tileS * 0.6)
+    ctx.fillStyle = '#d8c8a0'
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(px + tileS * 0.3, py + tileS * (0.28 + i * 0.1), tileS * 0.4, Math.max(1, tileS * 0.04))
+    }
+    ctx.fillStyle = '#9a6440'
+    ctx.fillRect(px + tileS * 0.28, py + tileS * 0.55, tileS * 0.44, tileS * 0.12)
+    return
+  }
+  if (t === WASHING_TUB) {
+    ctx.fillStyle = '#6a5a48'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.55, tileS * 0.34, tileS * 0.22, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#7aa0b8'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.5, tileS * 0.26, tileS * 0.14, 0, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+  const art = tileArtFor(t)
+  ctx.fillStyle = art.base
+  ctx.fillRect(px + tileS * 0.2, py + tileS * 0.3, tileS * 0.6, tileS * 0.45)
+  if (detail && art.detail.length) {
+    const s = tileS / 3
+    for (const [dx, dy, col] of art.detail) {
+      ctx.fillStyle = col
+      ctx.fillRect(px + dx * s, py + dy * s, s, s)
     }
   }
 }

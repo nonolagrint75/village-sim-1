@@ -592,8 +592,12 @@ export function serviceUrge(
 ): { entertain: number; counsel: number; teach: number } {
   const mind = mindOf(v)
   const live = ensureLivelihood(mind)
-  const fed = v.hunger > 2.2 && (edibleValue(v.inventory) > 1 || live.patronage > 0.25)
-  const surplusTime = fed && v.stamina > 2.2 && !state.famine ? 1 : 0.12
+  // Spectacle only after real surplus — mild hunger used to count as "fed" and drowned farm/craft.
+  const larder = edibleValue(v.inventory)
+  const wellFed = v.hunger >= 2.6 && (larder >= 2.5 || live.patronage > 0.4)
+  let surplusTime = wellFed && v.stamina > 2.2 && !state.famine ? 1 : 0.08
+  if (v.hunger < 1.8 || mind.needs.hunger > 0.45) surplusTime *= 0.25
+  if (state.famine) surplusTime *= 0.15
   const socialSkill = mind.skills.social
   const bored = mind.needs.boredom
   const pietyNeed = piety + mind.needs.piety
@@ -608,16 +612,17 @@ export function serviceUrge(
     if (audience >= 6) break
   }
 
+  // Cap audience/mix feedback — otherwise entertain outcompetes livelihood forever.
   const entertain =
-    (18 +
-      v.personality.sociability * 40 +
-      socialSkill * 35 +
-      bored * 25 +
-      live.mix.entertain * 40 +
-      audience * 8 +
-      live.recognition * 20) *
+    (10 +
+      v.personality.sociability * 28 +
+      socialSkill * 22 +
+      bored * 30 +
+      live.mix.entertain * 18 +
+      Math.min(4, audience) * 5 +
+      live.recognition * 12) *
     surplusTime *
-    (v.ambition === 'leader' || v.ambition === 'explorer' ? 1.2 : 1)
+    (v.ambition === 'leader' || v.ambition === 'explorer' ? 1.1 : 1)
 
   const counsel =
     (12 +

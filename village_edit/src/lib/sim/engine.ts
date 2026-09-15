@@ -19,6 +19,7 @@ import { tickMarketPrices, tickUrbanNetwork } from './commerce'
 import { makeHorse } from './horses'
 import { createEmptyEquipment, seedStarterKit } from './equipment'
 import { addToInventory, countOf, createInventory } from './inventory'
+import { pickSex } from './appearance'
 import {
   applyGeneticPersonalityBias,
   createFounderGenome,
@@ -208,6 +209,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
     villagers.push({
       id: nextId++,
       seed: personSeed,
+      sex: pickSex(rng),
       name: generateName(personSeed),
       surname: '',
       lineageId: null,

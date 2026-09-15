@@ -4,7 +4,20 @@ import { SimPanel } from '@/components/SimPanel'
 import { StartMenu } from '@/components/StartMenu'
 import { SimToolbar } from '@/components/SimToolbar'
 import { dayNightVisual } from '@/lib/sim/calendar'
+import {
+  collectTerrainHearths,
+  drawLocalLightGlows,
+  type ActorLight,
+} from '@/lib/sim/lighting'
 import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
+import { type BiomeId } from '@/lib/sim/biomeVisual'
+import {
+  drawEmbarkedVillagerSprite,
+  drawHorseSprite,
+  drawSheepSprite,
+  drawVillagerSprite,
+  drawWolfSprite,
+} from '@/lib/sim/entityArt'
 import { drawWornWays } from '@/lib/sim/roadView'
 import {
   EMPTY_STATS,
@@ -73,6 +86,7 @@ export function SimulationCanvas() {
     wolves: [],
     villages: [],
     tradeLinks: [],
+    lights: [],
     ticksPerSec: 0,
   })
   const workerRef = useRef<Worker | null>(null)
@@ -162,7 +176,7 @@ export function SimulationCanvas() {
       const row = y * size
       for (let x = 0; x < size; x++) {
         const i = row + x
-        packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
+        packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i] as BiomeId)
       }
     }
     ctx.putImageData(image, 0, 0)
@@ -188,7 +202,7 @@ export function SimulationCanvas() {
       amount[i] = dirty.amount[k]
       const x = i % w
       const y = (i / w) | 0
-      packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i])
+      packed[i] = tilePixel32(terrain[i], amount[i], x, y, biome[i] as BiomeId)
       if (x < minX) minX = x
       if (y < minY) minY = y
       if (x > maxX) maxX = x
@@ -382,13 +396,6 @@ export function SimulationCanvas() {
     const tx = (x: number) => (x * TILE_PX + TILE_PX / 2 - camX) * zoom
     const ty = (y: number) => (y * TILE_PX + TILE_PX / 2 - camY) * zoom
     const off = (sx: number, sy: number) => sx < -size || sy < -size || sx > DISPLAY_SIZE + size || sy > DISPLAY_SIZE + size
-    const shadow = (sx: number, sy: number, rx: number, ry: number) => {
-      if (!shadows) return
-      ctx.fillStyle = 'rgba(0,0,0,0.28)'
-      ctx.beginPath()
-      ctx.ellipse(sx + rx * 0.15, sy + ry * 0.85, rx, ry * 0.45, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
 
     const simpleSprites = size < 4.5
 
@@ -397,24 +404,7 @@ export function SimulationCanvas() {
       const sx = tx(s.x)
       const sy = ty(s.y)
       if (off(sx, sy)) continue
-      if (simpleSprites) {
-        ctx.fillStyle = s.captured ? '#f0ebe0' : '#d8ceb4'
-        ctx.fillRect(sx - 1, sy - 1, 3, 3)
-        continue
-      }
-      shadow(sx, sy, size * 0.42, size * 0.28)
-      ctx.fillStyle = s.captured ? '#f4efe4' : '#ddd2ba'
-      ctx.beginPath()
-      ctx.ellipse(sx, sy, size * 0.48, size * 0.34, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = s.captured ? '#e8e0d0' : '#c8bea4'
-      ctx.beginPath()
-      ctx.ellipse(sx - size * 0.28, sy - size * 0.05, size * 0.22, size * 0.2, 0, 0, Math.PI * 2)
-      ctx.fill()
-      if (size >= 8) {
-        ctx.fillStyle = '#2a2418'
-        ctx.fillRect(sx - size * 0.42, sy - size * 0.12, size * 0.1, size * 0.08)
-      }
+      drawSheepSprite(ctx, sx, sy, size, s.captured, simpleSprites, shadows)
     }
 
     const boatPos = new Map<string, { sx: number; sy: number; bs: number }>()
@@ -432,23 +422,54 @@ export function SimulationCanvas() {
         ctx.ellipse(sx, sy + bs * 0.2, bs * 0.9, bs * 0.22, 0, 0, Math.PI * 2)
         ctx.fill()
       }
-      ctx.fillStyle = cargo ? '#4a3018' : '#b87a40'
+      // Fixed craft timber colors — never biome-washed.
+      const hull = cargo ? '#4a3018' : '#a86a34'
+      const deck = cargo ? '#6e4a28' : '#c89050'
+      const gunwale = cargo ? '#3a2410' : '#7a4a22'
       if (bs < 5) {
+        ctx.fillStyle = hull
         ctx.fillRect(sx - bs * 0.75, sy - bs * 0.28, bs * 1.5, bs * 0.55)
-        ctx.fillStyle = cargo ? '#6a4828' : '#d4a060'
+        ctx.fillStyle = deck
         ctx.fillRect(sx - bs * 0.55, sy - bs * 0.18, bs * 1.1, bs * 0.28)
         continue
       }
+      // Hull silhouette
+      ctx.fillStyle = hull
       ctx.beginPath()
       ctx.moveTo(sx - bs * 0.95, sy)
       ctx.quadraticCurveTo(sx - bs * 0.2, sy + bs * 0.42, sx + bs * 0.95, sy)
       ctx.quadraticCurveTo(sx - bs * 0.2, sy - bs * 0.38, sx - bs * 0.95, sy)
       ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = cargo ? '#6e4a28' : '#d4a060'
+      // Plank strakes along the hull
+      if (bs >= 7) {
+        ctx.strokeStyle = 'rgba(30, 18, 8, 0.35)'
+        ctx.lineWidth = Math.max(0.6, bs * 0.04)
+        for (let i = 0; i < 3; i++) {
+          const yy = sy - bs * 0.18 + i * bs * 0.14
+          ctx.beginPath()
+          ctx.moveTo(sx - bs * 0.72, yy)
+          ctx.quadraticCurveTo(sx, yy + bs * 0.08, sx + bs * 0.72, yy)
+          ctx.stroke()
+        }
+        ctx.strokeStyle = 'rgba(210, 180, 120, 0.18)'
+        ctx.beginPath()
+        ctx.moveTo(sx - bs * 0.7, sy - bs * 0.12)
+        ctx.quadraticCurveTo(sx, sy - bs * 0.06, sx + bs * 0.7, sy - bs * 0.12)
+        ctx.stroke()
+      }
+      // Deck / thwart
+      ctx.fillStyle = deck
       ctx.beginPath()
       ctx.ellipse(sx, sy - bs * 0.02, bs * 0.62, bs * 0.16, 0, 0, Math.PI * 2)
       ctx.fill()
+      if (bs >= 8) {
+        ctx.fillStyle = gunwale
+        ctx.fillRect(sx - bs * 0.55, sy - bs * 0.1, bs * 1.1, Math.max(0.8, bs * 0.05))
+        ctx.fillStyle = 'rgba(200, 168, 110, 0.22)'
+        ctx.fillRect(sx - bs * 0.4, sy - bs * 0.08, bs * 0.8, Math.max(0.6, bs * 0.035))
+      }
+      // Mast + sail
       ctx.fillStyle = '#2e2214'
       ctx.fillRect(sx - 1, sy - bs * 0.78, Math.max(1.4, bs * 0.12), bs * 0.62)
       ctx.fillStyle = cargo ? '#d0c4a8' : '#f0e8d8'
@@ -461,6 +482,8 @@ export function SimulationCanvas() {
       if (cargo && bs >= 8) {
         ctx.fillStyle = '#8a6840'
         ctx.fillRect(sx - bs * 0.35, sy - bs * 0.12, bs * 0.5, bs * 0.18)
+        ctx.fillStyle = 'rgba(40, 26, 12, 0.3)'
+        ctx.fillRect(sx - bs * 0.32, sy - bs * 0.02, bs * 0.44, Math.max(0.6, bs * 0.04))
       }
     }
 
@@ -469,23 +492,7 @@ export function SimulationCanvas() {
       const sx = tx(h.x)
       const sy = ty(h.y)
       if (off(sx, sy)) continue
-      if (simpleSprites) {
-        ctx.fillStyle = h.tamed ? '#8a6a45' : '#5e442c'
-        ctx.fillRect(sx - 2, sy - 1, 4, 3)
-        continue
-      }
-      shadow(sx, sy, size * 0.58, size * 0.28)
-      ctx.fillStyle = h.tamed ? '#8a6a45' : '#5e442c'
-      ctx.beginPath()
-      ctx.ellipse(sx, sy, size * 0.7, size * 0.32, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillRect(sx + size * 0.42, sy - size * 0.52, size * 0.18, size * 0.48)
-      ctx.fillStyle = h.tamed ? '#6e5234' : '#4a3420'
-      ctx.fillRect(sx - size * 0.55, sy + size * 0.05, size * 0.18, size * 0.22)
-      if (size >= 8) {
-        ctx.fillStyle = '#2a2118'
-        ctx.fillRect(sx + size * 0.55, sy - size * 0.35, size * 0.12, size * 0.08)
-      }
+      drawHorseSprite(ctx, sx, sy, size, h.tamed, simpleSprites, shadows)
     }
 
     for (const w of wolves) {
@@ -493,29 +500,7 @@ export function SimulationCanvas() {
       const sx = tx(w.x)
       const sy = ty(w.y)
       if (off(sx, sy)) continue
-      if (simpleSprites) {
-        ctx.fillStyle = '#2a1e28'
-        ctx.fillRect(sx - 1, sy - 1, 3, 2)
-        continue
-      }
-      shadow(sx, sy, size * 0.48, size * 0.24)
-      ctx.fillStyle = '#2e242c'
-      ctx.beginPath()
-      ctx.ellipse(sx, sy, size * 0.54, size * 0.28, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.moveTo(sx + size * 0.28, sy - size * 0.2)
-      ctx.lineTo(sx + size * 0.48, sy - size * 0.48)
-      ctx.lineTo(sx + size * 0.08, sy - size * 0.24)
-      ctx.closePath()
-      ctx.fill()
-      ctx.fillStyle = '#1a1418'
-      ctx.beginPath()
-      ctx.moveTo(sx - size * 0.4, sy)
-      ctx.lineTo(sx - size * 0.72, sy - size * 0.08)
-      ctx.lineTo(sx - size * 0.42, sy + size * 0.12)
-      ctx.closePath()
-      ctx.fill()
+      drawWolfSprite(ctx, sx, sy, size, simpleSprites, shadows)
     }
 
     for (const v of villagers) {
@@ -529,112 +514,131 @@ export function SimulationCanvas() {
         const bx = boat?.sx ?? sx
         const by = boat?.sy ?? sy
         const bs = boat?.bs ?? size
-        if (simpleSprites) {
-          ctx.fillStyle = `hsl(${v.hue}, 50%, 48%)`
-          ctx.fillRect(bx - 1, by - bs * 0.35, 2, 2)
-          continue
-        }
-        ctx.fillStyle = `hsl(${v.hue}, 48%, 40%)`
-        ctx.fillRect(bx - bs * 0.12, by - bs * 0.42, bs * 0.24, bs * 0.28)
-        ctx.fillStyle = `hsl(${v.hue}, 55%, 62%)`
-        ctx.beginPath()
-        ctx.arc(bx, by - bs * 0.5, bs * 0.14, 0, Math.PI * 2)
-        ctx.fill()
-        if (v.id === sel) {
-          ctx.strokeStyle = '#e8d078'
-          ctx.lineWidth = 1.4
-          ctx.beginPath()
-          ctx.arc(bx, by - bs * 0.2, bs * 0.55, 0, Math.PI * 2)
-          ctx.stroke()
-        }
+        drawEmbarkedVillagerSprite(
+          ctx,
+          bx,
+          by,
+          bs,
+          {
+            hue: v.hue,
+            pigmentation: v.pigmentation,
+            hairTone: v.hairTone,
+            selected: v.id === sel,
+          },
+          simpleSprites,
+        )
         continue
       }
 
-      if (simpleSprites) {
-        ctx.fillStyle = `hsl(${v.hue}, 46%, 42%)`
-        ctx.fillRect(sx - 1, sy - 2, 3, 4)
-        continue
-      }
-
-      if (!v.mounted) shadow(sx, sy + size * 0.15, size * 0.38, size * 0.22)
-
-      if (v.mounted) {
-        if (v.hasCart) {
-          shadow(sx - size * 0.9, sy + size * 0.2, size * 0.4, size * 0.2)
-          ctx.fillStyle = '#6e4a28'
-          ctx.fillRect(sx - size * 1.4, sy + size * 0.02, size * 0.75, size * 0.44)
-          ctx.fillStyle = '#a88858'
-          ctx.fillRect(sx - size * 1.32, sy + size * 0.08, size * 0.58, size * 0.18)
-          ctx.fillStyle = '#2a2118'
-          ctx.beginPath()
-          ctx.arc(sx - size * 1.25, sy + size * 0.52, size * 0.15, 0, Math.PI * 2)
-          ctx.arc(sx - size * 0.82, sy + size * 0.52, size * 0.15, 0, Math.PI * 2)
-          ctx.fill()
-        }
-        shadow(sx, sy + size * 0.35, size * 0.62, size * 0.26)
-        ctx.fillStyle = '#8a6a45'
-        ctx.beginPath()
-        ctx.ellipse(sx, sy + size * 0.22, size * 0.72, size * 0.3, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#6e5234'
-        ctx.fillRect(sx + size * 0.48, sy - size * 0.28, size * 0.16, size * 0.42)
-      }
-
-      const bodyW = size * 0.62
-      const bodyH = size * 0.46
-      const lift = v.mounted ? size * 0.28 : 0
-      ctx.fillStyle = `hsl(${v.hue}, 48%, 34%)`
-      ctx.fillRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
-      ctx.fillStyle = `hsl(${v.hue}, 42%, 28%)`
-      ctx.fillRect(sx - bodyW / 2, sy + bodyH * 0.55 - lift, bodyW, bodyH * 0.28)
-      ctx.fillStyle = `hsl(${v.hue}, 55%, 62%)`
-      ctx.beginPath()
-      ctx.arc(sx, sy - size * 0.24 - lift, size * 0.24, 0, Math.PI * 2)
-      ctx.fill()
-      if (v.toolTier !== 'none') {
-        ctx.strokeStyle = v.toolTier === 'iron' ? '#c87840' : v.toolTier === 'stone' ? '#d8d4c8' : '#2a2118'
-        ctx.lineWidth = Math.max(0.7, size * 0.09)
-        ctx.strokeRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
-      }
-      if (v.grudgeTarget !== null) {
-        ctx.fillStyle = '#c43834'
-        ctx.beginPath()
-        ctx.arc(sx + size * 0.38, sy - size * 0.5 - lift, size * 0.13, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      if (v.id === sel) {
-        ctx.strokeStyle = '#e8d078'
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.arc(sx, sy - lift * 0.3, size * 0.88, 0, Math.PI * 2)
-        ctx.stroke()
-      }
+      drawVillagerSprite(
+        ctx,
+        sx,
+        sy,
+        size,
+        {
+          hue: v.hue,
+          pigmentation: v.pigmentation,
+          hairTone: v.hairTone,
+          sex: v.sex,
+          age: v.age,
+          hairStyle: v.hairStyle,
+          beard: v.beard,
+          facialHair: v.facialHair,
+          hairCurl: v.hairCurl,
+          toolTier: v.toolTier,
+          cloak: v.cloak,
+          gear: v.gear,
+          mounted: v.mounted,
+          hasCart: v.hasCart,
+          grudge: v.grudgeTarget !== null,
+          selected: v.id === sel,
+        },
+        simpleSprites,
+        shadows,
+      )
     }
 
     // Visual day/night only — sleep / temp / activity biases keep running in the worker.
     if (showDayNightRef.current) {
       const { night, warm } = dayNightVisual(viewRef.current.hour ?? 12)
-      if (warm > 0.02) {
-        ctx.fillStyle = `rgba(255, 148, 72, ${warm * 0.2})`
+      const prev = ctx.globalCompositeOperation
+
+      // Soft atmospheric vignette for depth (day and night) — cool slate, not purple.
+      {
+        ctx.globalCompositeOperation = 'multiply'
+        const vg = ctx.createRadialGradient(
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.46,
+          DISPLAY_SIZE * 0.2,
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.5,
+          DISPLAY_SIZE * 0.92,
+        )
+        const edgeA = 0.03 + night * 0.1
+        vg.addColorStop(0, 'rgba(255, 255, 255, 0)')
+        vg.addColorStop(0.55, `rgba(200, 205, 210, ${0.02 + night * 0.03})`)
+        vg.addColorStop(1, `rgba(36, 42, 52, ${edgeA.toFixed(3)})`)
+        ctx.fillStyle = vg
+        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
+        ctx.globalCompositeOperation = prev
+      }
+
+      if (warm > 0.015) {
+        // Amber wash — soft dawn/dusk, not neon orange.
+        ctx.fillStyle = `rgba(232, 168, 110, ${(warm * 0.13).toFixed(3)})`
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
       }
-      if (night > 0.04) {
-        const prev = ctx.globalCompositeOperation
+      if (night > 0.03) {
         ctx.globalCompositeOperation = 'multiply'
         const g = ctx.createRadialGradient(
           DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.42,
-          DISPLAY_SIZE * 0.12,
+          DISPLAY_SIZE * 0.4,
+          DISPLAY_SIZE * 0.14,
           DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.78,
+          DISPLAY_SIZE * 0.52,
+          DISPLAY_SIZE * 0.82,
         )
-        g.addColorStop(0, `rgba(28, 36, 72, ${0.08 + night * 0.22})`)
-        g.addColorStop(0.55, `rgba(10, 14, 36, ${0.22 + night * 0.42})`)
-        g.addColorStop(1, `rgba(2, 4, 14, ${0.45 + night * 0.5})`)
+        g.addColorStop(0, `rgba(52, 60, 74, ${(0.06 + night * 0.14).toFixed(3)})`)
+        g.addColorStop(0.5, `rgba(28, 34, 46, ${(0.16 + night * 0.32).toFixed(3)})`)
+        g.addColorStop(1, `rgba(10, 14, 24, ${(0.32 + night * 0.42).toFixed(3)})`)
         ctx.fillStyle = g
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
+        ctx.globalCompositeOperation = 'source-over'
+        // Thin cool lift so sprites stay readable under multiply.
+        ctx.fillStyle = `rgba(78, 96, 122, ${(night * 0.045).toFixed(3)})`
+        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
         ctx.globalCompositeOperation = prev
+
+        // Local fire / carried lights — warm pools over the dark overlay.
+        const nightLights: ActorLight[] = []
+        const packed = viewRef.current.lights
+        if (packed) {
+          for (let i = 0; i < packed.length; i++) nightLights.push(packed[i])
+        }
+        if (terrain) {
+          collectTerrainHearths(
+            terrain,
+            worldSizeRef.current,
+            camX,
+            camY,
+            visible,
+            TILE_PX,
+            nightLights,
+          )
+        }
+        for (const v of villagers) {
+          if (!v.alive || !v.holdingLight) continue
+          nightLights.push({ x: v.x, y: v.y, kind: v.holdingLight })
+        }
+        drawLocalLightGlows(
+          ctx,
+          nightLights,
+          night,
+          (wx, wy) => ({ sx: tx(wx), sy: ty(wy) }),
+          tileS,
+          performance.now(),
+          DISPLAY_SIZE,
+        )
       }
     }
   }, [clampCamera])

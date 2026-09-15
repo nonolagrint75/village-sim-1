@@ -49,6 +49,7 @@ import {
   describeLayoutFr,
   expandRoomKinds,
   findRoomAt,
+  findRoomByKind,
   ROOM_LABEL_FR,
   roomCountToSpan,
   type HouseLayout,
@@ -1179,6 +1180,37 @@ function setTask(v: Villager, kind: TaskKind, targetX: number, targetY: number, 
   }
 }
 
+/** Survival-when-idle: eat-with-food / night rest first, then storm shelter / latrines. */
+function forceBiologicalRhythm(state: SimState, v: Villager): boolean {
+  if (tryAssignSurvivalTask(state, v)) return true
+  const night = isNight(state.tick)
+  const rain = sampleRain(state.climate, v.x, v.y)
+  const stormy = state.climate.weather === 'storm' || rain > 0.5
+  const cold = coldStress01(sampleTempC(state.climate, v.x, v.y))
+  const exhausted = v.stamina < STAMINA_EXHAUSTED
+  const tired = v.stamina < STAMINA_TIRED
+  if (v.hasHome && !night && (exhausted || (stormy && !atHomeShelter(v)) || (cold > 0.4 && !atHomeShelter(v)))) {
+    const t = restTarget(v)
+    setTask(v, 'rest', t.x, t.y)
+    noteChosenAction(v, 'rest', stormy ? 'tempête — foyer forcé' : 'fatigue — foyer forcé')
+    return true
+  }
+  if (!v.hasHome && !night && (exhausted || cold > 0.45 || stormy || tired)) {
+    setTask(v, 'rest', v.x, v.y)
+    noteChosenAction(v, 'rest', 'repos forcé')
+    return true
+  }
+  if (v.hasHome && v.homeLayout && !night) {
+    const lat = findRoomByKind(v.homeLayout, 'latrines')
+    if (lat && (state.tick + v.id * 19) % (TICKS_PER_DAY * 2) === 0) {
+      setTask(v, 'rest', lat.centroid.x, lat.centroid.y)
+      noteChosenAction(v, 'rest', 'latrines')
+      return true
+    }
+  }
+  return false
+}
+
 function curiosityRadius(v: Villager, base: number): number {
   return Math.round(base * (0.7 + 0.6 * v.personality.curiosity))
 }
@@ -1392,7 +1424,12 @@ function jobBonus(v: Villager, kind: TaskKind): number {
   let base = 1
   switch (v.profession) {
     case 'forager':
-      base = kind === 'gatherFood' ? 2.0 : 1
+      base =
+        kind === 'gatherFood'
+          ? 2.0
+          : kind === 'buildBoat' || kind === 'fish'
+            ? 1.65
+            : 1
       break
     case 'farmer':
       base = kind === 'sowField' || kind === 'harvestWheat' ? 2.35 : 1
@@ -1405,11 +1442,13 @@ function jobBonus(v: Villager, kind: TaskKind): number {
             ? 1.9
             : 1
       break
-    case 'miller':
-      base = kind === 'buildMill' ? 2.6 : kind === 'grindFlour' || kind === 'bakeBread' ? 2.5 : 1
-      break
     case 'lumberjack':
-      base = kind === 'gatherWood' || kind === 'clearLand' ? 2.15 : 1
+      base =
+        kind === 'gatherWood' || kind === 'clearLand'
+          ? 2.15
+          : kind === 'buildBoat'
+            ? 1.55
+            : 1
       break
     case 'mason':
       base = kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' ? 2.0 : 1
@@ -1705,7 +1744,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         kind === 'gatherIron' ||
         kind === 'gatherFood' ||
         kind === 'clearLand' ||
-        kind === 'fish' ||
+        (kind === 'fish' && v.boatId === null) ||
         kind === 'harvestWheat' ||
         kind === 'buildWall' ||
         kind === 'buildBridge' ||
@@ -1897,8 +1936,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       : findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
     if (spot) {
       const winterBonus = season === 'winter' ? 70 : 0
-      const boatBonus = fishBoat ? 70 : 0
-      add('fish', spot.x, spot.y, (30 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
+      // High enough to beat plaza loops once the skiff is built.
+      const boatBonus = fishBoat ? (v.embarked ? 90 : 160) : 0
+      add('fish', spot.x, spot.y, (35 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
     }
   }
 
@@ -1947,7 +1987,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   // Dock search must reach nearby shores — short radius left water-adjacent homes boatless.
-  // Once a dock exists, timber→boat outranks casual furniture so wood isn't bled away at ~1–2.
+  // Once a dock exists, timber→boat must beat plaza/social loops (often 100–200).
   if (
     v.hasHome &&
     v.homeOwnerId === v.id &&
@@ -1955,9 +1995,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     (v.profession === 'fisher' ||
       v.profession === 'trader' ||
       v.profession === 'forager' ||
-      p.curiosity > 0.42)
+      v.profession === 'lumberjack' ||
+      p.curiosity > 0.35)
   ) {
-    const dock = findMillSite(grid, v.homeX, v.homeY, 40)
+    const dock = findMillSite(grid, v.homeX, v.homeY, 55)
     if (dock) {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
@@ -1965,20 +2006,21 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const poolWood = householdStock(v, 'wood')
       const poolStone = householdStock(v, 'stone')
       const boatUrge =
-        78 +
-        p.ambition * 28 +
-        p.curiosity * 22 +
-        (v.profession === 'fisher' ? 42 : 0) +
-        (v.profession === 'trader' ? 34 : 0) +
-        (v.profession === 'forager' ? 16 : 0)
+        120 +
+        p.ambition * 30 +
+        p.curiosity * 28 +
+        (v.profession === 'fisher' ? 50 : 0) +
+        (v.profession === 'trader' ? 40 : 0) +
+        (v.profession === 'forager' ? 28 : 0) +
+        (v.profession === 'lumberjack' ? 22 : 0)
       if (poolWood >= needWood && poolStone >= needStone) {
-        add('buildBoat', dock.x, dock.y, boatUrge * 1.15 * reach(v, dock.x, dock.y))
+        // Ready to launch — outrank socialise/entertain soft loops.
+        add('buildBoat', dock.x, dock.y, (boatUrge + 200) * reach(v, dock.x, dock.y))
       } else if (poolWood < needWood && tree) {
-        // Strong timber drive — furniture gather is typically ~40–80; stay above that.
-        add('gatherWood', tree.x, tree.y, boatUrge * 1.2 * woodKnowMul * reach(v, tree.x, tree.y))
+        add('gatherWood', tree.x, tree.y, (boatUrge + 140) * woodKnowMul * reach(v, tree.x, tree.y))
       } else if (poolStone < needStone) {
         const rock = findNearbyTerrain(grid, v.x, v.y, searchR, STONE)
-        if (rock) add('gatherStone', rock.x, rock.y, boatUrge * 0.95 * reach(v, rock.x, rock.y))
+        if (rock) add('gatherStone', rock.x, rock.y, (boatUrge + 90) * reach(v, rock.x, rock.y))
       }
     }
   }
@@ -2273,9 +2315,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   if (v.hasWorkbench && v.toolTier === 'wood') {
-    const upgrade = 30 + p.courage * 45 + danger * 30
+    const upgrade = 72 + p.courage * 55 + danger * 40 + p.ambition * 20
     if (stone >= STONE_SPEAR_COST) add('craftStoneSpear', v.x, v.y, upgrade)
-    else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 0.8 * reach(v, rock.x, rock.y))
+    else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 1.05 * reach(v, rock.x, rock.y))
   }
 
   if (v.hasWorkbench && v.toolTier === 'stone' && canPracticeCraft(v, 'iron')) {
@@ -2291,7 +2333,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const minerBoost = v.profession === 'miner' ? 40 : v.profession === 'mason' || v.profession === 'blacksmith' ? 25 : 0
     const ironBoost = v.toolTier === 'iron' ? 18 : v.toolTier === 'stone' ? 8 : 0
     const deeperBoost = village?.hasMine ? 12 : 0
-    const mineUrge = 20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost
+    const woodToolPenalty = v.toolTier === 'wood' ? 0.55 : 1
+    const benchReady = v.hasWorkbench ? 1.35 : 1
+    const mineUrge =
+      (28 + p.ambition * 28 + p.courage * 12 + minerBoost + ironBoost + deeperBoost) * woodToolPenalty * benchReady
     add('mineTunnel', mountainOre.x, mountainOre.y, mineUrge * reach(v, mountainOre.x, mountainOre.y))
   }
 
@@ -2437,7 +2482,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     for (const recipe of CRAFT_RECIPES) {
       if (recipe.station !== 'workbench' && recipe.station !== 'any') continue
       if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
-      const score = (recipe.urge + p.ambition * 12 + mindOf(v).skills.craft * 18) * reach(v, v.workbenchX, v.workbenchY)
+      const score =
+        (recipe.urge + 18 + p.ambition * 14 + mindOf(v).skills.craft * 22 + (v.hunger >= 2.2 ? 12 : 0)) *
+        reach(v, v.workbenchX, v.workbenchY)
       if (score > bestScore) {
         bestScore = score
         bestRecipe = recipe
@@ -3969,12 +4016,15 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         if (state.season === 'winter') recoverStamina(v, 0.02)
       }
       if (fireBonus > 0 && task.ageTicks === 0) onCognitiveEvent(v, 'hearth_warm', 0.45)
-      const need = isNight(state.tick) ? (fireBonus > 0 ? 36 : 30) : v.stamina < STAMINA_TIRED ? 50 : 40
+      // Night rest wins — stay in bed unless truly hungry with food in hand.
+      if (isNight(state.tick)) {
+        if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 10) return false
+        return task.ageTicks < (fireBonus > 0 ? 36 : 28)
+      }
+      const need = v.stamina < STAMINA_EXHAUSTED ? 28 : v.stamina < STAMINA_TIRED ? 16 : 8
       // Cut rest short when hungry with food so eat/farm can resume.
       if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 8) return false
-      // Daytime: break rest to sow/clear the waiting field.
       if (
-        !isNight(state.tick) &&
         v.fieldX !== -1 &&
         !v.hasField &&
         v.homeOwnerId === v.id &&
@@ -3983,7 +4033,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       ) {
         return false
       }
-      return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.05
+      return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.15
     }
     case 'socialise': {
       if (task.targetId !== null) {
@@ -4348,7 +4398,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.task.kind === 'counsel' ||
       v.task.kind === 'teachCraft' ||
       v.task.kind === 'giveFood'
-    if (v.hunger < 1.85 && bestEdible(v)) {
+    if (v.hunger < 2.35 && bestEdible(v)) {
       stashInterruptedTask(v)
       const t = eatTarget(v)
       setTask(v, 'eat', t.x, t.y)
@@ -4363,7 +4413,11 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       const store = storeSpot(v.furnitureQueue, v.homeLayout)
       setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
-    } else if (leisure && (v.hunger < 2.15 || state.famine)) {
+    } else if (
+      leisure &&
+      (v.hunger < 2.15 || state.famine || edibleValue(v.inventory) < 1)
+    ) {
+      // Drop troubadour / plaza loops so gather/farm/craft can win the next think.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
@@ -4388,9 +4442,8 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  // Nuit : rentrer dormir — social loops no longer exempt (sleep wins).
+  // Nuit / tempête / épuisement : rentrer dormir (lit si connu) — sleep wins.
   if (
-    isNight(state.tick) &&
     v.task &&
     v.task.kind !== 'rest' &&
     v.task.kind !== 'flee' &&
@@ -4403,36 +4456,61 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'gatherFuel' &&
     v.task.kind !== 'craftLight'
   ) {
-    const starvingNow = v.hunger < 1.35 && !bestEdible(v)
-    if (!starvingNow) {
+    const rainNow = sampleRain(state.climate, v.x, v.y)
+    const stormy = state.climate.weather === 'storm' || rainNow > 0.55
+    const coldNow = coldStress01(sampleTempC(state.climate, v.x, v.y))
+    const night = isNight(state.tick)
+    const starvingNow = v.hunger < 1.2 && !bestEdible(v)
+    const leisureNight =
+      v.task.kind === 'socialise' ||
+      v.task.kind === 'giveFood' ||
+      v.task.kind === 'entertain' ||
+      v.task.kind === 'idle' ||
+      v.task.kind === 'counsel' ||
+      v.task.kind === 'teachCraft'
+    const hardLabor =
+      v.task.kind.startsWith('gather') ||
+      v.task.kind.startsWith('build') ||
+      v.task.kind.startsWith('craft') ||
+      v.task.kind === 'clearLand' ||
+      v.task.kind === 'mineTunnel' ||
+      v.task.kind === 'mineGold' ||
+      v.task.kind === 'tradeRun' ||
+      v.task.kind === 'fish'
+    const wantShelter =
+      (!starvingNow && night) ||
+      (!starvingNow && stormy && (leisureNight || hardLabor || !atHomeShelter(v))) ||
+      (!starvingNow && v.hasHome && !atHomeShelter(v) && coldNow > 0.4) ||
+      (v.stamina < STAMINA_EXHAUSTED && !starvingNow)
+    if (wantShelter && (leisureNight || night || stormy || coldNow > 0.4 || v.stamina < STAMINA_EXHAUSTED || hardLabor)) {
+      stashInterruptedTask(v)
       if (v.hasHome) {
-        stashInterruptedTask(v)
         const t = restTarget(v)
         setTask(v, 'rest', t.x, t.y)
-        noteChosenAction(v, 'rest', 'nuit — foyer')
-      } else if (v.stamina < STAMINA_TIRED || mindOf(v).needs.fatigue > 0.5) {
-        stashInterruptedTask(v)
+        noteChosenAction(v, 'rest', night ? 'nuit — lit' : stormy ? 'tempête — foyer' : 'abri — foyer')
+      } else {
         setTask(v, 'rest', v.x, v.y)
-        noteChosenAction(v, 'rest', 'nuit — abri improvisé')
+        noteChosenAction(v, 'rest', night ? 'nuit — abri improvisé' : stormy ? 'tempête — abri' : 'épuisement')
       }
     }
   }
 
   if (!v.task) {
-    // Survival overrides think cooldown — otherwise 1-tick social thrash strands agents as null.
-    if (tryAssignSurvivalTask(state, v)) {
-      /* execute below */
-    } else if (state.tick < v.nextThinkTick) {
-      // Settle in place during cooldown — never freeze as a silent null agent.
-      if (v.stamina < STAMINA_TIRED || (isNight(state.tick) && !v.hasHome)) {
-        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+    // Survival-when-idle overrides think cooldown (social thrash used to leave null tasks).
+    const forced = forceBiologicalRhythm(state, v)
+    if (!forced) {
+      if (state.tick < v.nextThinkTick) {
+        // Settle in place during cooldown — never freeze as a silent null agent.
+        if (v.stamina < STAMINA_TIRED || (isNight(state.tick) && !v.hasHome)) {
+          setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+        } else {
+          setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+        }
       } else {
-        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+        const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
+        tickCognition(state, v, rng, depth)
+        chooseTask(state, v, rng)
       }
-    } else {
-      const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
-      tickCognition(state, v, rng, depth)
-      chooseTask(state, v, rng)
     }
   }
   const active = v.task
@@ -4470,7 +4548,17 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.nextThinkTick = state.tick + THINK_COOLDOWN + 5
     } else {
       const micro = active.ageTicks <= 2 && active.work <= 0
-      v.nextThinkTick = state.tick + (micro ? 0 : THINK_COOLDOWN)
+      if (micro && forceBiologicalRhythm(state, v)) {
+        v.nextThinkTick = state.tick
+      } else if (micro && (active.kind.startsWith('craft') || active.kind.startsWith('build') || active.kind === 'experiment')) {
+        setTask(v, 'idle', v.x, v.y)
+        noteChosenAction(v, 'idle', 'pause après ' + active.kind)
+        v.nextThinkTick = state.tick + THINK_COOLDOWN
+      } else if (micro) {
+        v.nextThinkTick = state.tick + (v.hunger < 2.2 ? 0 : 1)
+      } else {
+        v.nextThinkTick = state.tick + THINK_COOLDOWN
+      }
     }
   } else if (!continued) {
     v.task = null
@@ -4607,7 +4695,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
       b.reproCooldown = REPRO_COOLDOWN
 
       const seed = Math.floor(rng() * 4294967296)
-      const { genome, phenotype, motherId, fatherId } = birthGenetics(a, b, rng)
+      const { genome, phenotype, motherId, fatherId, sex } = birthGenetics(a, b, rng)
       const personality = applyGeneticPersonalityBias(
         inheritPersonality(a.personality, b.personality, rng),
         genome,
@@ -4618,6 +4706,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
       const child: Villager = {
         id: state.nextId++,
         seed,
+        sex,
         name: generateName(seed),
         surname: '',
         lineageId: null,

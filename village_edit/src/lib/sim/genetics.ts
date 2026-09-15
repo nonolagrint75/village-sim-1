@@ -46,8 +46,9 @@ export const LOCI = {
   ambitionBias: 35,
   generosityBias: 36,
   curiosityBias: 37,
+  /** Prédisposition pilosité faciale (QTL soft). */
+  facialHair: 38,
   // Réserve / recombinaison noise seeds
-  reserved0: 38,
   reserved1: 39,
 } as const
 
@@ -142,6 +143,7 @@ export function expressPhenotype(genome: Genome, rng: () => number): Phenotype {
   const hairBase = meanLoci(genome, LOCI.hairTone)
   const hairTone = clamp01(dominantBlend(hairBase, genome[LOCI.hairMendel]!) + noise(rng))
   const hairCurl = clamp01(genome[LOCI.hairCurl]! / 255 + noise(rng))
+  const facialHair = clamp01(genome[LOCI.facialHair]! / 255 + noise(rng))
 
   const face: FaceMorph = {
     width: clamp01(genome[LOCI.faceWidth]! / 255 + noise(rng)),
@@ -171,6 +173,7 @@ export function expressPhenotype(genome: Genome, rng: () => number): Phenotype {
     eyeTone,
     hairTone,
     hairCurl,
+    facialHair,
     face,
     metabolism,
     fertilityPredisposition,
@@ -326,7 +329,8 @@ export function genomeFromArray(arr: ArrayLike<number>): Genome {
 
 /**
  * Helper naissance : génome enfant + phénotype + parents typés.
- * Compatible parentIds legacy [a,b] — motherId/fatherId sont assignés sans ordre de genre.
+ * Compatible parentIds legacy [a,b] — motherId/fatherId restent des slots parentaux
+ * (ordre d'appel) ; le sexe biologique vit sur `Villager.sex` pour le rendu.
  */
 export function birthGenetics(
   parentA: { id: number; genome: Genome },
@@ -337,11 +341,12 @@ export function birthGenetics(
   phenotype: Phenotype
   motherId: number
   fatherId: number
+  sex: 'female' | 'male'
 } {
-  // Pas de sexe biologique simulé ici : labels mère/père = slots parentaux stables pour le pedigree.
   const motherId = parentA.id
   const fatherId = parentB.id
   const genome = breedGenome(parentA.genome, parentB.genome, rng)
   const phenotype = expressPhenotype(genome, rng)
-  return { genome, phenotype, motherId, fatherId }
+  const sex: 'female' | 'male' = rng() < 0.5 ? 'female' : 'male'
+  return { genome, phenotype, motherId, fatherId, sex }
 }

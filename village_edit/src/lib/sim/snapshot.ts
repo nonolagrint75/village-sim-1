@@ -1,3 +1,4 @@
+import { packVillagerAppearance, resolveBeard, sexOf, type BiologicalSex, type HairStyle } from './appearance'
 import { packCognitionDebug, type CognitionDebug } from './cognition'
 import { mindOf } from './cognition/tick'
 import { computeStats } from './engine'
@@ -9,8 +10,11 @@ import { carriedMass, carryCapacityOf, type ResourceType, type Slot } from './in
 import {
   equipmentEffectsOf,
   packEquipmentForUi,
+  packWornGearForDraw,
   type PackedEquipmentSlot,
   type GearEffects,
+  type GearId,
+  type WornGearVisual,
 } from './equipment'
 import { bodyMassKgFromPhenotype } from './physicsScale'
 import { takeUiLightGate } from './perfBudget'
@@ -30,6 +34,7 @@ import { ensureLivelihood, topActivitiesFr, livelihoodLabelForUi } from './livel
 import { getCalendar } from './calendar'
 import { biomeLabelFr } from './biomes'
 import { sampleBiome } from './climate'
+import { carriedLightKind, type ActorLight } from './lighting'
 import type {
   BoatKind,
   Phenotype,
@@ -43,18 +48,45 @@ import type {
   WallTier,
 } from './types'
 
+/** Worn gear ids for sprite layering (lean draw payload). */
+export type ActorGearSlots = WornGearVisual
+
 export type ActorVillager = {
   id: number
   name: string
   x: number
   y: number
   hue: number
+  /** Melanin 0–1 for skin sprite. */
+  pigmentation: number
+  /** Hair darkness 0–1. */
+  hairTone: number
+  /** Biological sex for silhouette / hair length. */
+  sex: BiologicalSex
+  /** Age in ticks — child / adult / elder sprite scale. */
+  age: number
+  /** Pixel hair silhouette. */
+  hairStyle: HairStyle
+  /** Adult male beard when phenotype supports it. */
+  beard: boolean
+  /** Facial-hair density 0–1 (beard fullness). */
+  facialHair: number
+  /** Curl continuum — soft hair mass / fringe. */
+  hairCurl: number
+  /** Outerwear present (cloak / mantle). */
+  cloak: boolean
+  /** Worn equipment item ids (head/torso/outer/feet/mainHand/offHand/belt). */
+  equipment: ActorGearSlots
+  /** Alias of equipment for gear-overlay sprites. */
+  gear: ActorGearSlots
   mounted: boolean
   embarked: boolean
   hasCart: boolean
   toolTier: ToolTier
   grudgeTarget: number | null
   alive: boolean
+  /** Carried candle/torch — local night glow on the canvas (optional lighting pack). */
+  holdingLight?: 'torch' | 'candle' | null
 }
 
 export type ActorSheep = { x: number; y: number; captured: boolean; alive: boolean }
@@ -87,6 +119,8 @@ export type PhenotypeSummary = {
   corpulence: string
   yeux: string
   cheveux: string
+  sexe: string | null
+  barbe: string | null
   lines: string[]
 } | null
 
@@ -199,6 +233,8 @@ export type DrawFrame = {
   wolves: ActorWolf[]
   villages: ActorVillage[]
   tradeLinks: { ax: number; ay: number; bx: number; by: number }[]
+  /** Static fire sources (hearths from homeFurniture); terrain hearths scanned on canvas. */
+  lights: ActorLight[]
   ticksPerSec: number
 }
 
@@ -260,7 +296,10 @@ function continuumBand(v: number, low: string, mid: string, high: string): strin
 }
 
 /** French continuous-trait summary — genetics ≠ race labels. */
-export function packPhenotypeSummary(ph: Phenotype | null | undefined): PhenotypeSummary {
+export function packPhenotypeSummary(
+  ph: Phenotype | null | undefined,
+  v?: Pick<Villager, 'sex' | 'age' | 'seed'> | null,
+): PhenotypeSummary {
   if (!ph) return null
   const teint = continuumBand(ph.pigmentation, 'teint clair', 'teint moyen', 'teint foncé')
   const taille = continuumBand(ph.height, 'petite stature', 'taille moyenne', 'grande stature')
@@ -269,8 +308,21 @@ export function packPhenotypeSummary(ph: Phenotype | null | undefined): Phenotyp
   const hairTone = continuumBand(ph.hairTone, 'cheveux clairs', 'cheveux mixtes', 'cheveux sombres')
   const hairCurl = continuumBand(ph.hairCurl, 'lisses', 'ondulés', 'crépus')
   const cheveux = `${hairTone}, ${hairCurl}`
-  const lines = [teint, taille, corpulence, yeux, cheveux]
-  return { teint, taille, corpulence, yeux, cheveux, lines }
+  let sexe: string | null = null
+  let barbe: string | null = null
+  if (v) {
+    const sex = sexOf(v)
+    const age = Number.isFinite(v.age) ? v.age : 0
+    const facialHair = ph.facialHair ?? 0.35
+    sexe = sex === 'female' ? 'femme' : 'homme'
+    if (resolveBeard(sex, age, facialHair)) {
+      barbe = facialHair > 0.72 ? 'barbe fournie' : facialHair > 0.5 ? 'barbe' : 'barbe naissante'
+    }
+  }
+  const lines = [sexe, teint, taille, corpulence, yeux, cheveux, barbe].filter(
+    (x): x is string => !!x,
+  )
+  return { teint, taille, corpulence, yeux, cheveux, sexe, barbe, lines }
 }
 
 function packIdentitySummary(state: SimState, v: Villager): IdentitySummary {
@@ -582,23 +634,55 @@ export function packChronicle(log: string[], limit = 14): string[] {
 
 export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
   const villagers: ActorVillager[] = []
+  const lights: ActorLight[] = []
+  const lightKeys = new Set<string>()
+  const pushLight = (x: number, y: number, kind: ActorLight['kind']) => {
+    const key = `${x | 0},${y | 0},${kind}`
+    if (lightKeys.has(key)) return
+    lightKeys.add(key)
+    lights.push({ x, y, kind })
+  }
   const vv = state.villagers
   for (let i = 0; i < vv.length; i++) {
     const v = vv[i]
     if (!v.alive) continue
+    const ph = v.phenotype
+    const eq = v.equipment
+    const app = packVillagerAppearance(v)
+    const held = carriedLightKind(v.inventory)
+    const worn = packWornGearForDraw(v)
     villagers.push({
       id: v.id,
       name: v.name,
       x: v.x,
       y: v.y,
       hue: v.hue,
+      pigmentation: ph?.pigmentation ?? 0.45,
+      hairTone: ph?.hairTone ?? 0.5,
+      sex: app.sex,
+      age: app.age,
+      hairStyle: app.hairStyle,
+      beard: app.beard,
+      facialHair: app.facialHair,
+      hairCurl: app.hairCurl,
+      cloak: !!(eq && eq.outer),
+      equipment: worn,
+      gear: worn,
       mounted: v.mounted,
       embarked: v.embarked,
       hasCart: v.hasCart,
       toolTier: v.toolTier,
       grudgeTarget: v.grudgeTarget,
       alive: true,
+      holdingLight: held,
     })
+    const furn = v.homeFurniture
+    if (furn) {
+      for (let f = 0; f < furn.length; f++) {
+        const p = furn[f]
+        if (p.id === 'hearth') pushLight(p.x, p.y, 'hearth')
+      }
+    }
   }
   const sheep: ActorSheep[] = []
   const ss = state.sheep
@@ -670,6 +754,7 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
     wolves,
     villages,
     tradeLinks,
+    lights,
     ticksPerSec,
   }
 }
@@ -800,7 +885,7 @@ export function packSelectedMinimal(v: Villager): SelectedVillager {
     circleNames: [],
     cognition,
     family: null,
-    phenotype: packPhenotypeSummary(v.phenotype),
+    phenotype: packPhenotypeSummary(v.phenotype, v),
     identity: null,
     lineageWealth: null,
     descendantCount: 0,
@@ -1016,7 +1101,7 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     circleNames,
     cognition,
     family,
-    phenotype: packPhenotypeSummary(v.phenotype),
+    phenotype: packPhenotypeSummary(v.phenotype, v),
     identity: packIdentitySummary(state, v),
     lineageWealth: lineage ? lineage.wealthEstimate : null,
     descendantCount: (() => {
