@@ -831,6 +831,17 @@ function dockBesideBoat(grid: WorldGrid, boat: { x: number; y: number }): { x: n
     const y = boat.y + dy
     if (inBounds(grid, x, y) && landWalkable(getTerrain(grid, x, y))) return { x, y }
   }
+  // Hull may sit a tile offshore — search a short ring for any walkable beach.
+  for (let r = 2; r <= 4; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue
+        const x = boat.x + dx
+        const y = boat.y + dy
+        if (inBounds(grid, x, y) && landWalkable(getTerrain(grid, x, y))) return { x, y }
+      }
+    }
+  }
   return { x: boat.x, y: boat.y }
 }
 
@@ -844,7 +855,7 @@ function tryEmbarkBoat(
   boat: { x: number; y: number; alive: boolean },
 ): boolean {
   if (v.embarked || !boat.alive) return false
-  if (chebyshev(v.x, v.y, boat.x, boat.y) > 1) return false
+  if (chebyshev(v.x, v.y, boat.x, boat.y) > 2) return false
   const grid = state.grid
   const boatT = getTerrain(grid, boat.x, boat.y)
   const fromX = v.x
@@ -853,7 +864,8 @@ function tryEmbarkBoat(
     v.x = boat.x
     v.y = boat.y
     onVillagerStep(state, v, boat.x, boat.y, fromX, fromY)
-    return v.embarked
+    v.embarked = true
+    return true
   }
   const water = adjacentWater(grid, boat.x, boat.y)
   if (!water) return false
@@ -862,7 +874,8 @@ function tryEmbarkBoat(
   v.x = water.x
   v.y = water.y
   onVillagerStep(state, v, water.x, water.y, fromX, fromY)
-  return v.embarked
+  v.embarked = true
+  return true
 }
 
 function pathProfileFor(state: SimState, v: Villager, task: { kind: TaskKind; targetId: number | null }): PathProfile {
@@ -878,11 +891,10 @@ function pathProfileFor(state: SimState, v: Villager, task: { kind: TaskKind; ta
   const returning = task.kind === 'tradeRun' && task.targetId === -1
   const useBoat =
     !!boat &&
-    !v.hasCart &&
     (v.embarked ||
       onWater ||
       task.kind === 'fish' ||
-      (task.kind === 'tradeRun' && !!cargo && (destHasPort || homeHasPort || returning)))
+      (!v.hasCart && task.kind === 'tradeRun' && !!cargo && (destHasPort || homeHasPort || returning)))
   const mind = mindOf(v)
   const fleeing = task.kind === 'flee' || task.kind === 'fight'
   return {
@@ -1930,10 +1942,17 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const fishBoat = boatOf(state, v)
   // Once a boat exists, push embark→open-water fishing even if the owner isn't a fisher.
   if (fishBoat || v.profession === 'fisher' || larder < stockTarget || season === 'winter') {
-    const spot = fishBoat
-      ? findOpenWater(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, 2) ??
-        findNearbyTerrain(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, WATER)
-      : findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
+    let spot: { x: number; y: number } | null = null
+    if (fishBoat) {
+      // Phase 1: path to a land tile beside the hull so embark can fire; open water after boarding.
+      if (!v.embarked) spot = dockBesideBoat(grid, fishBoat)
+      else
+        spot =
+          findOpenWater(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, 2) ??
+          findNearbyTerrain(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, WATER)
+    } else {
+      spot = findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
+    }
     if (spot) {
       const winterBonus = season === 'winter' ? 70 : 0
       // High enough to beat plaza loops once the skiff is built.
@@ -2860,9 +2879,11 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
 
   const boat = boatOf(state, v)
   const arrived =
-    task.kind === 'fish' && boat
-      ? v.embarked && getTerrain(grid, v.x, v.y) === WATER && distance(v.x, v.y, task.targetX, task.targetY) <= 2.2
-      : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
+    task.kind === 'fish' && boat && v.embarked
+      ? getTerrain(grid, v.x, v.y) === WATER && distance(v.x, v.y, task.targetX, task.targetY) <= 2.2
+      : task.kind === 'fish' && boat && !v.embarked
+        ? chebyshev(v.x, v.y, boat.x, boat.y) <= 2
+        : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
 
   if (task.kind === 'eat') {
     // Walk to table/target first — no teleport meals from mid-field.
@@ -3079,8 +3100,23 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
   switch (task.kind) {
     case 'fish': {
       const onBoat = v.embarked && getTerrain(grid, v.x, v.y) === WATER
+      // Board before shore/open-water checks — dock targets are land tiles beside the hull.
+      if (boat && !onBoat) {
+        if (chebyshev(v.x, v.y, boat.x, boat.y) <= 2) {
+          if (!tryEmbarkBoat(state, v, boat)) return true
+          const deep =
+            findOpenWater(grid, boat.x, boat.y, OPEN_WATER_RADIUS, 2) ??
+            findNearbyTerrain(grid, boat.x, boat.y, OPEN_WATER_RADIUS, WATER)
+          if (deep) {
+            task.targetX = deep.x
+            task.targetY = deep.y
+            task.path = null
+            task.pathI = 0
+          }
+        }
+        return true
+      }
       if (!onBoat && !isShore(grid, task.targetX, task.targetY)) return false
-      if (v.boatId !== null && !onBoat) return true
       if (onBoat && getTerrain(grid, task.targetX, task.targetY) !== WATER) return false
       const catchChance =
         (0.32 +
