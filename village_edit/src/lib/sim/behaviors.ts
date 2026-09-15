@@ -330,8 +330,8 @@ import {
 } from './world'
 
 const HUNGER_MAX = 6
-/** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~3.75 jours-sim plein→vide. */
-const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 3.75)
+/** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~4.5 jours-sim (échelle 4) plein→vide. */
+const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 4.5)
 /** ~2 sim-days after hunger hits 0 before death. */
 const STARVE_DEATH_TICKS = Math.round(TICKS_PER_DAY * 2)
 const HEAL_TICKS = 120
@@ -341,6 +341,14 @@ const ANIMAL_HEALTH_MAX = 2
 const HUNGRY_THRESHOLD = 2
 const FOOD_TARGET = 4
 const WINTER_STOCK_TARGET = 10
+/** Single hunger/eat ladder — merge duplicate parallel-agent thresholds here. */
+const EAT_WITH_FOOD = 1.85
+const EAT_IN_PLACE = 1.35
+const EAT_INTERRUPT = 2.35
+const CHEST_PULL = 1.55
+const REST_SNACK = 1.8
+const LEISURE_CUT = 2.15
+const SURVIVAL_TIGHT_HUNGER = 2.5
 
 /** Embodied endurance — depleted by travel/labor, restored by rest/shelter. */
 export const STAMINA_MAX = 4
@@ -407,9 +415,9 @@ const MAX_WOLVES = 10
 
 const PEN_RADIUS = 3
 const FIELD_RADIUS = 2
-export const WHEAT_RIPE = 300
-const WHEAT_SPROUT = 100
-const WHEAT_GREEN = 200
+export const WHEAT_RIPE = 220
+const WHEAT_SPROUT = 80
+const WHEAT_GREEN = 150
 const VILLAGE_JOIN_RADIUS = 140
 const PERIMETER_REFRESH = 1200
 const BRIDGE_DEMAND = 25
@@ -456,19 +464,19 @@ function sowingSeason(season: Season, tempC = 12): boolean {
   if (cropTempFactor(tempC) < 0.35) return false
   return season === 'spring' || season === 'summer' || (season === 'autumn' && tempC > 14)
 }
-/** Fortnight 1 only — richer forage so Nouveau monde bags refill before first harvest. */
+/** First month — richer forage until fields cycle; mid-run keep a mild boost. */
 function earlyFoundingWeeks(state: SimState): boolean {
-  return state.tick < TICKS_PER_DAY * 14
+  return state.tick < TICKS_PER_DAY * 30
 }
 function forageYieldAmt(state: SimState): number {
   const ripe = berriesRipeIn(state.season)
   if (earlyFoundingWeeks(state)) return ripe ? 4 : 2
-  return ripe ? 2 : 1
+  return ripe ? 3 : 1
 }
 function growthRate(season: Season): number {
-  if (season === 'spring') return 1
-  if (season === 'summer') return 1.4
-  if (season === 'autumn') return 0.8
+  if (season === 'spring') return 1.25
+  if (season === 'summer') return 1.55
+  if (season === 'autumn') return 0.95
   return 0
 }
 
@@ -4641,19 +4649,14 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  // Survie : n'interrompre le travail que quand la faim est réelle
-  // (seuil 2.2 annulait craft/build en boucle dès que le sac avait de la nourriture).
+  // Survie : holding food + hungry always interrupts (including gather/fish/farm).
+  // Previously gatherFood/fish/harvest were exempt → starve-while-holding-food mid-run.
   if (
     v.task &&
     v.task.kind !== 'eat' &&
     v.task.kind !== 'flee' &&
     v.task.kind !== 'fight' &&
-    v.task.kind !== 'takeFromChest' &&
-    v.task.kind !== 'gatherFood' &&
-    v.task.kind !== 'fish' &&
-    v.task.kind !== 'harvestWheat' &&
-    v.task.kind !== 'sowField' &&
-    v.task.kind !== 'clearLand'
+    v.task.kind !== 'takeFromChest'
   ) {
     const leisure =
       v.task.kind === 'entertain' ||
@@ -4661,6 +4664,12 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.task.kind === 'counsel' ||
       v.task.kind === 'teachCraft' ||
       v.task.kind === 'giveFood'
+    const foodWork =
+      v.task.kind === 'gatherFood' ||
+      v.task.kind === 'fish' ||
+      v.task.kind === 'harvestWheat' ||
+      v.task.kind === 'sowField' ||
+      v.task.kind === 'clearLand'
     if (v.hunger < 2.35 && bestEdible(v)) {
       stashInterruptedTask(v)
       const t = eatTarget(v)
@@ -4678,14 +4687,15 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
     } else if (
       leisure &&
-      (v.hunger < 2.35 || state.famine || edibleValue(v.inventory) < 1)
+      (v.hunger < 2.15 || state.famine || edibleValue(v.inventory) < 1)
     ) {
       // Drop troubadour / plaza loops so gather/farm/craft can win the next think.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
-    } else if (v.hunger < 0.85 || v.starveTimer > 8) {
+    } else if (!foodWork && (v.hunger < 0.85 || v.starveTimer > 8)) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
+      // Keep foodWork when bag is empty — gathering is the recovery path.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
