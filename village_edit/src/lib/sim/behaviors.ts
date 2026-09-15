@@ -337,9 +337,10 @@ const MILL_WOOD_COST = 6
 const MILL_STONE_COST = 4
 const CART_WOOD_COST = 5
 const CART_STONE_COST = 2
-const BOAT_FISH_WOOD_COST = 4
-const BOAT_CARGO_WOOD_COST = 6
-const BOAT_CARGO_STONE_COST = 3
+/** Early skiff — low so docked homes can launch under survival wood pressure (~1–2 pack wood). */
+const BOAT_FISH_WOOD_COST = 2
+const BOAT_CARGO_WOOD_COST = 4
+const BOAT_CARGO_STONE_COST = 2
 const PORT_WOOD_COST = 6
 const PORT_STONE_COST = 4
 const WHEAT_PER_FLOUR = 2
@@ -914,6 +915,21 @@ function woodCap(v: Villager): number {
   return Math.max(0, Math.min(soft, byMass))
 }
 
+/** Pack + household chest — communal timber for boats without a village store. */
+function householdStock(v: Villager, type: ResourceType): number {
+  return countOf(v.inventory, type) + (v.chestInventory ? countOf(v.chestInventory, type) : 0)
+}
+
+function consumeHousehold(v: Villager, type: ResourceType, amount: number): boolean {
+  if (amount <= 0) return true
+  if (householdStock(v, type) < amount) return false
+  const fromInv = Math.min(amount, countOf(v.inventory, type))
+  if (fromInv > 0) removeFromInventory(v.inventory, type, fromInv)
+  const rest = amount - fromInv
+  if (rest > 0 && v.chestInventory) removeFromInventory(v.chestInventory, type, rest)
+  return true
+}
+
 /**
  * Pull a resource off a tile into inventory. Leftover that does not fit stays on the tile —
  * never converted away with amount 0 while discarding material.
@@ -1317,7 +1333,12 @@ function jobBonus(v: Villager, kind: TaskKind): number {
       base = kind === 'sowField' || kind === 'harvestWheat' ? 2.35 : 1
       break
     case 'fisher':
-      base = kind === 'fish' || kind === 'buildBoat' ? 2.5 : 1
+      base =
+        kind === 'fish' || kind === 'buildBoat'
+          ? 2.5
+          : kind === 'gatherWood' && v.boatId === null
+            ? 1.9
+            : 1
       break
     case 'miller':
       base = kind === 'buildMill' ? 2.6 : kind === 'grindFlour' || kind === 'bakeBread' ? 2.5 : 1
@@ -1720,14 +1741,15 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   const fishBoat = boatOf(state, v)
-  if (v.profession === 'fisher' || larder < stockTarget || season === 'winter') {
+  // Once a boat exists, push embark→open-water fishing even if the owner isn't a fisher.
+  if (fishBoat || v.profession === 'fisher' || larder < stockTarget || season === 'winter') {
     const spot = fishBoat
       ? findOpenWater(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, 2) ??
         findNearbyTerrain(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, WATER)
       : findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
     if (spot) {
       const winterBonus = season === 'winter' ? 70 : 0
-      const boatBonus = fishBoat ? 30 : 0
+      const boatBonus = fishBoat ? 70 : 0
       add('fish', spot.x, spot.y, (30 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
     }
   }
@@ -1776,15 +1798,40 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     else if (tree) add('gatherWood', tree.x, tree.y, cartUrge * 0.6 * woodKnowMul * reach(v, tree.x, tree.y))
   }
 
-  if (v.hasHome && v.homeOwnerId === v.id && v.boatId === null && (v.profession === 'fisher' || v.profession === 'trader' || p.curiosity > 0.55)) {
-    const dock = findMillSite(grid, v.homeX, v.homeY, 18)
+  // Dock search must reach nearby shores — short radius left water-adjacent homes boatless.
+  // Once a dock exists, timber→boat outranks casual furniture so wood isn't bled away at ~1–2.
+  if (
+    v.hasHome &&
+    v.homeOwnerId === v.id &&
+    v.boatId === null &&
+    (v.profession === 'fisher' ||
+      v.profession === 'trader' ||
+      v.profession === 'forager' ||
+      p.curiosity > 0.42)
+  ) {
+    const dock = findMillSite(grid, v.homeX, v.homeY, 40)
     if (dock) {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
       const needStone = cargo ? BOAT_CARGO_STONE_COST : 0
-      const boatUrge = 55 + p.ambition * 24 + p.curiosity * 20 + (v.profession === 'fisher' ? 35 : 0) + (v.profession === 'trader' ? 30 : 0)
-      if (wood >= needWood && stone >= needStone) add('buildBoat', dock.x, dock.y, boatUrge * reach(v, dock.x, dock.y))
-      else if (tree) add('gatherWood', tree.x, tree.y, boatUrge * 0.7 * woodKnowMul * reach(v, tree.x, tree.y))
+      const poolWood = householdStock(v, 'wood')
+      const poolStone = householdStock(v, 'stone')
+      const boatUrge =
+        78 +
+        p.ambition * 28 +
+        p.curiosity * 22 +
+        (v.profession === 'fisher' ? 42 : 0) +
+        (v.profession === 'trader' ? 34 : 0) +
+        (v.profession === 'forager' ? 16 : 0)
+      if (poolWood >= needWood && poolStone >= needStone) {
+        add('buildBoat', dock.x, dock.y, boatUrge * 1.15 * reach(v, dock.x, dock.y))
+      } else if (poolWood < needWood && tree) {
+        // Strong timber drive — furniture gather is typically ~40–80; stay above that.
+        add('gatherWood', tree.x, tree.y, boatUrge * 1.2 * woodKnowMul * reach(v, tree.x, tree.y))
+      } else if (poolStone < needStone) {
+        const rock = findNearbyTerrain(grid, v.x, v.y, searchR, STONE)
+        if (rock) add('gatherStone', rock.x, rock.y, boatUrge * 0.95 * reach(v, rock.x, rock.y))
+      }
     }
   }
 
@@ -2806,12 +2853,13 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
       const needStone = cargo ? BOAT_CARGO_STONE_COST : 0
-      if (countOf(v.inventory, 'wood') < needWood || countOf(v.inventory, 'stone') < needStone) return false
+      // Household chest counts as communal timber so pack wood under survival pressure can still launch.
+      if (householdStock(v, 'wood') < needWood || householdStock(v, 'stone') < needStone) return false
       const labor = accumulateLabor('buildBoat')
       if (labor === 'abort') return false
       if (labor === 'continue') return true
-      removeFromInventory(v.inventory, 'wood', needWood)
-      if (needStone > 0) removeFromInventory(v.inventory, 'stone', needStone)
+      if (!consumeHousehold(v, 'wood', needWood)) return false
+      if (needStone > 0 && !consumeHousehold(v, 'stone', needStone)) return false
       // Poix / corde : calfatage et gréement (bonus de solidité soft via cargo).
       if (countOf(v.inventory, 'pitch') > 0) removeFromInventory(v.inventory, 'pitch', 1)
       if (countOf(v.inventory, 'rope') > 0) removeFromInventory(v.inventory, 'rope', 1)
