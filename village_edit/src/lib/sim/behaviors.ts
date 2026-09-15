@@ -1607,7 +1607,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         kind === 'gatherIron' ||
         kind === 'gatherFood' ||
         kind === 'clearLand' ||
-        kind === 'fish' ||
+        (kind === 'fish' && v.boatId === null) ||
         kind === 'harvestWheat' ||
         kind === 'buildWall' ||
         kind === 'buildBridge' ||
@@ -1799,8 +1799,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       : findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
     if (spot) {
       const winterBonus = season === 'winter' ? 70 : 0
-      const boatBonus = fishBoat ? 70 : 0
-      add('fish', spot.x, spot.y, (30 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
+      // High enough to beat plaza loops once the skiff is built.
+      const boatBonus = fishBoat ? (v.embarked ? 90 : 160) : 0
+      add('fish', spot.x, spot.y, (35 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
     }
   }
 
@@ -4055,6 +4056,17 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       setTask(v, 'takeFromChest', v.chestX, v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
+    } else if (
+      (v.task.kind === 'entertain' ||
+        v.task.kind === 'socialise' ||
+        v.task.kind === 'counsel' ||
+        v.task.kind === 'teachCraft') &&
+      (v.hunger < 1.7 || state.famine || edibleValue(v.inventory) < 1)
+    ) {
+      // Drop troubadour / plaza loops so gather/farm/craft can win the next think.
+      stashInterruptedTask(v)
+      v.task = null
+      v.nextThinkTick = state.tick
     } else if (v.hunger < 0.85 || v.starveTimer > 8) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
       stashInterruptedTask(v)
