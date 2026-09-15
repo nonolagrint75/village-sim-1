@@ -4,7 +4,7 @@ import type { ClimateState } from './climate'
 import type { BuildProject } from './construction'
 import type { Family, GenealogyEntry, Lineage } from './family'
 import type { EquipmentLoadout } from './equipment'
-import type { FurnitureJob } from './furniture'
+import type { FurnitureJob, FurniturePlacement } from './furniture'
 import type { ResourceType, Slot } from './inventory'
 import type { ResourceIndex } from './resourceIndex'
 import type { Circle, Rumor } from './politics'
@@ -71,6 +71,15 @@ export const IRON = 25
 export const MOUNTAIN = 26
 export const TUNNEL = 27
 export const TABLE = 28
+/** Extra household placeables (AI room builders) — soft codes, not yet fully wired in render. */
+export const HEARTH = 29
+export const BENCH = 30
+export const STOOL = 31
+export const SHELF = 32
+export const CUPBOARD = 33
+export const CRADLE = 34
+export const LOOM = 35
+export const WASHING_TUB = 36
 
 export type TerrainCode = number
 
@@ -133,6 +142,14 @@ export type TaskKind =
   | 'buildChest'
   | 'buildBed'
   | 'buildTable'
+  | 'buildHearth'
+  | 'buildBench'
+  | 'buildStool'
+  | 'buildShelf'
+  | 'buildCupboard'
+  | 'buildCradle'
+  | 'buildLoom'
+  | 'buildWashingTub'
   | 'buildPen'
   | 'buildWall'
   | 'buildBridge'
