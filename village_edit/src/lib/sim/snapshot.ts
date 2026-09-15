@@ -28,6 +28,8 @@ import type { Ambition, Memory, Relation } from './social'
 import { knowledgeCount, knowledgeLabelsFr } from './technology'
 import { ensureLivelihood, topActivitiesFr, livelihoodLabelForUi } from './livelihood'
 import { getCalendar } from './calendar'
+import { biomeLabelFr } from './biomes'
+import { sampleBiome } from './climate'
 import type {
   BoatKind,
   Phenotype,
@@ -161,6 +163,8 @@ export type SelectedVillager = {
   knowledgeLabels: string[]
   /** Shared village technique library size (0 if no village). */
   villageKnowledgeCount: number
+  /** Local biome French label (climate lattice). */
+  biomeLabel: string | null
 }
 
 /** Alias — mind summary shipped inside `SelectedVillager.cognition`. */
@@ -803,6 +807,7 @@ export function packSelectedMinimal(v: Villager): SelectedVillager {
     knowledgeCount: 0,
     knowledgeLabels: [],
     villageKnowledgeCount: 0,
+    biomeLabel: null,
   }
 }
 
@@ -1042,6 +1047,13 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
           : 0
       } catch {
         return 0
+      }
+    })(),
+    biomeLabel: (() => {
+      try {
+        return state.climate ? biomeLabelFr(sampleBiome(state.climate, v.x, v.y)) : null
+      } catch {
+        return null
       }
     })(),
   }

@@ -743,6 +743,7 @@ const Portrait = memo(function Portrait({
         <Meter label="Endurance" value={num(selected.stamina, staminaMax)} max={staminaMax} color="#7eb8a2" />
         <Meter label="Charge" value={loadMass} max={loadCap} color="#c4a574" decimals={1} />
       </div>
+      {selected.biomeLabel ? <p className="sim-kit">Biome : {selected.biomeLabel}</p> : null}
 
       <div className="sim-portrait-block">
         <h4>Apparence</h4>
