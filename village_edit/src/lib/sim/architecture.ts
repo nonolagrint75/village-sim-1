@@ -1,4 +1,5 @@
 import type { Personality } from './types'
+import { layoutRoomsFromInterior, planRoomKinds, roomCountToSpan, type RoomKind } from './rooms'
 
 export type HouseShape = 'square' | 'rect' | 'round' | 'ell' | 'courtyard' | 'longhouse'
 
@@ -11,6 +12,8 @@ export interface HouseDesign {
   bedSlots: number
   hasWorkshop: boolean
   hasStoreroom: boolean
+  /** Planned room kinds (chambre, cuisine, …) — filled by designHouse / expansion. */
+  roomKinds: RoomKind[]
 }
 
 export interface Cell {
@@ -72,9 +75,17 @@ export function designHouse(brief: HouseBrief, shape: HouseShape): HouseDesign {
   const display = p.ambition * 0.8 - p.generosity * 0.35
   const thrift = p.generosity * 0.2 + (1 - p.ambition) * 0.5
 
-  const needRooms = 1 + Math.max(0, brief.household - 1) * 0.6 + (brief.artisan ? 0.8 : 0) + (brief.merchant ? 0.7 : 0)
+  const roomKinds = planRoomKinds({
+    household: brief.household,
+    wealth: brief.wealth,
+    artisan: brief.artisan,
+    merchant: brief.merchant,
+    ambition: p.ambition,
+  })
+
+  const needRooms = roomKinds.length
   const wealthPush = Math.min(1.6, brief.wealth / 25) * Math.max(0, display)
-  const raw = 2 + needRooms * 0.7 + wealthPush - thrift * 0.6
+  const raw = 2 + needRooms * 0.55 + wealthPush - thrift * 0.6
 
   let rx = Math.round(clampNum(raw, 2, 6))
   let ry = rx
@@ -98,14 +109,25 @@ export function designHouse(brief: HouseBrief, shape: HouseShape): HouseDesign {
       break
   }
 
+  const sized = roomCountToSpan(roomKinds.length, rx, ry)
+  rx = sized.rx
+  ry = sized.ry
+
   const floorArea = (2 * rx - 1) * (2 * ry - 1)
+  const hasWorkshop = brief.artisan || roomKinds.includes('atelier')
+  const hasStoreroom = brief.merchant || brief.wealth > 15 || roomKinds.includes('reserve')
   return {
     shape,
     rx,
     ry,
-    bedSlots: clampNum(Math.floor(floorArea / 9), 1, 6),
-    hasWorkshop: brief.artisan && floorArea >= 20,
-    hasStoreroom: brief.merchant || (brief.wealth > 15 && floorArea >= 25),
+    bedSlots: clampNum(
+      Math.max(roomKinds.filter((k) => k === 'chambre').length, Math.floor(floorArea / 9)),
+      1,
+      6,
+    ),
+    hasWorkshop,
+    hasStoreroom,
+    roomKinds,
   }
 }
 
@@ -198,6 +220,20 @@ export function houseFootprint(design: HouseDesign, cx: number, cy: number): Hou
     }
   }
 
+  // Multi-room partitions from planned roomKinds (fallback: one mid wall).
+  const kinds = design.roomKinds?.length ? design.roomKinds : null
+  if (kinds && kinds.length >= 2 && interior.length >= 4) {
+    const layout = layoutRoomsFromInterior(interior, kinds, door)
+    const partKeys = new Set(layout.partitions.map((c) => `${c.x},${c.y}`))
+    for (const p of layout.partitions) walls.push(p)
+    return {
+      walls,
+      interior: interior.filter((c) => !partKeys.has(`${c.x},${c.y}`)),
+      door,
+      open,
+    }
+  }
+
   if (rx >= 3 && ry >= 3) {
     const partitionY = cy
     for (let x = cx - rx + 1; x <= cx + rx - 1; x++) {
@@ -262,6 +298,7 @@ export function structureFootprint(params: StructureParams, cx: number, cy: numb
     bedSlots: 0,
     hasWorkshop: false,
     hasStoreroom: false,
+    roomKinds: [],
   }
   const base = houseFootprint(design, cx, cy)
   const walls = params.door ? base.walls : [...base.walls, base.door]

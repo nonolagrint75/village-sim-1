@@ -1,4 +1,14 @@
-import { memo, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  Component,
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react'
 import type { HouseShape } from '@/lib/sim/architecture'
 import {
   AMBITION_LABELS,
@@ -16,6 +26,15 @@ import { MONTH_LABELS_FR } from '@/lib/sim/calendar'
 import type { CircleKind } from '@/lib/sim/politics'
 import type { SelectedVillager, UiCountRow, UiGroupRow, UiLineageRow } from '@/lib/sim/snapshot'
 import type { Profession, SimStats } from '@/lib/sim/types'
+
+function num(v: unknown, fallback = 0): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+}
+
+function resourceLabel(type: unknown): string {
+  if (typeof type !== 'string' || !type) return 'ressource'
+  return RESOURCE_LABELS_FR[type] ?? type
+}
 
 type Tab = 'realm' | 'society' | 'market' | 'log'
 type GroupFilter = 'all' | 'circles' | 'institutions' | CircleKind
@@ -56,6 +75,7 @@ export const SimPanel = memo(function SimPanel({
   lineages,
   cultures,
   creeds,
+  selectedId,
   selected,
   nameOf,
   following,
@@ -68,6 +88,8 @@ export const SimPanel = memo(function SimPanel({
   lineages: UiLineageRow[]
   cultures: UiCountRow[]
   creeds: UiCountRow[]
+  /** Local click id — show pending portrait even if worker pack is still null. */
+  selectedId: number | null
   selected: SelectedVillager | null
   nameOf: (id: number) => string
   following: boolean
@@ -170,14 +192,31 @@ export const SimPanel = memo(function SimPanel({
         </div>
       </header>
 
-      {selected && (
-        <Portrait
-          selected={selected}
-          nameOf={nameOf}
-          following={following}
-          onFollow={onFollow}
-          onClose={onCloseSelected}
-        />
+      {selectedId !== null && (
+        <PortraitBoundary selectedId={selectedId} onClose={onCloseSelected}>
+          {selected ? (
+            <Portrait
+              selected={selected}
+              nameOf={nameOf}
+              following={following}
+              onFollow={onFollow}
+              onClose={onCloseSelected}
+            />
+          ) : (
+            <article className="sim-portrait sim-portrait-pending" aria-live="polite">
+              <div className="sim-portrait-head">
+                <div className="sim-avatar" style={{ background: 'hsl(40, 20%, 28%)' }} />
+                <div className="sim-portrait-id">
+                  <h3>Villageois #{selectedId}</h3>
+                  <p>Chargement du portrait…</p>
+                </div>
+                <button type="button" className="sim-ghost" onClick={onCloseSelected} aria-label="Fermer">
+                  ×
+                </button>
+              </div>
+            </article>
+          )}
+        </PortraitBoundary>
       )}
 
       <nav className="sim-tabs" aria-label="Sections du panneau">

@@ -34,7 +34,7 @@ import { tickRoadWear } from './roads'
 import { pickAmbition, setRememberBridge } from './social'
 import { mindOf, onRemember, resetCognitionCaches } from './cognition'
 import { getSimPerfBudget } from './perfBudget'
-import { tickBuildProjects } from './construction'
+import { seedPioneerCamps, tickBuildProjects } from './construction'
 import { tickTechnology } from './technology'
 import {
   resetEthnosCaches,
@@ -70,6 +70,8 @@ const HORSE_HERDS = 3
 const STARTER_COINS = 4
 /** Rations de fondation — sans ça, BMR + cueillette race → morts de faim dès les premiers jours-sim. */
 const STARTER_FOOD = 5
+/** Bois de départ — lance + premiers murs / établi sans bloquer sur la cueillette seule. */
+const STARTER_WOOD = 5
 /**
  * Âge tick des fondateurs : adultes (CHILD_AGE≈220, ELDER_AGE≈800).
  * age=0 les traitait comme enfants pendant ~3 jours-sim.
@@ -78,9 +80,11 @@ const FOUNDER_AGE_MIN = 280
 const FOUNDER_AGE_SPAN = 420
 
 function newVillagerInventory() {
-  const inv = createInventory(5)
+  // 8 slots: food/coin/wood + gather extras (resin, herbs…) without choking craft inputs.
+  const inv = createInventory(8)
   addToInventory(inv, 'coin', STARTER_COINS)
   addToInventory(inv, 'food', STARTER_FOOD)
+  addToInventory(inv, 'wood', STARTER_WOOD)
   return inv
 }
 
@@ -211,6 +215,19 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
 
   for (const v of villagers) {
     seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng)
+    // Soft heat_wood seed so charcoal / bronze chains aren't knowledge-locked forever.
+    if (rng() < 0.55) {
+      v.knowledge.push({
+        id: 'heat_wood',
+        labelFr: 'chauffer le bois',
+        confidence: 0.4 + rng() * 0.25,
+        discoveredTick: 0,
+        inputs: ['wood'],
+        process: ['heat'],
+        outputs: ['ember_know'],
+        purposes: ['craft'],
+      })
+    }
   }
 
   const sheep: Sheep[] = []
@@ -315,6 +332,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   }
   seedFounderKin(state, villagers, rng)
   seedFounderEthnos(state, villagers, rng)
+  seedPioneerCamps(state, groupCenters, villagers, foundingGroups, rng)
   return state
 }
 

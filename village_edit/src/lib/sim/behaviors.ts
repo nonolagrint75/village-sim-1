@@ -1502,13 +1502,17 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const goldTile = goldSense ? { x: goldSense.x, y: goldSense.y } : null
 
   if (bestEdible(v)) {
-    // Manger dès que la faim devient réelle — pas seulement à jeun (sinon craft/build gagne).
+    // Eat urge ramps only when hunger is real — mild hunger must not drown craft/build/gather.
     const eatUrge =
-      v.hunger < 2.6 ? Math.max(starving * 280, 95 + (2.6 - v.hunger) * 85) : starving * 200
-    add('eat', v.x, v.y, eatUrge)
+      v.hunger < 1.35
+        ? Math.max(starving * 260, 70 + (1.35 - v.hunger) * 110)
+        : v.hunger < 2.1
+          ? starving * 120 + (2.1 - v.hunger) * 35
+          : starving * 55
+    if (eatUrge > 8) add('eat', v.x, v.y, eatUrge)
   }
-  if (v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0) {
-    add('takeFromChest', v.chestX, v.chestY, starving * 200 * reach(v, v.chestX, v.chestY))
+  if (v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0 && v.hunger < 2.0) {
+    add('takeFromChest', v.chestX, v.chestY, starving * 180 * reach(v, v.chestX, v.chestY))
   }
   if (overloaded && v.hasChest && v.chestInventory) {
     add('storeChest', v.chestX, v.chestY, 160 * reach(v, v.chestX, v.chestY))
@@ -1529,7 +1533,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     // Short exploratory idle toward curiosity when food is unknown locally.
     const sx = clamp(v.x + Math.floor((rng() - 0.5) * searchR), 0, grid.width - 1)
     const sy = clamp(v.y + Math.floor((rng() - 0.5) * searchR), 0, grid.height - 1)
-    add('idle', sx, sy, 8 + starving * 40 + p.curiosity * 20)
+    add('idle', sx, sy, 4 + starving * 22 + p.curiosity * 12)
   }
 
   const fishBoat = boatOf(state, v)
@@ -2193,6 +2197,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     idleY = clamp(Math.floor(v.y + Math.sin(away) * dist), 0, grid.height - 1)
   }
   // Found elsewhere: unaffiliated migrants with high urge seek empty ground far from other centres.
+  // Idle is a weak fallback — keep scores low so gather/craft/build win under softmax.
+  const lastKind = mind.lastKind
+  const microRepeat =
+    lastKind === 'socialise' || lastKind === 'giveFood' || lastKind === 'entertain' || lastKind === 'eat'
   if (migrate > 0.5 && !village && !v.hasHome) {
     let farX = idleX
     let farY = idleY
@@ -2213,9 +2221,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
     idleX = farX
     idleY = farY
-    add('idle', idleX, idleY, 18 + migrate * 35 + p.curiosity * 20)
+    add('idle', idleX, idleY, 12 + migrate * 28 + p.curiosity * 14)
   } else {
-    add('idle', idleX, idleY, 6 + p.curiosity * 14 + migrate * 20)
+    add('idle', idleX, idleY, 3 + p.curiosity * 8 + migrate * 14)
   }
 
   if (options.length === 0) {
@@ -2224,16 +2232,36 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     return
   }
 
-  const policyOpts = options.map((o) => ({
-    kind: o.kind,
-    x: o.x,
-    y: o.y,
-    id: o.id,
-    resource: o.resource,
-    baseScore: o.baseScore,
-    jobMult: jobBonus(v, o.kind),
-    ambitionMult: ambitionBonus(v, o.kind),
-  }))
+  const policyOpts = options.map((o) => {
+    let base = o.baseScore
+    // Anti-thrash: after a micro social/eat act, prefer lasting livelihood options.
+    if (microRepeat && (o.kind === lastKind || o.kind === 'idle')) base *= 0.42
+    if (
+      microRepeat &&
+      (o.kind === 'gatherWood' ||
+        o.kind === 'gatherFood' ||
+        o.kind === 'gatherStone' ||
+        o.kind === 'clearLand' ||
+        o.kind === 'sowField' ||
+        o.kind === 'harvestWheat' ||
+        o.kind.startsWith('build') ||
+        o.kind.startsWith('craft') ||
+        o.kind === 'fish' ||
+        o.kind === 'mineTunnel')
+    ) {
+      base *= 1.35
+    }
+    return {
+      kind: o.kind,
+      x: o.x,
+      y: o.y,
+      id: o.id,
+      resource: o.resource,
+      baseScore: base,
+      jobMult: jobBonus(v, o.kind),
+      ambitionMult: ambitionBonus(v, o.kind),
+    }
+  })
   const pick = pickTaskByPolicy(state, v, policyOpts, rng)
   if (pick && pick.index >= 0) {
     const best = options[pick.index]

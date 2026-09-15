@@ -501,6 +501,29 @@ function placeGeologicalResources(grid: WorldGrid, elevation: Float32Array, mois
       grid.coalDeposit[i] = 5 + Math.floor(oreNoise * 20)
     }
   }
+
+  // Sparse foothill outcrops: a few surface IRON / GOLD nodes so early prospecting
+  // and gatherIron aren't dead while tunnels remain the main ore source.
+  for (let y = 3; y < grid.height - 3; y++) {
+    for (let x = 3; x < grid.width - 3; x++) {
+      const i = y * w + x
+      if (grid.terrain[i] !== GRASS && grid.terrain[i] !== STONE) continue
+      if (elevation[i] < mountainLevel - 0.09) continue
+      let nearMountain = false
+      for (let dy = -2; dy <= 2 && !nearMountain; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (getTerrain(grid, x + dx, y + dy) === MOUNTAIN) {
+            nearMountain = true
+            break
+          }
+        }
+      }
+      if (!nearMountain) continue
+      const outcrop = fbm(x / 9, y / 9, 3311, 2)
+      if (outcrop > 0.82 && rng() < 0.035) setTerrain(grid, x, y, IRON, 6 + Math.floor(outcrop * 14))
+      else if (outcrop > 0.88 && rng() < 0.012) setTerrain(grid, x, y, GOLD, 3 + Math.floor(outcrop * 8))
+    }
+  }
 }
 
 function softenTerrainBoundaries(grid: WorldGrid) {
