@@ -95,6 +95,8 @@ export interface WorldGrid {
   height: number
   terrain: Uint8Array
   amount: Uint16Array
+  /** Named biome codes — see biomes.ts (BIOME_*). */
+  biome: Uint8Array
   /** Hidden ore deposits inside mountain rock; never rendered on the surface. */
   ironDeposit: Uint16Array
   goldDeposit: Uint16Array

@@ -15,7 +15,7 @@ Chaque branche ci-dessous pointe le même tip que `nolan-work` au moment de la c
 | `nolan/economy` | Commerce, prix, routes marchandes | `commerce.ts` |
 | `nolan/politics-social` | Politique, guildes, liens sociaux, interactions | `politics.ts`, `social.ts`, `interactions.ts` |
 | `nolan/family-genetics` | Famille, mariage, génétique, ethnos | `family.ts`, `marriage.ts`, `genetics.ts`, `ethnos.ts` |
-| `nolan/climate-ecology` | Climat, calendrier, écologie | `climate.ts`, `calendar.ts`, `ecology.ts` |
+| `nolan/climate-ecology` | Climat, calendrier, écologie, biomes / faune | `climate.ts`, `calendar.ts`, `ecology.ts`, `biomes.ts` (+ paint dans `world.ts`) |
 | `nolan/mobility` | Pathfinding, routes, chevaux, bateaux | `pathfinding.ts`, `roads.ts`, `roadView.ts`, `horses.ts` (+ bateaux dans `behaviors.ts`) |
 | `nolan/combat-defence` | Combat, défense, faune agressive | `defence.ts` (+ combat dans `behaviors.ts`) |
 | `nolan/ui` | Panneaux, canvas, toolbar, styles | `src/components/`, `src/styles.css` |

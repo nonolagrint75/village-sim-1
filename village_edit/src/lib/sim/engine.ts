@@ -60,7 +60,8 @@ import {
   type Villager,
   type Wolf,
 } from './types'
-import { createClimate, tickClimate } from './climate'
+import { createClimate, sampleBiome, tickClimate } from './climate'
+import { FAUNA_WEIGHT_MAX, faunaSpawnWeight, biomeSettlementScore, type FaunaKind } from './biomes'
 import { applySimConfig, type SimConfigInput } from './simConfig'
 import { createWorldGrid, makeRng, randomWalkableTile, randomWalkableTileNear, resourceDensity } from './world'
 
@@ -98,21 +99,46 @@ const FOUNDING_SITE_RADIUS = 70
  * keep the one with the best combined resource density around it. This only runs once per
  * founding group at world creation, so a generous candidate count costs nothing at runtime.
  */
-function pickFoundingSite(grid: ReturnType<typeof createWorldGrid>, rng: () => number): { x: number; y: number } {
+function pickFoundingSite(
+  grid: ReturnType<typeof createWorldGrid>,
+  climate: NonNullable<SimState['climate']>,
+  rng: () => number,
+): { x: number; y: number } {
   let best: { x: number; y: number } | null = null
   let bestScore = -Infinity
   for (let i = 0; i < FOUNDING_SITE_CANDIDATES; i++) {
     const candidate = randomWalkableTile(grid, rng)
+    const biomeMul = biomeSettlementScore(sampleBiome(climate, candidate.x, candidate.y))
     const score =
-      resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
-      resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
-      resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.5
+      (resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
+        resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
+        resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.5) *
+      biomeMul
     if (score > bestScore) {
       bestScore = score
       best = candidate
     }
   }
   return best ?? randomWalkableTile(grid, rng)
+}
+
+/**
+ * Rejection-sample a walkable tile weighted by biome fauna density
+ * (wolves denser in boreal, horses on grassland/savanna, scarce desert game).
+ */
+function pickFaunaSpawnTile(
+  grid: ReturnType<typeof createWorldGrid>,
+  climate: NonNullable<SimState['climate']>,
+  rng: () => number,
+  kind: FaunaKind,
+): { x: number; y: number } {
+  const maxW = FAUNA_WEIGHT_MAX[kind]
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const spot = randomWalkableTile(grid, rng)
+    const w = faunaSpawnWeight(sampleBiome(climate, spot.x, spot.y), kind)
+    if (rng() * maxW <= w) return spot
+  }
+  return randomWalkableTile(grid, rng)
 }
 
 export function createSimulation(seed = 1, configInput?: SimConfigInput): SimState {
@@ -130,7 +156,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   const foundingGroups = Math.max(2, Math.min(8, Math.ceil(cfg.initialVillagers / 8)))
   const groupSpread = Math.max(10, Math.round(GROUP_SPREAD * (cfg.worldSize / 1000)))
 
-  const groupCenters = Array.from({ length: foundingGroups }, () => pickFoundingSite(grid, rng))
+  const groupCenters = Array.from({ length: foundingGroups }, () => pickFoundingSite(grid, climate, rng))
 
   const villagers: Villager[] = []
   for (let i = 0; i < cfg.initialVillagers; i++) {
@@ -239,7 +265,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
 
   const sheep: Sheep[] = []
   for (let i = 0; i < cfg.sheepCount; i++) {
-    const spot = randomWalkableTile(grid, rng)
+    const spot = pickFaunaSpawnTile(grid, climate, rng, 'sheep')
     sheep.push({
       id: nextId++,
       x: spot.x,
@@ -257,7 +283,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   }
 
   const horses: Horse[] = []
-  const herdCentres = Array.from({ length: HORSE_HERDS }, () => randomWalkableTile(grid, rng))
+  const herdCentres = Array.from({ length: HORSE_HERDS }, () => pickFaunaSpawnTile(grid, climate, rng, 'horse'))
   for (let i = 0; i < cfg.horseCount; i++) {
     const base = herdCentres[i % HORSE_HERDS]
     const spot = randomWalkableTileNear(grid, rng, base.x, base.y, 10)
@@ -266,7 +292,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
 
   const wolves: Wolf[] = []
   for (let i = 0; i < cfg.wolfCount; i++) {
-    const spot = randomWalkableTile(grid, rng)
+    const spot = pickFaunaSpawnTile(grid, climate, rng, 'wolf')
     wolves.push({
       id: nextId++,
       x: spot.x,

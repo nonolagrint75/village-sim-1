@@ -304,13 +304,32 @@ export function cropDef(id: number): CropDef {
   return CROP_BY_ID.get(id) ?? CROP_DEFS[0]!
 }
 
-export function pickCropId(rng: () => number): number {
+export function pickCropId(rng: () => number, biomeId?: number): number {
+  const cold =
+    biomeId === 7 || biomeId === 8 || biomeId === 9 // boreal, tundra, alpine
+  const arid = biomeId === 2 || biomeId === 3 || biomeId === 5 // desert, scrub, savanna
+  const wet = biomeId === 10 || biomeId === 1 // wetland, coastal
   let total = 0
-  for (const c of CROP_DEFS) total += c.weight
-  let roll = rng() * total
+  const weights: number[] = []
   for (const c of CROP_DEFS) {
-    roll -= c.weight
-    if (roll <= 0) return c.id
+    let w = c.weight
+    if (cold) {
+      if (c.id === 1 || c.id === 3 || c.id === 6 || c.id === 7) w *= 2.2 // rye, oats, cabbage, turnip
+      if (c.id === 16 || c.id === 20) w *= 0.15 // grape, lavender
+      if (c.id === 0) w *= 0.45 // wheat struggles
+    } else if (arid) {
+      if (c.id === 2 || c.id === 10 || c.id === 11 || c.id === 16) w *= 1.8
+      if (c.id === 4 || c.id === 5) w *= 0.5
+    } else if (wet) {
+      if (c.id === 4 || c.id === 5 || c.id === 8 || c.id === 24) w *= 1.6
+    }
+    weights.push(w)
+    total += w
+  }
+  let roll = rng() * total
+  for (let i = 0; i < CROP_DEFS.length; i++) {
+    roll -= weights[i]!
+    if (roll <= 0) return CROP_DEFS[i]!.id
   }
   return CROP_WHEAT
 }
@@ -372,13 +391,15 @@ export const GATHER_TABLE: Record<GatherSource, GatherYield[]> = {
 export function rollGatherExtras(
   source: GatherSource,
   rng: () => number,
-  opts?: { skipPrimary?: boolean },
+  opts?: { skipPrimary?: boolean; chanceScale?: number },
 ): { resource: ResourceType; amount: number }[] {
   const out: { resource: ResourceType; amount: number }[] = []
+  const scale = Math.max(0.05, opts?.chanceScale ?? 1)
   for (const row of GATHER_TABLE[source]) {
     if (opts?.skipPrimary && row.primary) continue
-    if (!row.primary && rng() >= row.chance) continue
-    if (row.primary && rng() >= row.chance) continue
+    const chance = Math.min(1, row.chance * (row.primary ? Math.min(1.15, 0.55 + scale * 0.45) : scale))
+    if (!row.primary && rng() >= chance) continue
+    if (row.primary && rng() >= chance) continue
     const min = row.min ?? 1
     const max = row.max ?? min
     const amount = min >= max ? min : min + Math.floor(rng() * (max - min + 1))

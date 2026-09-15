@@ -23,6 +23,14 @@
  * Wind: trades (|φ|<0.35), westerlies mid-lat, easterlies high-lat + storm swirl.
  */
 
+import {
+  BIOME_COUNT,
+  BiomeId,
+  biomeProfile,
+  classifyBiome,
+  BIOME_NONE,
+  type BiomeId as BiomeIdT,
+} from './biomes'
 import { logCause } from './politics'
 import { getSimPerfBudget } from './perfBudget'
 import { TICKS_PER_YEAR } from './calendar'
@@ -78,6 +86,13 @@ export interface ClimateState {
   waterFrac: Float32Array
   /** 0..1 coastal influence (near WATER). */
   coast: Float32Array
+  /**
+   * Coarse biome id per climate cell (`BiomeId`).
+   * Shared with world-engine map gen — write the same IDs if replacing classify.
+   */
+  biome: Uint8Array
+  /** Static biome temperature offset °C (from dominant cell biome). */
+  biomeTempOffset: Float32Array
   /** Dynamic air temperature °C. */
   tempC: Float32Array
   /** Soft precipitation intensity 0..1. */
@@ -126,11 +141,14 @@ function terrainElevProxy(t: number): number {
   return 0.38
 }
 
-function terrainMoistureProxy(t: number, waterNear: number): number {
-  if (t === WATER) return 1
-  if (t === SAND) return 0.12 + waterNear * 0.25
-  if (t === MOUNTAIN) return 0.35
-  return 0.45 + waterNear * 0.35
+function terrainMoistureProxy(t: number, waterNear: number, biomeId: BiomeIdT = BiomeId.grassland): number {
+  const biomeMoist = biomeProfile(biomeId).moistureProxy
+  let base = 0.45 + waterNear * 0.35
+  if (t === WATER) base = 1
+  else if (t === SAND) base = 0.12 + waterNear * 0.25
+  else if (t === MOUNTAIN) base = 0.35
+  if (biomeId === BIOME_NONE && t === WATER) return 1
+  return clamp(base * 0.45 + biomeMoist * 0.55 + waterNear * 0.08, 0, 1)
 }
 
 /** Build static coarse fields from the finished world grid (O(world) once at init). */
@@ -142,6 +160,8 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
   const moisture = new Float32Array(n)
   const waterFrac = new Float32Array(n)
   const coast = new Float32Array(n)
+  const biome = new Uint8Array(n)
+  const biomeTempOffset = new Float32Array(n)
   const tempC = new Float32Array(n)
   const rain = new Float32Array(n)
   const windU = new Float32Array(n)
@@ -160,6 +180,7 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
       let wCount = 0
       let coastHits = 0
       let samples = 0
+      const biomeVotes = new Int32Array(BIOME_COUNT)
       // Stride sample inside the cell for O(res² · (cell/stride)²) ≈ cheap.
       const stride = Math.max(2, Math.floor(cell / 4))
       for (let y = y0; y < y1; y += stride) {
@@ -176,8 +197,10 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
               }
             }
           } else waterNear = 1
+          const tileBiome = (grid.biome?.[y * grid.width + x] ?? BIOME_NONE) as BiomeIdT
           eSum += terrainElevProxy(t)
-          mSum += terrainMoistureProxy(t, waterNear)
+          mSum += terrainMoistureProxy(t, waterNear, tileBiome)
+          if (tileBiome >= 0 && tileBiome < BIOME_COUNT) biomeVotes[tileBiome]++
           if (t === WATER) wCount++
           if (waterNear) coastHits++
           samples++
@@ -189,6 +212,16 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
       moisture[i] = clamp(mSum * inv, 0, 1)
       waterFrac[i] = wCount * inv
       coast[i] = clamp(coastHits * inv, 0, 1)
+      let bestB: BiomeIdT = BiomeId.grassland
+      let bestN = -1
+      for (let b = 0; b < BIOME_COUNT; b++) {
+        if (biomeVotes[b] > bestN) {
+          bestN = biomeVotes[b]
+          bestB = b as BiomeIdT
+        }
+      }
+      biome[i] = bestB
+      biomeTempOffset[i] = biomeProfile(bestB).tempOffsetC
     }
   }
 
@@ -199,6 +232,8 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
     moisture,
     waterFrac,
     coast,
+    biome,
+    biomeTempOffset,
     tempC,
     rain,
     windU,
@@ -219,6 +254,28 @@ export function createClimate(grid: WorldGrid, _seed = 1): ClimateState {
   refreshTemperatureField(climate, 0, 'spring')
   refreshFlowField(climate, 0)
   return climate
+}
+
+/**
+ * Fill coarse biome cells from elev / moisture / coast / water + spring temperature.
+ * World-engine agents may replace this with a richer map while keeping `BiomeId` values.
+ */
+export function paintBiomeLattice(climate: ClimateState) {
+  const res = climate.res
+  for (let cy = 0; cy < res; cy++) {
+    for (let cx = 0; cx < res; cx++) {
+      const i = cellIndex(res, cx, cy)
+      const id = classifyBiome({
+        tempC: climate.tempC[i],
+        moisture: climate.moisture[i],
+        elev01: climate.elev[i],
+        coast01: climate.coast[i],
+        waterFrac: climate.waterFrac[i],
+      })
+      climate.biome[i] = id
+      climate.biomeTempOffset[i] = biomeProfile(id).tempOffsetC
+    }
+  }
 }
 
 function yearFraction(tick: number): number {
@@ -245,7 +302,7 @@ export function temperatureAtCell(climate: ClimateState, cx: number, cy: number,
   const tSeason = A_SEASON * Math.sin(2 * Math.PI * yearFrac) * phi
   const tDiurnal = A_DIURNAL * Math.cos(2 * Math.PI * dayFrac) * (1 - 0.55 * coast)
 
-  let t = tLat + tElev + tSeason + tDiurnal
+  let t = tLat + tElev + tSeason + tDiurnal + climate.biomeTempOffset[i]
   // Coastal moderation toward maritime mean.
   t = t + A_COAST * coast * (T_MARITIME - t)
 
@@ -423,6 +480,43 @@ export function sampleMoisture(climate: ClimateState, x: number, y: number): num
   return bilinear(climate.moisture, climate.res, x, y, climate.cell)
 }
 
+export function sampleElev(climate: ClimateState, x: number, y: number): number {
+  return bilinear(climate.elev, climate.res, x, y, climate.cell)
+}
+
+export function sampleCoast(climate: ClimateState, x: number, y: number): number {
+  return bilinear(climate.coast, climate.res, x, y, climate.cell)
+}
+
+export function sampleWaterFrac(climate: ClimateState, x: number, y: number): number {
+  return bilinear(climate.waterFrac, climate.res, x, y, climate.cell)
+}
+
+/**
+ * Nearest climate-cell biome (not bilinear — IDs are categorical).
+ * Prefer this over re-classifying when the lattice is the shared source of truth.
+ */
+export function sampleBiome(climate: ClimateState, x: number, y: number): BiomeIdT {
+  const fx = clamp(x / climate.cell, 0, climate.res - 1)
+  const fy = clamp(y / climate.cell, 0, climate.res - 1)
+  const cx = Math.min(climate.res - 1, Math.max(0, Math.floor(fx)))
+  const cy = Math.min(climate.res - 1, Math.max(0, Math.floor(fy)))
+  const id = climate.biome[cellIndex(climate.res, cx, cy)] as BiomeIdT
+  if (id >= 0 && id < BIOME_COUNT) return id
+  return BiomeId.grassland
+}
+
+/** Live classify from current samples (useful if lattice not yet painted). */
+export function classifyBiomeAt(climate: ClimateState, x: number, y: number): BiomeIdT {
+  return classifyBiome({
+    tempC: sampleTempC(climate, x, y),
+    moisture: sampleMoisture(climate, x, y),
+    elev01: sampleElev(climate, x, y),
+    coast01: sampleCoast(climate, x, y),
+    waterFrac: sampleWaterFrac(climate, x, y),
+  })
+}
+
 export function sampleCurrent(climate: ClimateState, x: number, y: number): { u: number; v: number } {
   return {
     u: bilinear(climate.currentU, climate.res, x, y, climate.cell),
@@ -468,10 +562,12 @@ export function biomeSuitability(
   moisture: number,
 ): { tree: number; grass: number; bush: number; sand: number } {
   const t01 = clamp((tempC + 5) / 40, 0, 1)
-  const tree = clamp(moisture * 1.1 * (0.35 + t01 * 0.7) - (tempC < 0 ? 0.5 : 0), 0, 1)
-  const bush = clamp(moisture * 0.9 * (0.4 + (1 - Math.abs(t01 - 0.55)) * 0.8), 0, 1)
-  const grass = clamp((0.35 + moisture * 0.5) * (0.4 + t01 * 0.6), 0, 1)
-  const sand = clamp((1 - moisture) * (0.5 + t01 * 0.5) - tree * 0.3, 0, 1)
+  // Tundra / deep cold: trees nearly halt; sparse grass/bush only.
+  const freeze = tempC < -1 ? clamp((-1 - tempC) / 12, 0, 1) : 0
+  const tree = clamp(moisture * 1.1 * (0.35 + t01 * 0.7) - (tempC < 0 ? 0.5 : 0) - freeze * 0.85, 0, 1)
+  const bush = clamp(moisture * 0.9 * (0.4 + (1 - Math.abs(t01 - 0.55)) * 0.8) - freeze * 0.35, 0, 1)
+  const grass = clamp((0.35 + moisture * 0.5) * (0.4 + t01 * 0.6) * (1 - freeze * 0.45), 0, 1)
+  const sand = clamp((1 - moisture) * (0.5 + t01 * 0.5) - tree * 0.3 + freeze * 0.15, 0, 1)
   return { tree, grass, bush, sand }
 }
 

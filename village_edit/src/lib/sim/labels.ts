@@ -1,4 +1,5 @@
 import type { HouseShape } from '@/lib/sim/architecture'
+import { BIOME_PROFILES, type BiomeId } from '@/lib/sim/biomes'
 import type { Ambition, MemoryKind } from '@/lib/sim/social'
 import { RESOURCE_LABELS_UI } from '@/lib/sim/resources'
 import type { BoatKind, Profession, Season, TaskKind, ToolTier } from '@/lib/sim/types'
@@ -27,6 +28,14 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   buildChest: 'Fabrique un coffre',
   buildBed: 'Fabrique un lit',
   buildTable: 'Dresse une table',
+  buildHearth: 'Maçonne un âtre',
+  buildBench: 'Fabrique un banc',
+  buildStool: 'Fabrique un tabouret',
+  buildShelf: 'Pose une étagère',
+  buildCupboard: 'Monte une armoire',
+  buildCradle: 'Fabrique un berceau',
+  buildLoom: 'Monte un métier à tisser',
+  buildWashingTub: 'Fabrique une cuve à lessive',
   buildPen: 'Monte un enclos',
   buildWall: "Élève l'enceinte",
   buildBridge: 'Construit un pont',
@@ -147,3 +156,8 @@ export const SEASON_COLORS: Record<Season, string> = {
   autumn: '#d4843c',
   winter: '#9ec5dc',
 }
+
+/** French biome names for UI (climate lattice / portrait). */
+export const BIOME_LABELS: Record<BiomeId, string> = Object.fromEntries(
+  BIOME_PROFILES.map((p) => [p.id, p.labelFr]),
+) as Record<BiomeId, string>

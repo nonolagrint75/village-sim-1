@@ -212,10 +212,18 @@ export function applyGeneticPersonalityBias(base: Personality, genome: Genome, r
  * Risque maladie effectif : prédisposition × âge × famine.
  * Hook pour le moteur — jamais une certitude binaire.
  */
-export function diseasePressure(phenotype: Phenotype, ageNorm: number, famine: boolean): number {
+export function diseasePressure(
+  phenotype: Phenotype,
+  ageNorm: number,
+  famine: boolean,
+  biomeDiseaseMul = 1,
+): number {
   const ageFactor = 0.35 + clamp01(ageNorm) * 0.65
   const famineFactor = famine ? 1.35 : 1
-  return clamp01(phenotype.diseaseRisk * ageFactor * famineFactor * (0.55 + phenotype.agingRateBias * 0.45))
+  const biomeFactor = Math.max(0.5, Math.min(1.6, biomeDiseaseMul))
+  return clamp01(
+    phenotype.diseaseRisk * ageFactor * famineFactor * biomeFactor * (0.55 + phenotype.agingRateBias * 0.45),
+  )
 }
 
 /**

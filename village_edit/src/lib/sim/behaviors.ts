@@ -5,10 +5,12 @@ import {
   cropTempFactor,
   fishingCurrentBonus,
   heatStress01,
+  sampleBiome,
   sampleMoisture,
   sampleRain,
   sampleTempC,
 } from './climate'
+import { BiomeId, biomeColdBias, biomeGatherChanceScale, livelihoodMul } from './biomes'
 import {
   designHouse,
   freshStyle,
@@ -19,13 +21,24 @@ import {
   type HouseFootprint,
 } from './architecture'
 import {
+  applyFurnitureBuilt,
+  canAffordFurniture,
   eatSpot,
   FURNITURE_DEFS,
   furnitureLabelFr,
+  hasHomeFurniture,
+  homeDineMul,
+  homeWarmthClo,
+  homeWashCare,
+  homeWeaveMul,
+  householdSleepCapacity,
   markFurnitureDone,
+  missingFurnitureResource,
   nextFurnitureJob,
   planFurnitureJobs,
+  restSleepBonus,
   sleepSpot,
+  spendFurnitureRecipe,
   storeSpot,
   woodCostOf,
   type FurnitureKind,
@@ -495,19 +508,30 @@ function atHomeShelter(v: Villager): boolean {
 /** Clothing/leather + hearth vs local air temperature (°C) — clo × surface corporelle. */
 function warmthMultiplier(v: Villager, state: SimState): number {
   const temp = sampleTempC(state.climate, v.x, v.y)
-  const cold = coldStress01(temp)
+  const biomeCold = biomeColdBias(sampleBiome(state.climate, v.x, v.y))
+  const cold = Math.min(1, coldStress01(temp) + (atHomeShelter(v) ? 0 : biomeCold * 0.85))
   const heat = heatStress01(temp)
   const rain = !atHomeShelter(v) ? sampleRain(state.climate, v.x, v.y) : 0
   const massKg = bodyMassKgFromPhenotype(v.phenotype)
   const heightM = heightMetersFromPhenotype(v.phenotype)
   const gear = equipmentEffectsOf(v)
+  let homeClo = 0
+  if (atHomeShelter(v)) {
+    const head =
+      v.homeOwnerId === v.id
+        ? v
+        : v.homeOwnerId !== null
+          ? state.villagers.find((o) => o.id === v.homeOwnerId && o.alive)
+          : v
+    if (head) homeClo = homeWarmthClo(head)
+  }
   return thermalBurnMultiplier({
     cold01: cold,
     heat01: heat,
     rain01: rain,
     night: isNight(state.tick),
     sheltered: atHomeShelter(v),
-    clo: clothingClo(countOf(v.inventory, 'leather') > 0, countOf(v.inventory, 'clothing') > 0, gear.clo),
+    clo: clothingClo(countOf(v.inventory, 'leather') > 0, countOf(v.inventory, 'clothing') > 0, gear.clo) + homeClo,
     massKg,
     heightM,
   })
@@ -1395,7 +1419,9 @@ function bestEdible(v: Villager): ResourceType | null {
 }
 
 function grantGatherExtras(v: Villager, source: 'bush' | 'tree' | 'stone' | 'fish' | 'sheep' | 'hunt', rng: () => number, state?: SimState) {
-  for (const drop of rollGatherExtras(source, rng, { skipPrimary: true })) {
+  const chanceScale =
+    state != null ? biomeGatherChanceScale(sampleBiome(state.climate, v.x, v.y), source) : 1
+  for (const drop of rollGatherExtras(source, rng, { skipPrimary: true, chanceScale })) {
     if (state && !canLift(v, drop.resource, drop.amount, state)) continue
     addToInventory(v.inventory, drop.resource, drop.amount)
   }
@@ -1537,7 +1563,22 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
     // Depleted neighbourhoods are less attractive (Sugarscape-style pressure).
     if (kind === 'gatherWood' || kind === 'gatherStone') {
-      s *= 0.55 + gatherPressurePenalty(grid, x, y) * 0.45
+      s *= 0.55 + gatherPressurePenalty(grid, x, y, state.climate) * 0.45
+    }
+    if (kind === 'gatherWood' || kind === 'clearLand') {
+      s *= livelihoodMul(sampleBiome(state.climate, x, y)).wood
+    }
+    if (kind === 'gatherFood') {
+      s *= livelihoodMul(sampleBiome(state.climate, x, y)).forage
+    }
+    if (kind === 'fish') {
+      s *= livelihoodMul(sampleBiome(state.climate, x, y)).fish
+    }
+    if (kind === 'sowField' || kind === 'harvestWheat') {
+      s *= livelihoodMul(sampleBiome(state.climate, x, y)).farm
+    }
+    if (kind === 'captureSheep' || kind === 'feedPen') {
+      s *= livelihoodMul(sampleBiome(state.climate, x, y)).hunt
     }
     // Base only — métier/ambition/cognition/politique enter via factor matrix + softmax.
     const base = s + memoryBias(x, y)
@@ -1657,7 +1698,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const seasonMul = berriesRipeIn(season) ? 1 : 0.35
     const pantryNeed = Math.max(0, (stockTarget - larder) / stockTarget)
     const knowMul = bushKnown ? 1.15 : 0.72
-    const ecoMul = gatherPressurePenalty(grid, bush.x, bush.y)
+    const ecoMul = gatherPressurePenalty(grid, bush.x, bush.y, state.climate)
     add(
       'gatherFood',
       bush.x,
@@ -1975,13 +2016,16 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
     const job = nextFurnitureJob(v.furnitureQueue)
     if (job && !wallGap) {
-      const cost = woodNeededForFurniture(job.kind)
       const taskKind = taskForFurniture(job.kind)
-      const drive = 48 + p.ambition * 35 + (job.kind === 'bed' ? 12 : 0)
-      if (wood >= cost) {
+      const drive = 48 + p.ambition * 35 + (job.kind === 'bed' ? 12 : job.kind === 'hearth' ? 10 : 0)
+      if (canAffordFurniture(v.inventory, job.kind)) {
         add(taskKind, job.x, job.y, drive * reach(v, job.x, job.y))
-      } else if (tree) {
-        add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+      } else {
+        const missing = missingFurnitureResource(v.inventory, job.kind)
+        if (missing === 'wood' && tree) add('gatherWood', tree.x, tree.y, drive * 0.8 * reach(v, tree.x, tree.y))
+        else if (missing === 'stone' && rock) add('gatherStone', rock.x, rock.y, drive * 0.75 * reach(v, rock.x, rock.y))
+        else if (missing === 'iron' && ironOre) add('gatherIron', ironOre.x, ironOre.y, drive * 0.7 * reach(v, ironOre.x, ironOre.y))
+        else if (tree && woodCostOf(job.kind) > 0) add('gatherWood', tree.x, tree.y, drive * 0.65 * reach(v, tree.x, tree.y))
       }
     } else if (!job) {
       // Legacy fallback if queue empty — keep old slot logic for partial homes.
@@ -2484,9 +2528,19 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     removeFromInventory(v.inventory, food, 1)
     const fromKcal = hungerRestoreFromFood(food)
     const legacy = NUTRITION[food] ?? 0.5
-    v.hunger = Math.min(HUNGER_MAX, v.hunger + Math.max(legacy, fromKcal))
-    recoverStamina(v, 0.15)
-    onCognitiveEvent(v, 'good_meal', (NUTRITION[food] ?? 0.5) >= 1.4 ? 1 : 0.75)
+    const homeOwner =
+      v.homeOwnerId === v.id
+        ? v
+        : v.homeOwnerId !== null
+          ? state.villagers.find((o) => o.id === v.homeOwnerId && o.alive)
+          : null
+    const tableX = v.hasTable ? v.tableX : homeOwner?.hasTable ? homeOwner.tableX : -1
+    const tableY = v.hasTable ? v.tableY : homeOwner?.hasTable ? homeOwner.tableY : -1
+    const atTable = tableX >= 0 && atHomeShelter(v) && distance(v.x, v.y, tableX, tableY) <= 2.2
+    const dineMul = atTable && homeOwner ? homeDineMul(homeOwner) : atTable && v.hasTable ? homeDineMul(v) : 1
+    v.hunger = Math.min(HUNGER_MAX, v.hunger + Math.max(legacy, fromKcal) * dineMul)
+    recoverStamina(v, 0.15 * (atTable ? 1.1 : 1))
+    onCognitiveEvent(v, 'good_meal', ((NUTRITION[food] ?? 0.5) >= 1.4 ? 1 : 0.75) * (atTable ? 1.15 : 1))
     return false
   }
 
@@ -2674,9 +2728,10 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           (v.profession === 'fisher' ? 0.25 : 0) +
           (onBoat ? 0.15 : 0) +
           fishingCurrentBonus(state.climate, task.targetX, task.targetY) * 0.22) *
-        skillYieldBonus(mindOf(v).skills, 'fish')
+        skillYieldBonus(mindOf(v).skills, 'fish') *
+        livelihoodMul(sampleBiome(state.climate, task.targetX, task.targetY)).fish
       const freeze = sampleTempC(state.climate, task.targetX, task.targetY) < -1 ? 0.4 : 1
-      if (rng() < catchChance * freeze) {
+      if (rng() < Math.min(0.92, catchChance * freeze)) {
         const haul = onBoat ? 3 : 2
         const bonus = skillYieldBonus(mindOf(v).skills, 'fish') > 1.25 && rng() < 0.35 ? 1 : 0
         const primary = rng() < 0.82 ? 'fish' : 'food'
@@ -2992,9 +3047,17 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'weaveCloth': {
       const woolHave = countOf(v.inventory, 'wool')
       if (woolHave < WOOL_PER_CLOTH) return false
+      const homeOwner =
+        v.homeOwnerId === v.id
+          ? v
+          : v.homeOwnerId !== null
+            ? state.villagers.find((o) => o.id === v.homeOwnerId && o.alive)
+            : v
+      const weaveMul = homeOwner ? homeWeaveMul(homeOwner) : 1
       const batches = Math.floor(woolHave / WOOL_PER_CLOTH)
       removeFromInventory(v.inventory, 'wool', batches * WOOL_PER_CLOTH)
-      addToInventory(v.inventory, 'cloth', batches)
+      const bonus = weaveMul > 1 && rng() < 0.4 ? 1 : 0
+      addToInventory(v.inventory, 'cloth', batches + bonus)
       const q = rollCraftQuality(mindOf(v).skills.craft, rng)
       if (q === 'masterwork') noteMasterworkCraft(state, v, 'toile')
       else if (q === 'fine') onCognitiveEvent(v, 'craft_joy', 0.55)
@@ -3057,7 +3120,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'sowField': {
       if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (!isBuildableGround(grid, task.targetX, task.targetY)) return false
-      const cropId = pickCropId(rng)
+      const cropId = pickCropId(rng, sampleBiome(state.climate, task.targetX, task.targetY))
       setTerrain(grid, task.targetX, task.targetY, WHEAT, 1)
       grid.cropType[task.targetY * grid.width + task.targetX] = cropId
       v.hasField = true
@@ -3293,63 +3356,44 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       logEvent(state, `${v.name} a jeté un pont sur l'eau`)
       return false
     }
-    case 'buildWorkbench': {
-      if (countOf(v.inventory, 'wood') < WORKBENCH_COST) return false
-      const labor = accumulateLabor('buildWorkbench')
+    case 'buildWorkbench':
+    case 'buildChest':
+    case 'buildBed':
+    case 'buildTable':
+    case 'buildBench':
+    case 'buildStool':
+    case 'buildShelf':
+    case 'buildCupboard':
+    case 'buildCradle':
+    case 'buildLoom':
+    case 'buildHearth':
+    case 'buildWashingTub': {
+      const kindMap: Partial<Record<TaskKind, FurnitureKind>> = {
+        buildWorkbench: 'workbench',
+        buildChest: 'chest',
+        buildBed: 'bed',
+        buildTable: 'table',
+        buildBench: 'bench',
+        buildStool: 'stool',
+        buildShelf: 'shelf',
+        buildCupboard: 'cupboard',
+        buildCradle: 'cradle',
+        buildLoom: 'loom',
+        buildHearth: 'hearth',
+        buildWashingTub: 'tub',
+      }
+      const kind = kindMap[task.kind]
+      if (!kind) return false
+      if (!canAffordFurniture(v.inventory, kind)) return false
+      const labor = accumulateLabor(task.kind)
       if (labor === 'abort') return false
       if (labor === 'continue') return true
-      setTerrain(grid, task.targetX, task.targetY, WORKBENCH)
-      removeFromInventory(v.inventory, 'wood', WORKBENCH_COST)
-      v.hasWorkbench = true
-      v.workbenchX = task.targetX
-      v.workbenchY = task.targetY
-      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
-      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'atelier'
-      logEvent(state, `${v.name} installe un ${furnitureLabelFr(done?.kind ?? 'workbench')} dans ${roomFr}`)
-      return false
-    }
-    case 'buildChest': {
-      if (countOf(v.inventory, 'wood') < CHEST_COST) return false
-      const labor = accumulateLabor('buildChest')
-      if (labor === 'abort') return false
-      if (labor === 'continue') return true
-      setTerrain(grid, task.targetX, task.targetY, CHEST)
-      removeFromInventory(v.inventory, 'wood', CHEST_COST)
-      v.hasChest = true
-      v.chestX = task.targetX
-      v.chestY = task.targetY
-      if (!v.chestInventory) v.chestInventory = createInventory(20)
-      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
-      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'réserve'
-      logEvent(state, `${v.name} place un ${furnitureLabelFr(done?.kind ?? 'chest')} dans ${roomFr}`)
-      return false
-    }
-    case 'buildBed': {
-      if (countOf(v.inventory, 'wood') < BED_COST) return false
-      const labor = accumulateLabor('buildBed')
-      if (labor === 'abort') return false
-      if (labor === 'continue') return true
-      setTerrain(grid, task.targetX, task.targetY, BED)
-      removeFromInventory(v.inventory, 'wood', BED_COST)
-      v.bedCount += 1
-      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
-      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'chambre'
-      logEvent(state, `${v.name} fabrique un ${furnitureLabelFr(done?.kind ?? 'bed')} dans ${roomFr}`)
-      return false
-    }
-    case 'buildTable': {
-      if (countOf(v.inventory, 'wood') < TABLE_COST) return false
-      const labor = accumulateLabor('buildTable')
-      if (labor === 'abort') return false
-      if (labor === 'continue') return true
-      setTerrain(grid, task.targetX, task.targetY, TABLE)
-      removeFromInventory(v.inventory, 'wood', TABLE_COST)
-      v.hasTable = true
-      v.tableX = task.targetX
-      v.tableY = task.targetY
-      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
-      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'salle à manger'
-      logEvent(state, `${v.name} dresse une table dans ${roomFr}`)
+      if (!spendFurnitureRecipe(v.inventory, kind)) return false
+      const def = FURNITURE_DEFS[kind]
+      setTerrain(grid, task.targetX, task.targetY, def.terrain)
+      const done = applyFurnitureBuilt(v, kind, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : ROOM_LABEL_FR[def.room]
+      logEvent(state, `${v.name} installe ${furnitureLabelFr(kind)} dans ${roomFr}`)
       return false
     }
     case 'buildWall': {
@@ -3625,7 +3669,12 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
   // Soft disease pressure (prédisposition × âge × famine) — jamais une mort certaine.
   if ((state.tick + v.id * 13) % 53 === 0 && v.health > 0) {
     const ageNorm = Math.min(1, v.age / (TICKS_PER_YEAR * 55))
-    const pressure = diseasePressure(v.phenotype, ageNorm, state.famine)
+    const pressure = diseasePressure(
+      v.phenotype,
+      ageNorm,
+      state.famine,
+      livelihoodMul(sampleBiome(state.climate, v.x, v.y)).disease,
+    )
     if (pressure > 0.5 && rng() < pressure * 0.035 * (v.hunger < 1.5 ? 1.4 : 1)) {
       v.health -= 1
       if (v.health <= 0) {
@@ -3931,7 +3980,8 @@ export function tickFields(state: SimState) {
     if (!v.alive || v.fieldX === -1) continue
     const fieldT = sampleTempC(state.climate, v.fieldX, v.fieldY)
     const rain = sampleRain(state.climate, v.fieldX, v.fieldY)
-    const rate = Math.max(0, base * cropTempFactor(fieldT) * (0.75 + rain * 0.55))
+    const farmMul = livelihoodMul(sampleBiome(state.climate, v.fieldX, v.fieldY)).farm
+    const rate = Math.max(0, base * cropTempFactor(fieldT) * (0.75 + rain * 0.55) * farmMul)
     if (rate <= 0.02) continue
     const x0 = v.fieldX - r
     const y0 = v.fieldY - r
@@ -4031,7 +4081,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
         const hid = homeOwner.id
         for (const o of state.villagers) if (o.alive && o.homeOwnerId === hid) residents++
       }
-      const hasRoom = homeOwner ? residents < homeOwner.bedCount : false
+      const hasRoom = homeOwner ? residents < householdSleepCapacity(homeOwner) : false
 
       // Soft gate fertilité génétique (prédisposition ≠ certitude)
       const fertChance = (fertilityModifier(a.phenotype) + fertilityModifier(b.phenotype)) * 0.5
@@ -4529,12 +4579,18 @@ export function tickRegrowth(state: SimState, rng: () => number) {
     const bushSource = findRandomTile(grid, rng, BUSH)
     if (bushSource) {
       const tC = sampleTempC(state.climate, bushSource.x, bushSource.y)
-      if (tC < 0) continue
+      const biome = sampleBiome(state.climate, bushSource.x, bushSource.y)
+      // Hardy tundra / alpine shrubs can creep in the cold; elsewhere freeze still bites.
+      const coldOk =
+        tC >= 0 || biome === BiomeId.tundra || biome === BiomeId.alpine || biome === BiomeId.boreal
+      if (!coldOk) continue
       const moist = sampleMoisture(state.climate, bushSource.x, bushSource.y) + sampleRain(state.climate, bushSource.x, bushSource.y) * 0.35
       const suit = biomeSuitability(tC, moist)
-      if (suit.bush < 0.25) continue
+      const bushFloor = biome === BiomeId.tundra || biome === BiomeId.alpine ? 0.12 : 0.25
+      if (suit.bush < bushFloor) continue
       if (resourceDensity(grid, bushSource.x, bushSource.y, 'bush', 3) >= SPREAD_NEIGHBOURS_NEEDED) {
-        tryGrowAdjacent(grid, bushSource.x, bushSource.y, BUSH, 8, rng)
+        const amt = biome === BiomeId.tundra || biome === BiomeId.desert ? 5 : 8
+        tryGrowAdjacent(grid, bushSource.x, bushSource.y, BUSH, amt, rng)
       }
     }
   }

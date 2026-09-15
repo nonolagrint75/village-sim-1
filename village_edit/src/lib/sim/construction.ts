@@ -17,8 +17,12 @@ import {
   type StructureParams,
   type WallMaterial,
 } from './architecture'
+import { sampleBiome } from './climate'
+import { biomeProfile } from './biomes'
 import type { ResourceType } from './inventory'
-import { countOf, createInventory } from './inventory'
+import { addToInventory, countOf, createInventory } from './inventory'
+import { planFurnitureJobs } from './furniture'
+import { buildHouseLayout } from './rooms'
 import {
   metersToTilesRound,
   structureHalfSpanMeters,
@@ -369,6 +373,11 @@ export function enqueueBuildProject(
     if (tech.arrowSlit) intent.scale = Math.min(1, intent.scale + 0.08)
   }
 
+  // Local biome nudges timber vs stone (tundra/alpine → stone; forest → wood).
+  const biome = biomeProfile(sampleBiome(state.climate, opts.nearX, opts.nearY))
+  intent.woodBias = Math.max(0.05, Math.min(0.95, intent.woodBias * 0.55 + biome.woodBias * 0.45))
+  intent.stoneBias = Math.max(0.05, Math.min(0.95, intent.stoneBias * 0.55 + biome.stoneBias * 0.45))
+
   const params = paramsFromIntent(intent, tech)
   const span = Math.max(params.rx, params.ry)
   const site = findBuildSite(state.grid, opts.nearX, opts.nearY, span, 48 + Math.round(intent.scale * 20))
@@ -587,7 +596,7 @@ const PIONEER_DESIGN = {
   bedSlots: 2,
   hasWorkshop: true,
   hasStoreroom: false,
-  roomKinds: ['hall', 'chambre', 'atelier'] as import('./rooms').RoomType[],
+  roomKinds: ['hall', 'chambre', 'atelier'] as import('./rooms').RoomKind[],
 }
 
 function clearPlotVegetation(grid: WorldGrid, cells: Cell[]): void {
@@ -703,6 +712,19 @@ export function seedPioneerCamps(
       v.chestX = slots.chest.x
       v.chestY = slots.chest.y
       v.chestInventory = createInventory(20)
+      v.homeLayout = buildHouseLayout(design, fp)
+      const jobs = planFurnitureJobs(v.homeLayout, {
+        beds: design.bedSlots,
+        wantWorkshop: true,
+        wantStore: true,
+        household: 2,
+      })
+      v.furnitureQueue = jobs.map((j) => {
+        if (j.kind === 'workbench') return { ...j, done: true, x: slots.workbench.x, y: slots.workbench.y }
+        if (j.kind === 'chest') return { ...j, done: true, x: slots.chest.x, y: slots.chest.y }
+        return j
+      })
+      addToInventory(v.inventory, 'stone', 3)
       v.x = fp.door.x
       v.y = fp.door.y
       v.villageId = village.id

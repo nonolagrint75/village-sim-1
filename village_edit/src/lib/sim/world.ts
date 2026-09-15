@@ -1,5 +1,6 @@
 import { createIndex, countResourceNear, findNearestResource, indexTile, type ResourceKind } from './resourceIndex'
 import { isNightTick } from './calendar'
+import { biomeDef, classifyBiome, BiomeId, type BiomeId as BiomeIdT } from './biomes'
 import {
   BED,
   BRIDGE,
@@ -214,6 +215,7 @@ export function createWorldGrid(seed = 1): WorldGrid {
     height,
     terrain: new Uint8Array(width * height),
     amount: new Uint16Array(width * height),
+    biome: new Uint8Array(width * height),
     ironDeposit: new Uint16Array(width * height),
     goldDeposit: new Uint16Array(width * height),
     copperDeposit: new Uint16Array(width * height),
@@ -450,17 +452,65 @@ function applyBeaches(grid: WorldGrid) {
   for (const i of shore) grid.terrain[i]=SAND
 }
 
-function paintNaturalBiomes(grid: WorldGrid, elevation: Float32Array, moisture: Float32Array, temperature: Float32Array, seaLevel: number, mountainLevel: number) {
-  for (let y=1;y<grid.height-1;y++) for (let x=1;x<grid.width-1;x++) {
-    const i=y*grid.width+x
-    if (grid.terrain[i]!==GRASS) continue
-    const e=elevation[i], m=moisture[i], t=temperature[i]
-    const treeChance = clamp((m-0.43)*1.55 + (t-0.25)*0.18 - Math.max(0,e-mountainLevel)*2, 0, 0.9)
-    const bushChance = clamp(m*0.55 + (0.6-Math.abs(t-0.55))*0.25, 0, 0.75)
-    const n=fbm(x/10,y/10,913,2)
-    if (e < seaLevel + 0.012) continue
-    if (n < treeChance * 0.72) setTerrain(grid,x,y,TREE,12)
-    else if (n < treeChance + bushChance*0.18) setTerrain(grid,x,y,BUSH,8)
+function paintNaturalBiomes(
+  grid: WorldGrid,
+  elevation: Float32Array,
+  moisture: Float32Array,
+  temperature: Float32Array,
+  seaLevel: number,
+  mountainLevel: number,
+) {
+  const w = grid.width
+  const h = grid.height
+  // Pass 1 — classify every land tile into a named biome.
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x
+      const t = grid.terrain[i]
+      if (t === WATER) {
+        grid.biome[i] = BiomeId.ocean
+        continue
+      }
+      let waterCount = 0
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue
+          const nx = x + dx
+          const ny = y + dy
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+          if (grid.terrain[ny * w + nx] === WATER) waterCount++
+        }
+      }
+      const waterNear = waterCount > 0
+      const shore = t === SAND || (waterNear && waterCount >= 2 && elevation[i] < seaLevel + 0.05)
+      const biome = classifyBiome({
+        tempC: (temperature[i] - 0.5) * 40,
+        moisture: moisture[i],
+        elev01: Math.max(0, Math.min(1, (elevation[i] - seaLevel) / Math.max(0.01, mountainLevel - seaLevel))),
+        coast01: shore ? 0.6 : waterNear ? 0.25 : 0,
+        waterFrac: waterCount / 24,
+      })
+      grid.biome[i] = biome
+    }
+  }
+
+  // Pass 2 — vegetation from biome map defs (tundra sparse, forest dense).
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x
+      if (grid.terrain[i] !== GRASS && grid.terrain[i] !== SAND) continue
+      if (elevation[i] < seaLevel + 0.012) continue
+      const def = biomeDef(grid.biome[i] as BiomeIdT)
+      const n = fbm(x / 10, y / 10, 913, 2)
+      if (def.sandChance > 0.1 && n > 1 - def.sandChance * 0.5 && grid.terrain[i] === GRASS) {
+        setTerrain(grid, x, y, SAND)
+        continue
+      }
+      const treeChance = clamp(def.treeDensity, 0, 0.92)
+      const bushChance = clamp(def.bushDensity, 0, 0.85)
+      if (n < treeChance * 0.72) setTerrain(grid, x, y, TREE, def.treeAmount)
+      else if (n < treeChance + bushChance * 0.22) setTerrain(grid, x, y, BUSH, def.bushAmount)
+    }
   }
 }
 
