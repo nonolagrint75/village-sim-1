@@ -27,8 +27,8 @@ import {
 } from './types'
 import { distance, getTerrain, inBounds, isBlockingWall } from './world'
 
-/** Soft gate: no brigands during founding weeks. */
-export const BANDIT_START_DAY = 40
+/** Soft gate: no brigands during founding weeks — leave time for palisades. */
+export const BANDIT_START_DAY = 48
 const BANDIT_START_TICK = TICKS_PER_DAY * BANDIT_START_DAY
 
 const FORM_CHECK = TICKS_PER_DAY // once per day
@@ -396,9 +396,9 @@ export function tickBandFormation(state: SimState, rng: () => number) {
     Math.min(0.25, state.villages.reduce((a, v) => a + Math.max(0, (v.prosperity ?? 30) - 40) * 0.004, 0)) +
     Math.min(0.2, state.tradeRoutes.size * 0.04)
 
-  // First fortnight after unlock: strong chance so headless runs always see camps.
+  // First fortnight after unlock: one camp wave — leave room for palisades.
   const earlyWindow = state.tick < BANDIT_START_TICK + TICKS_PER_DAY * 14
-  const wantBands = earlyWindow ? state.bands.length < 2 : state.bands.length < 1 + Math.floor(pressure * 4)
+  const wantBands = earlyWindow ? state.bands.length < 1 : state.bands.length < 1 + Math.floor(pressure * 3)
 
   if (!wantBands && living >= BAND_MIN) return
 

@@ -4490,17 +4490,27 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (countOf(v.inventory, res) < WALL_SEGMENT_COST) return false
       if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (getTerrain(grid, task.targetX, task.targetY) !== wantCode) {
+        if (needsClearing(grid, task.targetX, task.targetY)) {
+          setTerrain(grid, task.targetX, task.targetY, DIRT, 0)
+        }
+        if (needsClearing(grid, task.targetX, task.targetY)) return false
         setTerrain(grid, task.targetX, task.targetY, wantCode)
         removeFromInventory(v.inventory, res, WALL_SEGMENT_COST)
         village.perimeterFrozen = true
       }
-      const walled = village.perimeter.filter((c) => {
+      const countable = village.perimeter.filter((c) => {
+        const t = getTerrain(grid, c.x, c.y)
+        if (t === WALL_WOOD || t === WALL_STONE) return true
+        if (needsClearing(grid, c.x, c.y)) return true
+        return isBuildableGround(grid, c.x, c.y)
+      })
+      const walled = countable.filter((c) => {
         const t = getTerrain(grid, c.x, c.y)
         return t === WALL_WOOD || t === WALL_STONE
       }).length
       const nextGap = village.perimeter.find((c) => getTerrain(grid, c.x, c.y) !== wantCode)
-      // Soft close: unbuildable leftovers / gates shouldn't block an enceinte forever.
-      const mostlyClosed = village.perimeter.length > 0 && walled / village.perimeter.length >= 0.82
+      // Soft close against unbuildable leftovers (rock / water fringe).
+      const mostlyClosed = countable.length > 0 && walled / countable.length >= 0.6
       if (!nextGap || mostlyClosed) {
         if (wantCode === WALL_WOOD) {
           village.wallTier = 'wood'

@@ -1,8 +1,8 @@
 import { BRIDGE, CLAIM_NONE, PATH, ROAD, TRAIL, WALL_STONE, WALL_WOOD, WATER, type Village, type WorldGrid } from './types'
 import { getClaim, getTerrain, idx, inBounds, isBuildableGround } from './world'
 
-const MARGIN = 5
-const MAX_SPAN = 140
+const MARGIN = 3
+const MAX_SPAN = 100
 
 export interface Perimeter {
   cells: { x: number; y: number }[]

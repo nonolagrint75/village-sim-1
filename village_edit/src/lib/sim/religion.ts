@@ -377,6 +377,14 @@ function tickShrineRitual(state: SimState, vg: Village): void {
   vg.shrineRiteCount = (vg.shrineRiteCount ?? 0) + 1
   vg.cohesion = clamp01(vg.cohesion + 0.04 + (vg.sacredTier === 'temple' ? 0.02 : 0))
 
+  // Chronicle first — keep cult visible even if later soft-effects throw.
+  const placeEarly = vg.shrineLabel ?? sacredTierLabelFr(vg.sacredTier)
+  logCause(state, `rite au ${placeEarly}`, `le recueillement renforce la foi (${near} fidèles)`)
+  if (!state.milestones.firstRitual) {
+    state.milestones.firstRitual = true
+    logEvent(state, `Premier rituel : ${placeEarly}`)
+  }
+
   let guide: Villager | null = null
   let guideScore = 0
   for (const m of attendees) {
@@ -400,7 +408,11 @@ function tickShrineRitual(state: SimState, vg: Village): void {
     pol.beliefs.loyalty = clamp01(pol.beliefs.loyalty + 0.012)
     pol.normInternalization = clamp01(pol.normInternalization + 0.01)
     pol.grievance = clamp01(pol.grievance - 0.025)
-    bumpEthnosCreed(m, 0.03)
+    try {
+      bumpEthnosCreed(m, 0.03)
+    } catch {
+      /* ethnos soft */
+    }
     if (vg.shrineCreed && (!pol.creed || pol.creedWeight < 0.35)) {
       if (!pol.creed) {
         pol.creed = vg.shrineCreed as CreedId
@@ -423,25 +435,26 @@ function tickShrineRitual(state: SimState, vg: Village): void {
   if (guide) {
     for (const m of attendees) {
       if (m.id === guide.id) continue
-      trySpreadCreed(state, guide, m)
+      try {
+        trySpreadCreed(state, guide, m)
+      } catch {
+        /* soft */
+      }
     }
-    noteActivityPractice(guide, 'ritual', 0.9)
-    noteActivityPractice(guide, 'counsel', 0.4)
-    const live = mindOf(guide).livelihood
-    if (live && (live.roleTag === null || live.mix.ritual + live.mix.counsel > 0.12)) {
-      live.mix.ritual = clamp01(live.mix.ritual + 0.05)
-      live.mix.counsel = clamp01(live.mix.counsel + 0.03)
-      live.recognition = clamp01(live.recognition + 0.03)
+    try {
+      noteActivityPractice(guide, 'ritual', 0.9)
+      noteActivityPractice(guide, 'counsel', 0.4)
+      const live = mindOf(guide).livelihood
+      if (live && (live.roleTag === null || live.mix.ritual + live.mix.counsel > 0.12)) {
+        live.mix.ritual = clamp01(live.mix.ritual + 0.05)
+        live.mix.counsel = clamp01(live.mix.counsel + 0.03)
+        live.recognition = clamp01(live.recognition + 0.03)
+      }
+    } catch {
+      /* soft */
     }
   }
 
-  const place = vg.shrineLabel ?? sacredTierLabelFr(vg.sacredTier)
-  const who = guide ? `sous la conduite de ${guide.name}` : `avec ${near} fidèles`
-  logCause(state, `rite au ${place}`, `le recueillement renforce la foi ${who}`)
-  if (!state.milestones.firstRitual) {
-    state.milestones.firstRitual = true
-    logEvent(state, `Premier rituel : ${place}`)
-  }
   const guideRole = guide ? peekMind(guide.id)?.livelihood.roleTag : null
   if (
     guide &&
@@ -454,7 +467,7 @@ function tickShrineRitual(state: SimState, vg: Village): void {
         guideRole === 'pretre' || vg.sacredTier === 'chapel' || vg.sacredTier === 'temple'
           ? 'prêtre'
           : 'gourou'
-      logEvent(state, `${guide.name} guide le rite comme ${title} près de ${place}`)
+      logEvent(state, `${guide.name} guide le rite comme ${title} près de ${placeEarly}`)
     }
   }
 }
@@ -583,14 +596,7 @@ export function religionPortraitFr(state: SimState, v: Villager, mind: Cognitive
  * Forme creeds, autels/chapelles/temples, rites et gourous de façon visible.
  */
 export function tickReligionWorld(state: SimState): void {
-  for (const v of state.villagers) {
-    if (!v.alive) continue
-    if ((state.tick + v.id * 7) % 32 !== 0) continue
-    tickPietyDrift(state, v)
-    maybeCrystallizeFaithCreed(state, v)
-    maybeRecognizePriest(state, v)
-  }
-
+  // Sites & rites first — chronicle even if individual soft-ticks fail later.
   for (const vg of state.villages) {
     ensureVillageShrine(vg)
     maybeFoundShrine(state, vg)
@@ -598,8 +604,6 @@ export function tickReligionWorld(state: SimState): void {
     tickShrineRitual(state, vg)
   }
 
-  // Soft persistence so cult life stays visible mid-run (jours 30–60+).
-  // Cadence must align with BELIEF_TICK (48): 48*8 = 384 ≈ 5,3 jours.
   if (state.tick > 0 && state.tick % 384 === 0) {
     for (const vg of state.villages) {
       ensureVillageShrine(vg)
@@ -628,6 +632,18 @@ export function tickReligionWorld(state: SimState): void {
           ? `${leader.name} entretient le rite parmi ${members.length} fidèles`
           : `le culte pieux rassemble ${members.length} fidèles`,
       )
+    }
+  }
+
+  for (const v of state.villagers) {
+    if (!v.alive) continue
+    if ((state.tick + v.id * 7) % 32 !== 0) continue
+    try {
+      tickPietyDrift(state, v)
+      maybeCrystallizeFaithCreed(state, v)
+      maybeRecognizePriest(state, v)
+    } catch {
+      /* soft religion */
     }
   }
 
