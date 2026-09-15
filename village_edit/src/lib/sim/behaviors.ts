@@ -1706,7 +1706,11 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       'gatherFood',
       bush.x,
       bush.y,
-      (starving * 220 + pantryNeed * 90) * seasonMul * knowMul * ecoMul * reach(v, bush.x, bush.y),
+      (starving * 320 + pantryNeed * 140 + (famine ? 80 : 0) + (larder < 2 ? 90 : 0)) *
+        seasonMul *
+        knowMul *
+        ecoMul *
+        reach(v, bush.x, bush.y),
     )
   } else if ((berriesRipeIn(season) || famine) && (starving > 0.2 || larder < stockTarget)) {
     // Short exploratory idle toward curiosity when food is unknown locally.
@@ -1822,6 +1826,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   const socialNear = nearbyVillagers(state, v.x, v.y, SOCIAL_SIGHT, v.id, 32)
+  const survivalTight =
+    v.hunger < 2.4 || larder < 2 || famine || (v.fieldX !== -1 && !v.hasField) || state.tick < TICKS_PER_DAY * 14
   for (let si = 0; si < socialNear.length; si++) {
     const other = socialNear[si]
 
@@ -1845,6 +1851,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const chatNeed = mind.needs.social * 48 + mind.needs.belonging * 28 + lone * 40 + mind.needs.boredom * 18
     // After dark, chat less unless very lonely / kin / spouse (sleep wins).
     const nightChat = night ? (isSpouse || kinship > 0.4 || mind.needs.social > 0.7 ? 0.55 : 0.22) : 1
+    const chatMul = survivalTight && !(isSpouse || kinship > 0.5) ? 0.12 : survivalTight ? 0.35 : 1
     add(
       'socialise',
       other.x,
@@ -1853,6 +1860,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         homo *
         ethBias *
         nightChat *
+        chatMul *
         reach(v, other.x, other.y),
       other.id,
     )
@@ -1866,6 +1874,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const myDebt = rel?.debt ?? 0
       if (myDebt > 0.35) share *= 1.4 + Math.min(1, myDebt) * 0.5
       if (norms.includes('reciprocate') && myDebt > 0.2) share *= 1.25
+      // Don't empty your own bag chatting while starving.
+      if (v.hunger < 1.8) share *= 0.25
       add('giveFood', other.x, other.y, share * reach(v, other.x, other.y), other.id)
     }
     if (affinity < -0.5 || v.grudgeTarget === other.id || (rel?.grudge ?? 0) > 0.6) {
@@ -1905,6 +1915,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       const r = v.relations.get(o.id)
       if (!plazaFriend && r && (r.affinity > 0.2 || (r.respect ?? 0) > 0.4 || (r.kinship ?? 0) > 0.3)) plazaFriend = o
     }
+    const survivalTight = v.hunger < 2.4 || larder < 2 || famine || state.tick < TICKS_PER_DAY * 10
     const gatherUrge =
       (18 +
         p.sociability * 50 +
@@ -1912,8 +1923,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         (v.ambition === 'leader' ? 20 : 0) +
         villageCohesion(state, village.id) * 20 +
         (lifeRoleOf(v) === 'elder' ? 15 : 0)) *
-      (v.hunger > 1.2 ? 1 : 0.35) *
+      (v.hunger > 2.0 ? 1 : 0.2) *
       (night ? 0.2 : 1) *
+      (survivalTight ? 0.25 : 1) *
       reach(v, cx, cy)
     if (gatherUrge > 8) {
       if (plazaFriend) add('socialise', plazaFriend.x, plazaFriend.y, gatherUrge * 1.15, plazaFriend.id)
@@ -1922,26 +1934,31 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   // Services émergents : spectacle, conseil, enseignement (temps + demande sociale).
+  // Hard gate: colony survival beats troubadours — entertain/counsel wiped food loops.
   {
-    const pol = politicsOf(v)
-    const urge = serviceUrge(state, v, pol.beliefs.piety, pol.creed === 'piete', lifeRoleOf(v) === 'elder')
-    let serviceTarget: Villager | null = null
-    let youthTarget: Villager | null = null
-    for (let si = 0; si < socialNear.length; si++) {
-      const o = socialNear[si]
-      if (!serviceTarget) serviceTarget = o
-      if (!youthTarget && o.age < 280) youthTarget = o
-    }
-    if (urge.entertain > 28) {
-      const t = serviceTarget
-      add('entertain', t ? t.x : v.x, t ? t.y : v.y, urge.entertain * (t ? reach(v, t.x, t.y) : 1), t?.id ?? null)
-    }
-    if (urge.counsel > 26 && serviceTarget) {
-      add('counsel', serviceTarget.x, serviceTarget.y, urge.counsel * reach(v, serviceTarget.x, serviceTarget.y), serviceTarget.id)
-    }
-    if (urge.teach > 24) {
-      const pupil = youthTarget ?? serviceTarget
-      if (pupil) add('teachCraft', pupil.x, pupil.y, urge.teach * reach(v, pupil.x, pupil.y), pupil.id)
+    const survivalTight =
+      v.hunger < 2.5 || larder < 2.5 || famine || (v.fieldX !== -1 && !v.hasField) || state.tick < TICKS_PER_DAY * 12
+    if (!survivalTight) {
+      const pol = politicsOf(v)
+      const urge = serviceUrge(state, v, pol.beliefs.piety, pol.creed === 'piete', lifeRoleOf(v) === 'elder')
+      let serviceTarget: Villager | null = null
+      let youthTarget: Villager | null = null
+      for (let si = 0; si < socialNear.length; si++) {
+        const o = socialNear[si]
+        if (!serviceTarget) serviceTarget = o
+        if (!youthTarget && o.age < 280) youthTarget = o
+      }
+      if (urge.entertain > 28) {
+        const t = serviceTarget
+        add('entertain', t ? t.x : v.x, t ? t.y : v.y, urge.entertain * (t ? reach(v, t.x, t.y) : 1), t?.id ?? null)
+      }
+      if (urge.counsel > 26 && serviceTarget) {
+        add('counsel', serviceTarget.x, serviceTarget.y, urge.counsel * reach(v, serviceTarget.x, serviceTarget.y), serviceTarget.id)
+      }
+      if (urge.teach > 24) {
+        const pupil = youthTarget ?? serviceTarget
+        if (pupil) add('teachCraft', pupil.x, pupil.y, urge.teach * reach(v, pupil.x, pupil.y), pupil.id)
+      }
     }
   }
 
@@ -2122,10 +2139,15 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
         // Stronger spring sow urge — fields were claimed but never sown under rest/social lock.
         const sowUrge =
-          (55 + (season === 'spring' ? 70 : 30) + p.ambition * 20 + (famine ? 40 : 0) + starving * 50) *
-          Math.max(0.45, tFac)
+          (120 + (season === 'spring' ? 90 : 40) + p.ambition * 25 + (famine ? 50 : 0) + starving * 60) *
+          Math.max(0.5, tFac)
         add('sowField', bare.x, bare.y, sowUrge * reach(v, bare.x, bare.y))
       }
+    }
+    // If field plot is vegetation-blocked, clearing is survival work — score above chat.
+    if (v.fieldX !== -1 && !v.hasField) {
+      const veg2 = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => needsClearing(grid, c.x, c.y))
+      if (veg2) add('clearLand', veg2.x, veg2.y, (95 + p.ambition * 15 + starving * 40) * reach(v, veg2.x, veg2.y))
     }
   }
 
@@ -2399,7 +2421,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       (bed && v.bedCount > 0 ? 18 : 0)
     // Don't nap while carrying food and getting hungry — that was the mid-run starve path.
     const hungryWithFood = v.hunger < 2.2 && bestEdible(v)
-    const restScore = hungryWithFood ? restNeed * 0.22 : restNeed
+    // Unsowable field waiting: daytime rest must yield to clear/sow.
+    const fieldWaiting = !night && v.fieldX !== -1 && !v.hasField && v.homeOwnerId === v.id
+    let restScore = hungryWithFood ? restNeed * 0.22 : restNeed
+    if (fieldWaiting && !exhausted) restScore *= 0.08
     if (restScore > 6) add('rest', restX, restY, restScore * reach(v, restX, restY))
   } else if (exhausted || tired || cold > 0.4 || heat > 0.5) {
     // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
@@ -3547,6 +3572,17 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const need = isNight(state.tick) ? 30 : v.stamina < STAMINA_TIRED ? 50 : 40
       // Cut rest short when hungry with food so eat/farm can resume.
       if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 8) return false
+      // Daytime: break rest to sow/clear the waiting field.
+      if (
+        !isNight(state.tick) &&
+        v.fieldX !== -1 &&
+        !v.hasField &&
+        v.homeOwnerId === v.id &&
+        v.stamina > STAMINA_EXHAUSTED &&
+        task.ageTicks >= 6
+      ) {
+        return false
+      }
       return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.05
     }
     case 'socialise': {
@@ -3897,7 +3933,9 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'takeFromChest' &&
     v.task.kind !== 'gatherFood' &&
     v.task.kind !== 'fish' &&
-    v.task.kind !== 'harvestWheat'
+    v.task.kind !== 'harvestWheat' &&
+    v.task.kind !== 'sowField' &&
+    v.task.kind !== 'clearLand'
   ) {
     if (v.hunger < 1.85 && bestEdible(v)) {
       stashInterruptedTask(v)
@@ -3914,6 +3952,19 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
     } else if (v.hunger < 0.85 || v.starveTimer > 8) {
       // Forcer un replan vers cueillette / pêche avant le timer de mort.
+      stashInterruptedTask(v)
+      v.task = null
+      v.nextThinkTick = state.tick
+    } else if (
+      !isNight(state.tick) &&
+      v.task.kind === 'rest' &&
+      v.homeOwnerId === v.id &&
+      v.fieldX !== -1 &&
+      !v.hasField &&
+      v.stamina > STAMINA_EXHAUSTED &&
+      sowingSeason(state.season, sampleTempC(state.climate, v.fieldX, v.fieldY))
+    ) {
+      // Break perpetual rest so spring sowing can start.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
@@ -4390,15 +4441,22 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
     const dv = villagerCandidate ? distance(w.x, w.y, villagerCandidate.x, villagerCandidate.y) : Infinity
     const ds = sheepCandidate ? distance(w.x, w.y, sheepCandidate.x, sheepCandidate.y) : Infinity
     const dh = horseCandidate ? distance(w.x, w.y, horseCandidate.x, horseCandidate.y) : Infinity
-    if (ds <= dv * 1.5 && ds <= dh && sheepCandidate) {
+    // Prefer livestock heavily — early human hunts wipe founding groups before spears/fields.
+    const earlyColony = state.tick < TICKS_PER_DAY * 40
+    const hungryWolf = w.hunger < 1.8
+    if (sheepCandidate && (ds <= dv * 2.4 || earlyColony || !hungryWolf)) {
       targetSheep = sheepCandidate
       w.targetId = sheepCandidate.id
       w.targetKind = 'sheep'
-    } else if (dh <= dv * 1.2 && horseCandidate) {
+    } else if (horseCandidate && (dh <= dv * 2.0 || earlyColony)) {
       targetHorse = horseCandidate
       w.targetId = horseCandidate.id
       w.targetKind = 'horse'
-    } else if (villagerCandidate) {
+    } else if (villagerCandidate && hungryWolf && !earlyColony) {
+      targetVillager = villagerCandidate
+      w.targetId = villagerCandidate.id
+      w.targetKind = 'villager'
+    } else if (villagerCandidate && w.hunger < 0.9) {
       targetVillager = villagerCandidate
       w.targetId = villagerCandidate.id
       w.targetKind = 'villager'

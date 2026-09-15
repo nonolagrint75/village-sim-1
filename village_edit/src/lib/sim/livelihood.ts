@@ -585,8 +585,8 @@ export function serviceUrge(
 ): { entertain: number; counsel: number; teach: number } {
   const mind = mindOf(v)
   const live = ensureLivelihood(mind)
-  const fed = v.hunger > 1.4 || edibleValue(v.inventory) > 1 || live.patronage > 0.25
-  const surplusTime = fed && v.stamina > 2 ? 1 : 0.35
+  const fed = v.hunger > 2.2 && (edibleValue(v.inventory) > 1 || live.patronage > 0.25)
+  const surplusTime = fed && v.stamina > 2.2 && !state.famine ? 1 : 0.12
   const socialSkill = mind.skills.social
   const bored = mind.needs.boredom
   const pietyNeed = piety + mind.needs.piety

@@ -32,6 +32,7 @@ import { stampPlaza } from './roads'
 import { logEvent } from './social'
 import {
   CHEST,
+  CLAIM_FIELD,
   CLAIM_HOUSE,
   DIRT,
   HOUSE,
@@ -48,6 +49,7 @@ import {
   type WorldGrid,
 } from './types'
 import {
+  claimArea,
   claimCells,
   findBuildSite,
   getTerrain,
@@ -725,6 +727,20 @@ export function seedPioneerCamps(
         return j
       })
       addToInventory(v.inventory, 'stone', 3)
+      // Larder seed so pioneers eat while clearing/sowing the first field.
+      if (v.chestInventory) addToInventory(v.chestInventory, 'food', 8)
+      // Claim a nearby field plot so sow/harvest can start in the first spring
+      // instead of waiting for a rare chooseOptions window under rest lock.
+      if (v.fieldX === -1) {
+        const field =
+          findBuildSite(grid, plot.x - 8, plot.y, 2, 22, 4) ??
+          findBuildSite(grid, plot.x + 8, plot.y + 2, 2, 18, 4)
+        if (field) {
+          v.fieldX = field.x
+          v.fieldY = field.y
+          claimArea(grid, field.x, field.y, 2, CLAIM_FIELD)
+        }
+      }
       v.x = fp.door.x
       v.y = fp.door.y
       v.villageId = village.id
