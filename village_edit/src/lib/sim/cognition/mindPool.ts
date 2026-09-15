@@ -31,6 +31,8 @@ const NEED_KEYS: (keyof NeedPressures)[] = [
   'boredom',
   'piety',
   'creative',
+  'light',
+  'warmth',
 ]
 
 const EMO_KEYS: (keyof EmotionState)[] = ['anger', 'fear', 'stress', 'affection', 'pride']

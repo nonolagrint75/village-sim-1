@@ -166,11 +166,37 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       1 +
       n.fatigue * 0.95 +
       n.shelter * 0.55 +
+      n.warmth * 0.55 +
       concernBias(mind.working, 'need_rest') * 0.18 +
       workspaceBias(mind.broadcast, 'need_rest') * 0.4 +
       consciousAccessBias(mind, 'need_rest') * 0.7 +
       peWeight(pe, 'fatigue') * 0.3 +
-      peWeight(pe, 'shelter') * 0.2
+      peWeight(pe, 'shelter') * 0.2 +
+      peWeight(pe, 'cold_comfort') * 0.2
+  }
+  if (
+    kind === 'lightTorch' ||
+    kind === 'placeCandle' ||
+    kind === 'tendHearth' ||
+    kind === 'gatherFuel' ||
+    kind === 'craftLight'
+  ) {
+    m *=
+      1 +
+      n.light * 1.15 +
+      n.warmth * 0.75 +
+      n.safety * 0.25 +
+      concernBias(mind.working, 'need_light') * 0.22 +
+      concernBias(mind.working, 'need_warmth') * 0.18 +
+      workspaceBias(mind.broadcast, 'need_light') * 0.4 +
+      workspaceBias(mind.broadcast, 'need_warmth') * 0.35 +
+      consciousAccessBias(mind, 'need_light') * 0.7 +
+      consciousAccessBias(mind, 'need_warmth') * 0.55 +
+      peWeight(pe, 'darkness') * 0.4 +
+      peWeight(pe, 'cold_comfort') * 0.3
+  }
+  if (kind === 'craftGear') {
+    m *= 1 + n.warmth * 0.45 + peWeight(pe, 'cold_comfort') * 0.15
   }
   if (kind === 'flee' || kind === 'fight' || kind === 'defend' || kind === 'buildWall' || kind === 'craftSpear') {
     m *=
@@ -198,10 +224,14 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'kin') * 0.55 +
       peWeight(pe, 'social') * 0.2 +
       peWeight(pe, 'belonging') * 0.15
-    // Micro-social must yield when survival / shelter / livelihood pressure is on.
-    if (n.hunger > 0.4 || n.shelter > 0.45 || n.purpose > 0.3) m *= 0.7
+    // Micro-social must yield hard when survival / shelter / fatigue pressure is on.
+    if (n.hunger > 0.28) m *= 0.18
+    else if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
+    else if (n.purpose > 0.3) m *= 0.55
   }
-  if (kind === 'entertain') m *= 1 + n.boredom * 0.45 + n.status * 0.2
+  if (kind === 'entertain') {
+    m *= n.hunger > 0.25 ? 0.2 : 1 + n.boredom * 0.45 + n.status * 0.2
+  }
   if (kind === 'counsel') m *= 1 + n.piety * 0.5
   if (kind === 'teachCraft') m *= 1 + n.purpose * 0.35 + n.status * 0.15
   if (kind === 'makeCharcoal') m *= 1 + n.creative * 0.25 + n.purpose * 0.15

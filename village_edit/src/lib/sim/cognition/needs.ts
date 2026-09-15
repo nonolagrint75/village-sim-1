@@ -5,6 +5,7 @@ import { lonelinessPressure } from '../social'
 import type { SimState, Villager } from '../types'
 import { distance, isNight } from '../world'
 import { coldStress01, heatStress01, sampleTempC } from '../climate'
+import { cloakWarmth01, darknessPressure, nearWarmFire, warmthPressure } from '../lightWarmth'
 import type { NeedPressures, ValueWeights } from './types'
 
 function clamp01(v: number): number {
@@ -25,7 +26,21 @@ export function valuesFromPersonality(v: Villager): ValueWeights {
 }
 
 export function emptyNeeds(): NeedPressures {
-  return { hunger: 0, fatigue: 0, safety: 0, social: 0, shelter: 0, status: 0, purpose: 0, belonging: 0, boredom: 0, piety: 0, creative: 0 }
+  return {
+    hunger: 0,
+    fatigue: 0,
+    safety: 0,
+    social: 0,
+    shelter: 0,
+    status: 0,
+    purpose: 0,
+    belonging: 0,
+    boredom: 0,
+    piety: 0,
+    creative: 0,
+    light: 0,
+    warmth: 0,
+  }
 }
 
 const SOCIAL_SIGHT = 18
@@ -59,7 +74,14 @@ export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures):
       (wallSafe ? -0.15 : 0.1) +
       (v.health < 2 ? 0.25 : 0) +
       cold * (sheltered ? 0.12 : 0.4) +
-      heat * (sheltered ? 0.08 : 0.28),
+      heat * (sheltered ? 0.08 : 0.28) +
+      darknessPressure(state, v) * 0.45,
+  )
+
+  needs.light = clamp01(darknessPressure(state, v))
+  needs.warmth = clamp01(
+    warmthPressure(state, v) +
+      (cold > 0.35 && !nearWarmFire(state, v) && cloakWarmth01(v) < 0.25 ? cold * 0.25 : 0),
   )
 
   let nearby = 0
@@ -142,4 +164,6 @@ export const NEED_LABELS_FR: Record<keyof NeedPressures, string> = {
   boredom: 'ennui',
   piety: 'piété',
   creative: 'créativité',
+  light: 'lumière',
+  warmth: 'chaleur',
 }

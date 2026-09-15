@@ -116,6 +116,7 @@ export function preferenceForTask(kind: string): LaborPref | null {
   }
   if (
     kind === 'craftIronTool' ||
+    kind === 'craftLight' ||
     kind === 'weaveCloth' ||
     kind === 'sewClothing' ||
     kind === 'tanHide' ||
@@ -123,6 +124,9 @@ export function preferenceForTask(kind: string): LaborPref | null {
     kind === 'makeCharcoal'
   ) {
     return 'crafting'
+  }
+  if (kind === 'gatherFuel' || kind === 'tendHearth' || kind === 'lightTorch' || kind === 'placeCandle') {
+    return kind === 'gatherFuel' ? 'woodwork' : 'crafting'
   }
   if (kind === 'gatherStone' || kind === 'gatherIron' || kind === 'mineTunnel') return 'mining'
   if (kind.startsWith('build') || kind === 'clearLand') return 'building'

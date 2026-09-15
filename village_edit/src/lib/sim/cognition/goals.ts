@@ -36,13 +36,13 @@ export function defaultGoal(v: Villager): CognitiveGoal {
 /** Map goal → short chain of existing tasks (HTN stub, 2–3 steps). */
 export function planForGoal(id: CognitiveGoalId): PlanStub | null {
   const chains: Partial<Record<CognitiveGoalId, TaskKind[]>> = {
-    home: ['gatherWood', 'clearLand', 'buildHouse', 'buildBed', 'sowField', 'buildChest'],
-    survive: ['eat', 'gatherFood', 'sowField', 'harvestWheat', 'takeFromChest'],
-    rest: ['eat', 'rest'],
+    home: ['gatherWood', 'clearLand', 'buildHouse', 'buildBed', 'buildTable', 'sowField', 'buildChest'],
+    survive: ['eat', 'gatherFood', 'sowField', 'harvestWheat', 'takeFromChest', 'buildChest'],
+    rest: ['eat', 'tendHearth', 'placeCandle', 'rest'],
     wealth: ['mineGold', 'mintCoins', 'tradeRun'],
-    security: ['gatherWood', 'clearLand', 'buildProject'],
-    craft: ['gatherWood', 'buildWorkbench', 'craftIronTool'],
-    family: ['eat', 'gatherFood', 'sowField', 'giveFood', 'buildBed'],
+    security: ['lightTorch', 'gatherFuel', 'gatherWood', 'clearLand', 'buildProject'],
+    craft: ['gatherWood', 'buildWorkbench', 'craftLight', 'craftIronTool'],
+    family: ['eat', 'gatherFood', 'sowField', 'giveFood', 'tendHearth', 'buildBed'],
     mate: ['socialise', 'giveFood', 'buildBed'],
     community: ['gatherWood', 'clearLand', 'sowField', 'buildProject'],
     revenge: ['confront'],
@@ -79,7 +79,8 @@ export function scoreGoals(
       score:
         (needs.fatigue * 2.4 +
           (v.stamina < 1.2 ? 1.5 : 0) +
-          (v.hasHome ? needs.shelter * 1.5 : 0)) *
+          (v.hasHome ? needs.shelter * 1.5 : 0) +
+          needs.warmth * 1.1) *
         (v.hunger < 1.8 ? 0.45 : 1) *
         noise(),
       commitment: 0,
@@ -98,7 +99,7 @@ export function scoreGoals(
     },
     {
       id: 'security',
-      score: (needs.safety * 2.6 + values.security * 0.9) * noise(),
+      score: (needs.safety * 2.6 + needs.light * 1.8 + needs.warmth * 0.9 + values.security * 0.9) * noise(),
       commitment: 0,
       targetId: null,
       targetX: v.x,
@@ -223,6 +224,9 @@ const PLAN_INTERRUPTS: ReadonlySet<TaskKind> = new Set([
   'defend',
   'rest',
   'takeFromChest',
+  'lightTorch',
+  'tendHearth',
+  'placeCandle',
 ])
 
 /** Task multipliers from active goal + values — plan steps gate strongly (not cosmetic). */
@@ -239,8 +243,11 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       takeFromChest: 2.3,
       rest: 0.85,
       buildChest: 1.5,
+      lightTorch: 1.5,
+      tendHearth: 1.4,
+      gatherFuel: 1.35,
     },
-    rest: { eat: 2.4, rest: 2.6, takeFromChest: 1.5, socialise: 0.45 },
+    rest: { eat: 2.4, rest: 2.6, tendHearth: 2.2, placeCandle: 1.8, takeFromChest: 1.5, socialise: 0.45 },
     home: {
       buildHouse: 3.0,
       gatherWood: 1.5,
@@ -250,6 +257,7 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       buildBed: 1.4,
       buildChest: 1.2,
       buildTable: 1.3,
+      buildHearth: 1.6,
       eat: 1.6,
       rest: 1.5,
     },
@@ -264,6 +272,8 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       eat: 2.0,
       giveFood: 1.5,
       socialise: 1.4,
+      tendHearth: 1.5,
+      placeCandle: 1.3,
     },
     mate: { socialise: 2.4, giveFood: 1.6, buildBed: 1.3, buildHouse: 1.2, buildTable: 1.15, eat: 1.3 },
     status: {
@@ -294,7 +304,7 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       gatherWood: 1.3,
       eat: 1.3,
     },
-    explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2, eat: 1.2 },
+    explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2, eat: 1.2, lightTorch: 1.35 },
     security: {
       flee: 2.5,
       fight: 1.8,
@@ -308,6 +318,11 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       gatherWood: 1.4,
       clearLand: 1.45,
       eat: 1.35,
+      lightTorch: 2.4,
+      placeCandle: 2.0,
+      tendHearth: 2.1,
+      gatherFuel: 1.9,
+      craftLight: 1.85,
     },
     craft: {
       buildWorkbench: 2,
@@ -316,6 +331,7 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       craftStoneSpear: 1.6,
       craftIronTool: 1.8,
       craftGear: 1.85,
+      craftLight: 2.1,
       weaveCloth: 1.7,
       sewClothing: 1.5,
       tanHide: 1.5,
@@ -335,6 +351,7 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       clearLand: 1.35,
       buildProject: 1.45,
       eat: 1.25,
+      lightTorch: 1.4,
     },
   }
   const g = table[mind.goal.id][kind]

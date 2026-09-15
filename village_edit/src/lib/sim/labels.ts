@@ -72,6 +72,11 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   craftGear: 'Fabrique une pièce d’équipement',
   craftGoods: 'Travaille une matière',
   useMedicine: 'Applique un remède',
+  lightTorch: 'Allume une torche',
+  placeCandle: 'Pose une chandelle',
+  tendHearth: 'Attise le foyer',
+  gatherFuel: 'Ramasse du combustible',
+  craftLight: 'Fabrique une source de lumière',
 }
 
 export const PROFESSION_LABELS: Record<Profession, string> = {

@@ -35,6 +35,8 @@ export type FurnitureKind =
   | 'loom'
   | 'cradle'
   | 'tub'
+  | 'sconce'
+  | 'chandelier'
 
 export type FurnitureUtility =
   | 'craft'
@@ -255,6 +257,22 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     labor: 2.2,
     washCare: 0.04,
   },
+  sconce: {
+    kind: 'sconce',
+    labelFr: 'applique',
+    buildTask: 'buildWorkbench',
+    wood: 1,
+    room: 'hall',
+    terrain: null,
+  },
+  chandelier: {
+    kind: 'chandelier',
+    labelFr: 'lustre',
+    buildTask: 'buildWorkbench',
+    wood: 4,
+    room: 'hall',
+    terrain: null,
+  },
 }
 
 export const FURNITURE_KINDS = (Object.keys(FURNITURE_DEFS) as FurnitureKind[]).sort(
@@ -415,6 +433,10 @@ function spotFromQueue(
 
 export function sleepSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {
   return spotFromQueue(queue, layout, 'bed', 'chambre')
+}
+
+export function hearthSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {
+  return spotFromQueue(queue, layout, 'hearth', 'cuisine')
 }
 
 export function eatSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {

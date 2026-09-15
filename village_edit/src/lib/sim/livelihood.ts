@@ -103,7 +103,14 @@ export function bucketsForTask(kind: TaskKind): ActivityBucket[] {
     case 'makeCharcoal':
     case 'craftGoods':
     case 'craftGear':
+    case 'craftLight':
       return ['craft']
+    case 'gatherFuel':
+      return ['gather']
+    case 'tendHearth':
+    case 'lightTorch':
+    case 'placeCandle':
+      return ['care']
     case 'useMedicine':
       return ['care']
     case 'gatherStone':
@@ -474,7 +481,7 @@ export function canPracticeCraft(
         skill > 0.15 ||
         craftMix > 0.1 ||
         mind.preferences.crafting > 0.4 ||
-        v.toolTier === 'none'
+        mind.preferences.woodwork > 0.45
       )
     case 'jewelry':
       return (

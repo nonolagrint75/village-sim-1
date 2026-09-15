@@ -6,6 +6,7 @@
 export type ResourceTag =
   | 'edible'
   | 'fuel'
+  | 'light'
   | 'ore'
   | 'metal'
   | 'textile'
@@ -64,14 +65,16 @@ export interface GatherYield {
   primary?: boolean
 }
 
+export type CraftStation = 'workbench' | 'mill' | 'hearth' | 'any'
+
 export interface CraftRecipe {
   id: string
   labelFr: string
   inputs: Partial<Record<ResourceType, number>>
   output: ResourceType
   outputCount: number
-  /** Needs workbench unless mill. */
-  station: 'workbench' | 'mill' | 'any'
+  /** workbench / mill / hearth (âtre) / any. */
+  station: CraftStation
   urge: number
 }
 
@@ -148,9 +151,9 @@ export const RESOURCE_DEFS = [
   def('milk', 'Lait', 'lait', 2.5, { kcal: 600, nutrition: 0.8, basePrice: 1.5, targetPerCapita: 1.2, tradeable: true, tags: ['edible', 'animal'] }),
   def('cheese', 'Fromage', 'fromage', 2, { kcal: 1100, nutrition: 1.5, basePrice: 3.5, targetPerCapita: 0.6, tradeable: true, storeable: true, tags: ['edible', 'craft', 'store'] }),
   def('eggs', 'Œufs', 'œufs', 1.2, { kcal: 700, nutrition: 0.9, basePrice: 1.8, targetPerCapita: 0.8, tradeable: true, tags: ['edible', 'animal'] }),
-  def('tallow', 'Suif', 'suif', 2.5, { basePrice: 2, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'store'] }),
+  def('tallow', 'Suif', 'suif', 2.5, { basePrice: 2, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'light', 'store'] }),
   def('soap', 'Savon', 'savon', 1.5, { basePrice: 3, targetPerCapita: 0.35, tradeable: true, storeable: true, tags: ['craft', 'store'] }),
-  def('candle', 'Chandelle', 'chandelle', 0.8, { basePrice: 2.5, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'store'] }),
+  def('candle', 'Chandelle', 'chandelle', 0.8, { basePrice: 2.5, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'light', 'store'] }),
 
   // ── Céréales & cultures ─────────────────────────────────────────────────
   def('rye', 'Seigle', 'seigle', 3.4, { kcal: 420, nutrition: 0.5, basePrice: 1.4, targetPerCapita: 2, tradeable: true, tags: ['edible', 'grain'] }),
@@ -188,6 +191,15 @@ export const RESOURCE_DEFS = [
   def('ale', 'Cervoise', 'cervoise', 2.5, { kcal: 650, nutrition: 0.75, basePrice: 2.5, targetPerCapita: 0.8, tradeable: true, tags: ['edible', 'craft'] }),
   def('wine', 'Vin', 'vin', 2.8, { kcal: 700, nutrition: 0.8, basePrice: 4, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['edible', 'craft', 'store'] }),
   def('preserved', 'Salaison', 'salaison', 2.5, { kcal: 1000, nutrition: 1.4, basePrice: 3.5, targetPerCapita: 0.7, tradeable: true, storeable: true, tags: ['edible', 'craft', 'store'] }),
+
+  // ── Feu & lumière (médiéval) ─────────────────────────────────────────────
+  def('firewood', 'Fagot', 'fagot', 6, { basePrice: 2.2, targetPerCapita: 2, tradeable: true, storeable: true, tags: ['fuel', 'craft', 'store'] }),
+  def('oil', 'Huile', 'huile', 2, { basePrice: 3, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['fuel', 'craft', 'light', 'store'] }),
+  def('torch', 'Torche', 'torche', 1.8, { basePrice: 3, targetPerCapita: 0.6, tradeable: true, storeable: true, tags: ['fuel', 'craft', 'light', 'store'] }),
+  def('oil_lamp', 'Lampe à huile', 'lampe à huile', 2.2, { basePrice: 5, targetPerCapita: 0.35, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'light', 'store'] }),
+  def('lantern', 'Lanterne', 'lanterne', 3, { basePrice: 7, targetPerCapita: 0.25, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'light', 'store'] }),
+  def('sconce', 'Applique', 'applique', 3.5, { basePrice: 6, targetPerCapita: 0.2, tradeable: true, storeable: true, tags: ['craft', 'light', 'construction', 'store'] }),
+  def('chandelier', 'Lustre', 'lustre', 8, { basePrice: 14, targetPerCapita: 0.08, tradeable: true, storeable: true, tags: ['craft', 'light', 'construction', 'store'] }),
 ] as const satisfies readonly ResourceDef[]
 
 export type ResourceType = (typeof RESOURCE_DEFS)[number]['id']
@@ -217,6 +229,10 @@ export function isTradeable(id: ResourceType): boolean {
 
 export function isFuel(id: ResourceType): boolean {
   return BY_ID[id]?.tags.includes('fuel') ?? false
+}
+
+export function isLightSource(id: ResourceType): boolean {
+  return BY_ID[id]?.tags.includes('light') ?? false
 }
 
 export function isMedicine(id: ResourceType): boolean {
@@ -614,8 +630,143 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     inputs: { tallow: 2 },
     output: 'candle',
     outputCount: 1,
+    station: 'hearth',
+    urge: 22,
+  },
+  {
+    id: 'candle_wax_hearth',
+    labelFr: 'chandelle',
+    inputs: { beeswax: 2 },
+    output: 'candle',
+    outputCount: 2,
+    station: 'hearth',
+    urge: 26,
+  },
+  {
+    id: 'firewood_bundle',
+    labelFr: 'fagot',
+    inputs: { wood: 2 },
+    output: 'firewood',
+    outputCount: 3,
+    station: 'any',
+    urge: 28,
+  },
+  {
+    id: 'oil_from_tallow',
+    labelFr: 'huile',
+    inputs: { tallow: 2 },
+    output: 'oil',
+    outputCount: 1,
+    station: 'hearth',
+    urge: 30,
+  },
+  {
+    id: 'torch_pitch',
+    labelFr: 'torche',
+    inputs: { wood: 1, pitch: 1, cloth: 1 },
+    output: 'torch',
+    outputCount: 2,
     station: 'workbench',
-    urge: 20,
+    urge: 36,
+  },
+  {
+    id: 'torch_resin',
+    labelFr: 'torche',
+    inputs: { wood: 1, resin: 1, cloth: 1 },
+    output: 'torch',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 30,
+  },
+  {
+    id: 'torch_bark',
+    labelFr: 'torche',
+    inputs: { wood: 1, pitch: 1, bark: 1 },
+    output: 'torch',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 26,
+  },
+  {
+    id: 'torch_simple',
+    labelFr: 'torche',
+    inputs: { wood: 1, cloth: 1 },
+    output: 'torch',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 32,
+  },
+  {
+    id: 'oil_lamp_clay',
+    labelFr: 'lampe à huile',
+    inputs: { clay: 2, oil: 1, cloth: 1 },
+    output: 'oil_lamp',
+    outputCount: 1,
+    station: 'hearth',
+    urge: 34,
+  },
+  {
+    id: 'oil_lamp_bronze',
+    labelFr: 'lampe à huile',
+    inputs: { bronze: 1, oil: 1, cloth: 1 },
+    output: 'oil_lamp',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 38,
+  },
+  {
+    id: 'lantern_iron',
+    labelFr: 'lanterne',
+    inputs: { iron: 1, oil_lamp: 1 },
+    output: 'lantern',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 40,
+  },
+  {
+    id: 'lantern_direct',
+    labelFr: 'lanterne',
+    inputs: { iron: 1, oil: 1, cloth: 1 },
+    output: 'lantern',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 36,
+  },
+  {
+    id: 'sconce_candle',
+    labelFr: 'applique',
+    inputs: { iron: 1, wood: 1, candle: 1 },
+    output: 'sconce',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 28,
+  },
+  {
+    id: 'sconce_lamp',
+    labelFr: 'applique',
+    inputs: { iron: 1, oil_lamp: 1 },
+    output: 'sconce',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 32,
+  },
+  {
+    id: 'chandelier_hall',
+    labelFr: 'lustre',
+    inputs: { wood: 3, iron: 1, candle: 4 },
+    output: 'chandelier',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 42,
+  },
+  {
+    id: 'chandelier_bronze',
+    labelFr: 'lustre',
+    inputs: { bronze: 2, candle: 6 },
+    output: 'chandelier',
+    outputCount: 1,
+    station: 'workbench',
+    urge: 46,
   },
   {
     id: 'basket_reed',
@@ -687,6 +838,122 @@ export function spendRecipeInputs(
 
 /** Grains that the mill can grind (besides wheat handled by grindFlour). */
 export const MILL_GRAINS: ResourceType[] = ['rye', 'barley', 'oats']
+
+// ── Feu / lumière — utilité pour besoins nocturnes & rendu ──────────────────
+
+/**
+ * Combustion utile par unité (ticks ≈ 20 min).
+ * heat / light : intensités relatives (chandelle = 1.0 lumière ; bois = 1.0 chaleur).
+ */
+export interface FuelBurnProfile {
+  ticks: number
+  heat: number
+  light: number
+  portable?: boolean
+  fixture?: boolean
+}
+
+export const FUEL_BURN: Partial<Record<ResourceType, FuelBurnProfile>> = {
+  wood: { ticks: 8, heat: 1.0, light: 0.2 },
+  firewood: { ticks: 14, heat: 1.25, light: 0.25 },
+  charcoal: { ticks: 20, heat: 1.55, light: 0.15 },
+  coal: { ticks: 28, heat: 1.85, light: 0.12 },
+  peat: { ticks: 10, heat: 0.9, light: 0.18 },
+  tallow: { ticks: 6, heat: 0.55, light: 0.75, portable: true },
+  oil: { ticks: 16, heat: 0.45, light: 1.15, portable: true },
+  candle: { ticks: 12, heat: 0.2, light: 1.0, portable: true },
+  torch: { ticks: 10, heat: 0.4, light: 1.45, portable: true },
+  oil_lamp: { ticks: 24, heat: 0.3, light: 1.55, portable: true },
+  lantern: { ticks: 32, heat: 0.25, light: 1.85, portable: true },
+  sconce: { ticks: 40, heat: 0.2, light: 1.65, fixture: true },
+  chandelier: { ticks: 60, heat: 0.35, light: 2.6, fixture: true },
+}
+
+/** Combustibles d'âtre — ordre de préférence. */
+export const HEARTH_FUELS: ResourceType[] = ['firewood', 'charcoal', 'coal', 'peat', 'wood', 'tallow']
+
+/** Sources de lumière portables (nuit / mine / route). */
+export const PORTABLE_LIGHTS: ResourceType[] = ['lantern', 'torch', 'oil_lamp', 'candle', 'oil', 'tallow']
+
+/** Luminaires fixes (halls, chambres, cuisine). */
+export const FIXED_LIGHTS: ResourceType[] = ['chandelier', 'sconce', 'oil_lamp', 'candle']
+
+/** Catalogue IDs pour agents nuit / lumière visuelle. */
+export const FIRE_LIGHT_IDS = {
+  fuel: {
+    wood: 'wood',
+    firewood: 'firewood',
+    charcoal: 'charcoal',
+    coal: 'coal',
+    peat: 'peat',
+    tallow: 'tallow',
+    oil: 'oil',
+  },
+  portable: {
+    torch: 'torch',
+    candle: 'candle',
+    oil_lamp: 'oil_lamp',
+    lantern: 'lantern',
+  },
+  fixture: {
+    sconce: 'sconce',
+    chandelier: 'chandelier',
+  },
+  intermediates: {
+    pitch: 'pitch',
+    resin: 'resin',
+    beeswax: 'beeswax',
+    cloth: 'cloth',
+    bark: 'bark',
+  },
+} as const
+
+export function fuelBurnOf(id: ResourceType): FuelBurnProfile | null {
+  return FUEL_BURN[id] ?? null
+}
+
+export function fuelBurnTicks(id: ResourceType): number {
+  return FUEL_BURN[id]?.ticks ?? 0
+}
+
+export function fuelHeatValue(id: ResourceType): number {
+  return FUEL_BURN[id]?.heat ?? 0
+}
+
+export function fuelLightValue(id: ResourceType): number {
+  return FUEL_BURN[id]?.light ?? 0
+}
+
+export function isPortableLight(id: ResourceType): boolean {
+  return FUEL_BURN[id]?.portable === true || PORTABLE_LIGHTS.includes(id)
+}
+
+export function isFixedLight(id: ResourceType): boolean {
+  return FUEL_BURN[id]?.fixture === true || FIXED_LIGHTS.includes(id)
+}
+
+/** Meilleure lumière portable portée (intensité desc). */
+export function bestPortableLightIn(countOf: (t: ResourceType) => number): ResourceType | null {
+  let best: ResourceType | null = null
+  let bestL = 0
+  for (const id of PORTABLE_LIGHTS) {
+    if (countOf(id) <= 0) continue
+    const L = fuelLightValue(id)
+    if (L > bestL) {
+      bestL = L
+      best = id
+    }
+  }
+  return best
+}
+
+/** Prefers denser hearth fuels first. */
+export function bestHearthFuelIn(countOf: (t: ResourceType) => number): ResourceType | null {
+  for (const id of HEARTH_FUELS) {
+    if (countOf(id) > 0) return id
+  }
+  return null
+}
 
 /** Construction materials usable instead of / alongside stone for walls. */
 export function constructionBonus(invCount: (t: ResourceType) => number): {
