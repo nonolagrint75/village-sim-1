@@ -19,7 +19,6 @@ import {
   type HouseFootprint,
 } from './architecture'
 import {
-  craftSpot,
   eatSpot,
   FURNITURE_DEFS,
   furnitureLabelFr,
@@ -29,7 +28,6 @@ import {
   sleepSpot,
   storeSpot,
   woodCostOf,
-  type FurnitureJob,
   type FurnitureKind,
 } from './furniture'
 import {
@@ -975,10 +973,16 @@ function firstPlotVegetation(grid: WorldGrid, fp: HouseFootprint): { x: number; 
 
 function stampHouseFloors(grid: WorldGrid, fp: HouseFootprint) {
   for (const c of fp.interior) {
-    if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, PLANK)
+    if (!inBounds(grid, c.x, c.y)) continue
+    const t = getTerrain(grid, c.x, c.y)
+    if (t === BED || t === CHEST || t === WORKBENCH || t === TABLE || t === HOUSE || t === WALL_WOOD || t === WALL_STONE) continue
+    setTerrain(grid, c.x, c.y, PLANK)
   }
   for (const c of fp.open) {
-    if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, DIRT)
+    if (!inBounds(grid, c.x, c.y)) continue
+    const t = getTerrain(grid, c.x, c.y)
+    if (t === BED || t === CHEST || t === WORKBENCH || t === TABLE || t === HOUSE || t === WALL_WOOD || t === WALL_STONE) continue
+    setTerrain(grid, c.x, c.y, DIRT)
   }
 }
 

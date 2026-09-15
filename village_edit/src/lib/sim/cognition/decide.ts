@@ -180,7 +180,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'threat') * 0.65 +
       peWeight(pe, 'cold_threat') * 0.25
   }
-  if (kind === 'buildHouse' || kind === 'buildBed' || kind === 'buildChest') {
+  if (kind === 'buildHouse' || kind === 'buildBed' || kind === 'buildChest' || kind === 'buildTable') {
     m *=
       1 +
       n.shelter * 0.9 +
