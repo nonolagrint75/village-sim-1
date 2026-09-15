@@ -74,15 +74,21 @@ export function scoreGoals(
     },
     {
       id: 'rest',
-      score: (needs.fatigue * 2.4 + (v.stamina < 1.2 ? 1.5 : 0)) * noise(),
+      // When housed, shelter pressure means "go home / sleep", not build another house.
+      score:
+        (needs.fatigue * 2.4 +
+          (v.stamina < 1.2 ? 1.5 : 0) +
+          (v.hasHome ? needs.shelter * 1.5 : 0)) *
+        noise(),
       commitment: 0,
       targetId: null,
-      targetX: v.x,
-      targetY: v.y,
+      targetX: v.hasHome ? v.homeX : v.x,
+      targetY: v.hasHome ? v.homeY : v.y,
     },
     {
       id: 'home',
-      score: (needs.shelter * 2.8 + values.security * 0.6) * noise(),
+      score:
+        ((!v.hasHome ? needs.shelter * 2.8 : needs.shelter * 0.35) + values.security * 0.6) * noise(),
       commitment: 0,
       targetId: null,
       targetX: v.x,
@@ -222,8 +228,8 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
   let mult = 1
   const table: Record<CognitiveGoalId, Partial<Record<TaskKind, number>>> = {
     survive: { eat: 3.2, gatherFood: 2.4, fish: 1.8, harvestWheat: 1.7, takeFromChest: 2.2, rest: 1.3, buildChest: 1.6 },
-    rest: { rest: 3.0, takeFromChest: 1.2, eat: 1.4 },
-    home: { buildHouse: 3.0, gatherWood: 1.5, clearLand: 2.4, buildBed: 1.4, buildChest: 1.2 },
+    rest: { rest: 3.0, takeFromChest: 1.2, eat: 1.4, socialise: 0.55 },
+    home: { buildHouse: 3.0, gatherWood: 1.5, clearLand: 2.4, buildBed: 1.4, buildChest: 1.2, rest: 1.8 },
     wealth: { tradeRun: 2.2, mineGold: 2.0, mintCoins: 1.8, buyMaterial: 1.4, buildCart: 1.4, buildPort: 1.3, mineTunnel: 1.35 },
     family: { buildHouse: 1.8, buildBed: 2.0, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4 },
     mate: { socialise: 2.4, giveFood: 1.6, buildBed: 1.3, buildHouse: 1.2 },

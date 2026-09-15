@@ -142,15 +142,21 @@ body {
   user-select: none;
 }
 
+.sim-map canvas:active {
+  cursor: grabbing;
+}
+
 .sim-boot {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(8, 10, 6, 0.62);
   color: #f3ead2;
   letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 .sim-stage.is-dimmed {

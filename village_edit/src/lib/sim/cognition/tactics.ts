@@ -192,8 +192,8 @@ export function burrowTaskMultiplier(
   const night = isNight(state.tick)
   const fear = mind.emotions.fear
   const stress = mind.emotions.stress
-  const pressure = Math.max(fear, stress, mind.needs.safety * 0.8, night ? 0.35 : 0)
-  const wantBurrow = pressure > 0.3 || (v.hasHome && fear + stress > 0.2)
+  const pressure = Math.max(fear, stress, mind.needs.safety * 0.8, mind.needs.fatigue * 0.5, night ? 0.55 : 0)
+  const wantBurrow = pressure > 0.28 || night || (v.hasHome && fear + stress > 0.2)
 
   if (!wantBurrow && !isChild(v)) return 1
 
@@ -228,11 +228,25 @@ export function burrowTaskMultiplier(
     kind === 'gatherWood' ||
     kind === 'gatherStone' ||
     kind === 'gatherFood' ||
-    kind === 'clearLand'
+    kind === 'clearLand' ||
+    kind === 'harvestWheat' ||
+    kind.startsWith('craft') ||
+    kind.startsWith('build')
 
   if ((wantBurrow || pressure > 0.3) && outdoorFar && d > r) {
     const overshoot = (d - r) / Math.max(8, r)
-    mult *= Math.max(0.18, 1 - overshoot * (0.55 + pressure * 0.35) * cautionFactor(v) * 0.5)
+    const nightCut = night ? 0.75 : 0.55
+    mult *= Math.max(0.12, 1 - overshoot * (nightCut + pressure * 0.4) * cautionFactor(v) * 0.55)
+  }
+
+  // Night: damp outdoor labor even when the target is "near enough".
+  // Homeless may still raise a house after dark.
+  if (night && outdoorFar && kind !== 'rest' && kind !== 'eat') {
+    const shelterBuild =
+      !v.hasHome && (kind === 'buildHouse' || kind === 'clearLand' || kind === 'gatherWood' || kind === 'buildBed')
+    if (!shelterBuild) {
+      mult *= kind.startsWith('craft') || kind.startsWith('build') ? 0.45 : 0.55
+    }
   }
 
   if (isChild(v) && outdoorFar && d > r * 0.7) {

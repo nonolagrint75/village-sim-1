@@ -144,7 +144,8 @@ export type SelectedVillager = {
   legitimacy: number
   grievance: number
   circleNames: string[]
-  cognition: CognitionDebug
+  /** Null when cognition pack fails — portrait must still render. */
+  cognition: CognitionDebug | null
   /** Null if family module not ready. */
   family: FamilySummary | null
   /** Null if genetics not expressed yet. */
@@ -648,6 +649,20 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
   }
 }
 
+function emptyEquipmentPack(): {
+  slots: PackedEquipmentSlot[]
+  effects: GearEffects
+  prestige01: number
+  purseCoins: number
+} {
+  return {
+    slots: [],
+    effects: { clo: 0, protect: 0, prestige: 0, wealthDisplay: 0, carryKg: 0, work: 0, combat: 0, toolTier: null },
+    prestige01: 0,
+    purseCoins: 0,
+  }
+}
+
 function packSelected(state: SimState, v: Villager): SelectedVillager {
   const pol = politicsOf(v)
   const boat = v.boatId !== null ? state.boats.find((b) => b.id === v.boatId && b.alive) : undefined
@@ -661,34 +676,124 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     v.lineageId !== null && state.lineages
       ? state.lineages.find((L) => L.id === v.lineageId) ?? null
       : null
-  const mind = mindOf(v)
-  const live = ensureLivelihood(mind)
-  const guild = circlesOf(state, v).find((c) => c.isGuild || (c.kind === 'craft' && c.isInstitution))
-  const packedEq = packEquipmentForUi(v)
-  const gearFx = equipmentEffectsOf(v)
-  const cap =
-    carryCapacityOf({
-      hasCart: v.hasCart,
-      mounted: v.mounted,
-      horseBonus: HORSE_CARRY_BONUS,
-      bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
-      strength01: v.phenotype.strengthBias,
-    }) + gearFx.carryKg
+
+  let livelihoodTitle = 'sans métier'
+  let livelihoodRole: string | null = null
+  let livelihoodActivities: string[] = []
+  let guildName: string | null = null
+  let unemployed = false
+  try {
+    const mind = mindOf(v)
+    const live = ensureLivelihood(mind)
+    livelihoodTitle = livelihoodLabelForUi(v)
+    livelihoodRole = live.roleTag
+    livelihoodActivities = topActivitiesFr(live, 3)
+    unemployed = live.unemployedStreak > 40
+    guildName = circlesOf(state, v).find((c) => c.isGuild || (c.kind === 'craft' && c.isInstitution))?.name ?? null
+  } catch {
+    livelihoodTitle = PROFESSION_FALLBACK(v.profession)
+  }
+
+  let packedEq = emptyEquipmentPack()
+  try {
+    packedEq = packEquipmentForUi(v)
+  } catch {
+    packedEq = emptyEquipmentPack()
+  }
+
+  let gearFx = packedEq.effects
+  try {
+    gearFx = equipmentEffectsOf(v)
+  } catch {
+    gearFx = packedEq.effects
+  }
+
+  let loadMass = 0
+  let loadCap = 1
+  try {
+    loadMass = carriedMass(v.inventory ?? [])
+    loadCap =
+      carryCapacityOf({
+        hasCart: !!v.hasCart,
+        mounted: !!v.mounted,
+        horseBonus: HORSE_CARRY_BONUS,
+        bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
+        strength01: v.phenotype?.strengthBias ?? 0.5,
+      }) + (gearFx.carryKg ?? 0)
+  } catch {
+    loadMass = 0
+    loadCap = 1
+  }
+
+  let inventory: InventoryLine[] = []
+  try {
+    inventory = summarizeInventory(v.inventory ?? [])
+  } catch {
+    inventory = []
+  }
+
+  let relations: [number, Relation][] = []
+  try {
+    const entries = v.relations instanceof Map ? [...v.relations.entries()] : []
+    entries.sort((a, b) => {
+      const sa =
+        Math.abs(a[1]?.affinity ?? 0) * 1.2 +
+        (a[1]?.respect ?? 0) * 0.9 +
+        (a[1]?.grudge ?? 0) * 0.8 +
+        (a[1]?.kinship ?? 0) * 0.5 +
+        (a[1]?.trust ?? 0) * 0.2
+      const sb =
+        Math.abs(b[1]?.affinity ?? 0) * 1.2 +
+        (b[1]?.respect ?? 0) * 0.9 +
+        (b[1]?.grudge ?? 0) * 0.8 +
+        (b[1]?.kinship ?? 0) * 0.5 +
+        (b[1]?.trust ?? 0) * 0.2
+      return sb - sa
+    })
+    relations = entries.slice(0, 12)
+  } catch {
+    relations = []
+  }
+
+  let cognition: CognitionDebug | null = null
+  try {
+    cognition = packCognitionDebug(v)
+  } catch {
+    cognition = null
+  }
+
+  let circleNames: string[] = []
+  try {
+    circleNames = circlesOf(state, v).map((c) =>
+      c.isGuild ? `${c.name} (guilde)` : c.isInstitution ? `${c.name} (institution)` : c.name,
+    )
+  } catch {
+    circleNames = []
+  }
+
+  const personality = v.personality ?? {
+    courage: 0.5,
+    sociability: 0.5,
+    ambition: 0.5,
+    generosity: 0.5,
+    curiosity: 0.5,
+  }
+
   return {
     id: v.id,
-    name: v.name,
+    name: v.name ?? `#${v.id}`,
     surname: v.surname ?? '',
-    fullName: v.surname ? `${v.name} ${v.surname}` : v.name,
-    hue: v.hue,
-    alive: v.alive,
-    profession: v.profession,
-    livelihoodTitle: livelihoodLabelForUi(v),
-    livelihoodRole: live.roleTag,
-    livelihoodActivities: topActivitiesFr(live, 3),
-    guildName: guild ? guild.name : null,
-    unemployed: live.unemployedStreak > 40,
-    ambition: v.ambition,
-    grudgeTarget: v.grudgeTarget,
+    fullName: v.surname ? `${v.name} ${v.surname}` : (v.name ?? `#${v.id}`),
+    hue: v.hue ?? 40,
+    alive: v.alive !== false,
+    profession: v.profession ?? 'none',
+    livelihoodTitle,
+    livelihoodRole,
+    livelihoodActivities,
+    guildName,
+    unemployed,
+    ambition: v.ambition ?? 'survive',
+    grudgeTarget: v.grudgeTarget ?? null,
     task: v.task
       ? {
           kind: v.task.kind,
@@ -706,72 +811,80 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
           pathTick: 0,
         }
       : null,
-    mounted: v.mounted,
-    embarked: v.embarked,
-    health: v.health,
-    hunger: v.hunger,
-    stamina: v.stamina,
+    mounted: !!v.mounted,
+    embarked: !!v.embarked,
+    health: Number.isFinite(v.health) ? v.health : 0,
+    hunger: Number.isFinite(v.hunger) ? v.hunger : 0,
+    stamina: Number.isFinite(v.stamina) ? v.stamina : 4,
     staminaMax: 4,
-    loadMass: carriedMass(v.inventory),
-    loadCap: cap,
-    personality: v.personality,
-    house: v.house,
-    inventory: summarizeInventory(v.inventory),
-    horseId: v.horseId,
-    hasCart: v.hasCart,
-    boatId: v.boatId,
+    loadMass,
+    loadCap,
+    personality,
+    house: v.house ?? null,
+    inventory,
+    horseId: v.horseId ?? null,
+    hasCart: !!v.hasCart,
+    boatId: v.boatId ?? null,
     boatKind: boat?.kind ?? null,
-    toolTier: v.toolTier,
-    equipment: packedEq.slots,
+    toolTier: v.toolTier ?? 'none',
+    equipment: Array.isArray(packedEq.slots) ? packedEq.slots.filter(Boolean) : [],
     equipmentEffects: {
-      clo: gearFx.clo,
-      protect: gearFx.protect,
-      prestige: gearFx.prestige,
-      wealthDisplay: gearFx.wealthDisplay,
-      carryKg: gearFx.carryKg,
+      clo: gearFx.clo ?? 0,
+      protect: gearFx.protect ?? 0,
+      prestige: gearFx.prestige ?? 0,
+      wealthDisplay: gearFx.wealthDisplay ?? 0,
+      carryKg: gearFx.carryKg ?? 0,
     },
-    gearPrestige01: packedEq.prestige01,
-    purseCoins: packedEq.purseCoins,
-    relations: (() => {
-      const entries = [...v.relations.entries()]
-      entries.sort((a, b) => {
-        const sa =
-          Math.abs(a[1].affinity) * 1.2 +
-          (a[1].respect ?? 0) * 0.9 +
-          (a[1].grudge ?? 0) * 0.8 +
-          (a[1].kinship ?? 0) * 0.5 +
-          a[1].trust * 0.2
-        const sb =
-          Math.abs(b[1].affinity) * 1.2 +
-          (b[1].respect ?? 0) * 0.9 +
-          (b[1].grudge ?? 0) * 0.8 +
-          (b[1].kinship ?? 0) * 0.5 +
-          b[1].trust * 0.2
-        return sb - sa
-      })
-      return entries.slice(0, 12)
-    })(),
-    memories: v.memories.length <= 8 ? v.memories : v.memories.slice(-8),
+    gearPrestige01: packedEq.prestige01 ?? 0,
+    purseCoins: packedEq.purseCoins ?? 0,
+    relations,
+    memories: Array.isArray(v.memories) ? (v.memories.length <= 8 ? v.memories : v.memories.slice(-8)) : [],
     creed: pol.creed,
     creedLabel: creedLabel(pol.creed),
-    legitimacy: pol.legitimacy,
-    grievance: pol.grievance,
-    circleNames: circlesOf(state, v).map((c) =>
-      c.isGuild ? `${c.name} (guilde)` : c.isInstitution ? `${c.name} (institution)` : c.name,
-    ),
-    cognition: packCognitionDebug(v),
+    legitimacy: pol.legitimacy ?? 0,
+    grievance: pol.grievance ?? 0,
+    circleNames,
+    cognition,
     family,
     phenotype: packPhenotypeSummary(v.phenotype),
     identity: packIdentitySummary(state, v),
     lineageWealth: lineage ? lineage.wealthEstimate : null,
-    descendantCount: countDescendants(state, v.id),
-    knowledgeCount: knowledgeCount(v.knowledge),
-    knowledgeLabels: knowledgeLabelsFr(v.knowledge, 5),
-    villageKnowledgeCount:
-      v.villageId !== null
-        ? knowledgeCount(state.villages.find((g) => g.id === v.villageId)?.knowledge)
-        : 0,
+    descendantCount: (() => {
+      try {
+        return countDescendants(state, v.id)
+      } catch {
+        return 0
+      }
+    })(),
+    knowledgeCount: (() => {
+      try {
+        return knowledgeCount(v.knowledge)
+      } catch {
+        return 0
+      }
+    })(),
+    knowledgeLabels: (() => {
+      try {
+        return knowledgeLabelsFr(v.knowledge, 5)
+      } catch {
+        return []
+      }
+    })(),
+    villageKnowledgeCount: (() => {
+      try {
+        return v.villageId !== null
+          ? knowledgeCount(state.villages.find((g) => g.id === v.villageId)?.knowledge)
+          : 0
+      } catch {
+        return 0
+      }
+    })(),
   }
+}
+
+function PROFESSION_FALLBACK(p: Profession | undefined): string {
+  if (!p || p === 'none') return 'sans métier'
+  return p
 }
 
 export function packUi(state: SimState, selectedId: number | null, ticksPerSec: number): UiFrame {

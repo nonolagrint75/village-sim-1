@@ -11,6 +11,7 @@ import {
 } from './ethnos'
 import { inheritOnDeath } from './family'
 import { addToInventory, bestEdibleIn, countOf, edibleValue, removeFromInventory, type ResourceType } from './inventory'
+import { tryRomanceBond } from './marriage'
 import { gearPrestige01 } from './equipment'
 import {
   circlesOf,
@@ -195,6 +196,10 @@ export function doSocialise(state: SimState, a: Villager, b: Villager) {
     recordRelHistory(a, b.id, 'met', state.tick)
     recordRelHistory(b, a.id, 'met', state.tick)
   }
+
+  // Romance pathway (affinity/trust gates live in tryRomanceBond).
+  tryRomanceBond(state, a, b, rngA)
+  tryRomanceBond(state, b, a, rngB)
 
   // Soft communal gathering: many idle folk near plaza → belonging boost.
   const village = state.villages.find((vg) => vg.id === a.villageId)

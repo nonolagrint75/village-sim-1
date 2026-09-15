@@ -25,7 +25,7 @@ const MAX_ZOOM = 6
 const DEFAULT_ZOOM = 2
 const CLICK_MAX_DRAG_PX = 6
 const CLICK_MAX_MS = 400
-const SELECT_RADIUS_TILES = 3
+const SELECT_RADIUS_TILES = 4.5
 const DRAW_INTERVAL_MS = 16
 const DRAW_INTERVAL_SLOW_MS = 33
 const DIRTY_FULL_FLUSH = 600
@@ -270,13 +270,11 @@ export function SimulationCanvas() {
         if (frame.creeds && frame.creeds.length > 0) setCreeds(frame.creeds)
         setSimTps(frame.ticksPerSec)
         // Ignore stale UI packs from before a newer local click/deselect.
+        // Do not clear local selection when selected is null — packSelected can fail
+        // transiently while selectedId still matches; wiping would look like a dead click.
         if (frame.selectedId === selectedRef.current) {
-          setSelected(frame.selected)
-          // Id was requested but entity is gone from state — drop local selection.
-          if (frame.selected === null && frame.selectedId !== null) {
-            selectedRef.current = null
-            setSelectedId(null)
-            setFollowing(false)
+          if (frame.selected !== null || frame.selectedId === null) {
+            setSelected(frame.selected)
           }
         }
       }
@@ -714,8 +712,13 @@ export function SimulationCanvas() {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
     const rect = canvas.getBoundingClientRect()
-    const scale = canvas.width / rect.width
-    return { x: (clientX - rect.left) * scale, y: (clientY - rect.top) * scale }
+    // Canvas CSS stretches to a non-square .sim-map — use independent axes.
+    const scaleX = canvas.width / Math.max(1, rect.width)
+    const scaleY = canvas.height / Math.max(1, rect.height)
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    }
   }, [])
 
   const handleWheel = useCallback(
@@ -741,11 +744,14 @@ export function SimulationCanvas() {
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
-      const scale = canvas.width / rect.width
-      const dxScreen = (e.clientX - lastPointerRef.current.x) * scale
-      const dyScreen = (e.clientY - lastPointerRef.current.y) * scale
+      const scaleX = canvas.width / Math.max(1, rect.width)
+      const scaleY = canvas.height / Math.max(1, rect.height)
+      const dxScreen = (e.clientX - lastPointerRef.current.x) * scaleX
+      const dyScreen = (e.clientY - lastPointerRef.current.y) * scaleY
       lastPointerRef.current = { x: e.clientX, y: e.clientY }
-      dragDistRef.current += Math.hypot(e.clientX - pointerDownRef.current.x, e.clientY - pointerDownRef.current.y)
+      // Peak displacement from down — never accumulate full range each move event.
+      const dist = Math.hypot(e.clientX - pointerDownRef.current.x, e.clientY - pointerDownRef.current.y)
+      if (dist > dragDistRef.current) dragDistRef.current = dist
       if (dragDistRef.current > CLICK_MAX_DRAG_PX && followRef.current) setFollowing(false)
       camRef.current.x -= dxScreen / zoomRef.current
       camRef.current.y -= dyScreen / zoomRef.current
@@ -757,7 +763,11 @@ export function SimulationCanvas() {
   const handlePointerUp = useCallback(
     (e: ReactPointerEvent<HTMLCanvasElement>) => {
       draggingRef.current = false
-      canvasRef.current?.releasePointerCapture(e.pointerId)
+      try {
+        canvasRef.current?.releasePointerCapture(e.pointerId)
+      } catch {
+        /* already released on leave */
+      }
       const elapsed = performance.now() - pointerDownRef.current.t
       if (dragDistRef.current > CLICK_MAX_DRAG_PX || elapsed > CLICK_MAX_MS) return
 
@@ -776,9 +786,12 @@ export function SimulationCanvas() {
           closest = v
         }
       }
-      // Update ref before React commit so a concurrent UI message can't wipe this click.
-      selectedRef.current = closest ? closest.id : null
-      setSelectedId(closest ? closest.id : null)
+      const id = closest ? closest.id : null
+      // Update ref + post select before React commit so UI frames can't race the click,
+      // and re-clicking the same id still refreshes the worker reply.
+      selectedRef.current = id
+      workerRef.current?.postMessage({ type: 'select', id })
+      setSelectedId(id)
       if (!closest) {
         setSelected(null)
         setFollowing(false)
@@ -803,9 +816,18 @@ export function SimulationCanvas() {
   const handleFollow = useCallback(() => setFollowing((f) => !f), [])
   const handleCloseSelected = useCallback(() => {
     selectedRef.current = null
+    workerRef.current?.postMessage({ type: 'select', id: null })
     setSelectedId(null)
     setSelected(null)
     setFollowing(false)
+  }, [])
+  const handlePointerCancel = useCallback((e: ReactPointerEvent<HTMLCanvasElement>) => {
+    draggingRef.current = false
+    try {
+      canvasRef.current?.releasePointerCapture(e.pointerId)
+    } catch {
+      /* already released */
+    }
   }, [])
   const handleZoomIn = useCallback(() => handleZoomButton(1.5), [handleZoomButton])
   const handleZoomOut = useCallback(() => handleZoomButton(1 / 1.5), [handleZoomButton])
@@ -825,7 +847,7 @@ export function SimulationCanvas() {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           />
           {launching && <div className="sim-boot">Génération du monde…</div>}
           {!menuOpen && !worldReady && !launching && (

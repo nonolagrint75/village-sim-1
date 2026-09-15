@@ -165,10 +165,12 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
     m *=
       1 +
       n.fatigue * 0.95 +
+      n.shelter * 0.55 +
       concernBias(mind.working, 'need_rest') * 0.18 +
       workspaceBias(mind.broadcast, 'need_rest') * 0.4 +
       consciousAccessBias(mind, 'need_rest') * 0.7 +
-      peWeight(pe, 'fatigue') * 0.3
+      peWeight(pe, 'fatigue') * 0.3 +
+      peWeight(pe, 'shelter') * 0.2
   }
   if (kind === 'flee' || kind === 'fight' || kind === 'defend' || kind === 'buildWall' || kind === 'craftSpear') {
     m *=
@@ -189,8 +191,9 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
   if (kind === 'socialise' || kind === 'giveFood' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
     m *=
       1 +
-      n.social * 0.55 +
-      n.belonging * 0.4 +
+      n.social * 0.85 +
+      n.belonging * 0.55 +
+      n.boredom * 0.2 +
       workspaceBias(mind.broadcast, 'kin') * 0.25 +
       consciousAccessBias(mind, 'kin') * 0.55 +
       peWeight(pe, 'social') * 0.2 +

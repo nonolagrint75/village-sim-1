@@ -174,7 +174,7 @@ import {
   stashInterruptedTask,
   tickCognition,
 } from './cognition'
-import { isGatheringHour, logEvent, pickAmbition, relationWith, remember } from './social'
+import { isGatheringHour, logEvent, lonelinessPressure, pickAmbition, relationWith, remember } from './social'
 import {
   activeNormsFor,
   circlesOf,
@@ -1375,6 +1375,37 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       s *= 0.55
     }
     if (night && (kind === 'idle' || kind === 'tradeRun' || kind === 'mineTunnel' || kind === 'mineGold')) s *= 0.4
+    if (
+      night &&
+      (kind === 'gatherWood' ||
+        kind === 'gatherStone' ||
+        kind === 'gatherIron' ||
+        kind === 'gatherFood' ||
+        kind === 'clearLand' ||
+        kind === 'fish' ||
+        kind === 'harvestWheat' ||
+        kind === 'buildWall' ||
+        kind === 'buildBridge' ||
+        kind === 'buildPort' ||
+        kind === 'buildMill' ||
+        kind === 'buildProject' ||
+        kind === 'buildHouse' ||
+        kind === 'buildBed' ||
+        kind === 'buildChest' ||
+        kind === 'buildWorkbench' ||
+        kind === 'buildCart' ||
+        kind.startsWith('craft') ||
+        kind === 'weaveCloth' ||
+        kind === 'sewClothing' ||
+        kind === 'tanHide' ||
+        kind === 'makeCharcoal')
+    ) {
+      // Homeless may still raise shelter after dark.
+      const shelterBuild =
+        !v.hasHome &&
+        (kind === 'buildHouse' || kind === 'clearLand' || kind === 'gatherWood' || kind === 'buildBed')
+      if (!shelterBuild) s *= 0.35
+    }
     if (overloaded && (kind === 'gatherWood' || kind === 'gatherStone' || kind === 'gatherIron' || kind === 'gatherFood' || kind === 'mineTunnel' || kind === 'mineGold' || kind === 'harvestWheat')) {
       s *= 0.15
     }
@@ -1627,11 +1658,19 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const cultSim = cultureSimilarity(mind.cultureFeatures, om.cultureFeatures)
     const homo = homophilyBias(cultSim, 'socialise')
     const ethBias = ethnosSocialBias(state, v, other, mind.rivalId)
+    const lone = lonelinessPressure(v, state.tick)
+    const chatNeed = mind.needs.social * 48 + mind.needs.belonging * 28 + lone * 40 + mind.needs.boredom * 18
+    // After dark, chat less unless very lonely / kin / spouse (sleep wins).
+    const nightChat = night ? (isSpouse || kinship > 0.4 || mind.needs.social > 0.7 ? 0.55 : 0.22) : 1
     add(
       'socialise',
       other.x,
       other.y,
-      (12 + p.sociability * 42 + affinity * 35 + friendPull + kinPull + admirePull) * homo * ethBias * reach(v, other.x, other.y),
+      (12 + p.sociability * 42 + affinity * 35 + friendPull + kinPull + admirePull + chatNeed) *
+        homo *
+        ethBias *
+        nightChat *
+        reach(v, other.x, other.y),
       other.id,
     )
     if (other.hunger < HUNGRY_THRESHOLD && larder > 1) {
@@ -1691,6 +1730,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         villageCohesion(state, village.id) * 20 +
         (lifeRoleOf(v) === 'elder' ? 15 : 0)) *
       (v.hunger > 1.2 ? 1 : 0.35) *
+      (night ? 0.2 : 1) *
       reach(v, cx, cy)
     if (gatherUrge > 8) {
       if (plazaFriend) add('socialise', plazaFriend.x, plazaFriend.y, gatherUrge * 1.15, plazaFriend.id)
@@ -3537,6 +3577,34 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
+    }
+  }
+
+  // Nuit : rentrer dormir — même logique d'interruption que la faim (sinon craft forever).
+  if (
+    isNight(state.tick) &&
+    v.task &&
+    v.task.kind !== 'rest' &&
+    v.task.kind !== 'flee' &&
+    v.task.kind !== 'fight' &&
+    v.task.kind !== 'eat' &&
+    v.task.kind !== 'takeFromChest'
+  ) {
+    const mindNight = mindOf(v)
+    const starvingNow = v.hunger < 1.6
+    const verySocial =
+      mindNight.needs.social > 0.78 &&
+      (v.task.kind === 'socialise' || v.task.kind === 'giveFood' || v.task.kind === 'entertain')
+    if (!starvingNow && !verySocial) {
+      if (v.hasHome) {
+        stashInterruptedTask(v)
+        setTask(v, 'rest', v.homeX, v.homeY)
+        noteChosenAction(v, 'rest', 'nuit — foyer')
+      } else if (v.stamina < STAMINA_TIRED || mindNight.needs.fatigue > 0.55) {
+        stashInterruptedTask(v)
+        setTask(v, 'rest', v.x, v.y)
+        noteChosenAction(v, 'rest', 'nuit — abri improvisé')
+      }
     }
   }
 

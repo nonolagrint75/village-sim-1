@@ -39,7 +39,9 @@ export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures):
   const sheltered = v.hasHome && distance(v.x, v.y, v.homeX, v.homeY) < 4
 
   needs.hunger = clamp01(1 - v.hunger / HUNGER_MAX + (food < 1 ? 0.25 : 0) + (state.famine ? 0.15 : 0))
-  needs.fatigue = clamp01((4 - v.stamina) / 4 + (night && !v.hasHome ? 0.2 : 0) + heat * 0.25 + cold * 0.12)
+  // Night pulls toward sleep even when housed — stronger if still outdoors.
+  const nightFatigue = night ? (sheltered ? 0.22 : v.hasHome ? 0.42 : 0.28) : 0
+  needs.fatigue = clamp01((4 - v.stamina) / 4 + nightFatigue + heat * 0.25 + cold * 0.12)
 
   let wolfNear = false
   for (const w of state.wolves) {
@@ -95,9 +97,12 @@ export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures):
   needs.shelter = clamp01(
     (!v.hasHome ? 0.65 : 0) +
       (night && !v.hasHome ? 0.35 : 0) +
+      // Housed but away from hearth at night → return-home pressure (not rebuild).
+      (night && v.hasHome && !sheltered ? 0.55 : 0) +
       (state.season === 'winter' && !v.hasHome ? 0.3 : 0) +
-      cold * (v.hasHome ? 0.12 : 0.38) +
-      heat * (v.hasHome ? 0.05 : 0.18),
+      (state.season === 'winter' && v.hasHome && !sheltered ? 0.2 : 0) +
+      cold * (sheltered ? 0.08 : v.hasHome ? 0.22 : 0.38) +
+      heat * (sheltered ? 0.04 : v.hasHome ? 0.1 : 0.18),
   )
 
   const coins = countOf(v.inventory, 'coin')

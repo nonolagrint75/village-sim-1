@@ -180,7 +180,9 @@ export function emotionTaskBias(e: EmotionState, kind: string): number {
   if (kind === 'giveFood' || kind === 'socialise') {
     m *= 1 + e.affection * 0.55 - e.anger * 0.25 + Math.max(0, e.approachAvoid) * 0.2
   }
-  if (kind === 'rest') m *= 1 + e.stress * 0.4
+  if (kind === 'rest') m *= 1 + e.stress * 0.4 + Math.max(0, -e.valence) * 0.15
+  if (kind === 'eat') m *= 1 + Math.max(0, -e.valence) * 0.1
+  if (kind === 'entertain') m *= 1 + e.affection * 0.25 + e.pride * 0.15 - e.stress * 0.2
   if (kind === 'buildHouse' || kind === 'tradeRun' || kind === 'craftIronTool') m *= 1 + e.pride * 0.25
   if (e.stress > 0.65 && (kind === 'idle' || kind === 'explore' || kind === 'tameHorse')) m *= 0.55
   // Valence: low mood dampens exploratory / social novelty

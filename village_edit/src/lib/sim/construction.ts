@@ -4,6 +4,9 @@
  */
 
 import {
+  freshStyle,
+  furnitureSlots,
+  houseFootprint,
   structureFootprint,
   structurePlotCells,
   type Cell,
@@ -15,14 +18,16 @@ import {
   type WallMaterial,
 } from './architecture'
 import type { ResourceType } from './inventory'
-import { countOf } from './inventory'
+import { countOf, createInventory } from './inventory'
 import {
   metersToTilesRound,
   structureHalfSpanMeters,
   wallHeightMeters,
 } from './physicsScale'
+import { stampPlaza } from './roads'
 import { logEvent } from './social'
 import {
+  CHEST,
   CLAIM_HOUSE,
   DIRT,
   HOUSE,
@@ -30,9 +35,11 @@ import {
   PLANK,
   WALL_STONE,
   WALL_WOOD,
+  WORKBENCH,
   type Personality,
   type SimState,
   type TaskKind,
+  type Village,
   type Villager,
   type WorldGrid,
 } from './types'
@@ -42,6 +49,7 @@ import {
   getTerrain,
   inBounds,
   isBuildableGround,
+  nearestResource,
   needsClearing,
   setTerrain,
   setClaim,
@@ -472,9 +480,13 @@ export function nextConstructionStep(
   const res = neededResource(project.params.wallMaterial)
   const have = res === 'stone' ? stone : wood
   if (have < TILE_COST) {
-    // Gather phase: leave step null so chooseTask uses sensed trees/rocks;
-    // cognition plans boost gatherWood / gatherStone while activeProjectId is set.
+    // Explicit gather step so projects pull wood/stone instead of stalling as idle.
     project.phase = 'gather'
+    const kind = res === 'stone' ? 'gatherStone' : 'gatherWood'
+    const near = nearestResource(grid, project.cx, project.cy, res === 'stone' ? 'stone' : 'tree', 52)
+    if (near) {
+      return { kind, x: near.x, y: near.y, projectId: project.id, resource: res }
+    }
     return null
   }
 
@@ -564,5 +576,143 @@ export function tickBuildProjects(state: SimState): void {
     const active = state.projects.filter((p) => p.phase !== 'done')
     const done = state.projects.filter((p) => p.phase === 'done').slice(-16)
     state.projects = [...active, ...done]
+  }
+}
+
+/** Small square cabin used as Nouveau monde pioneer shelter. */
+const PIONEER_DESIGN = {
+  shape: 'square' as const,
+  rx: 2,
+  ry: 2,
+  bedSlots: 2,
+  hasWorkshop: true,
+  hasStoreroom: false,
+}
+
+function clearPlotVegetation(grid: WorldGrid, cells: Cell[]): void {
+  for (const c of cells) {
+    if (!inBounds(grid, c.x, c.y)) continue
+    if (needsClearing(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, DIRT, 0)
+  }
+}
+
+function emptyFoundingVillage(state: SimState, x: number, y: number, rng: () => number): Village {
+  const village: Village = {
+    id: state.nextVillageId++,
+    centerX: x,
+    centerY: y,
+    memberIds: [],
+    wallTier: 'none',
+    wallHealth: 0,
+    perimeter: [],
+    gates: [],
+    naturalCover: 0,
+    perimeterTick: -1200,
+    hasMill: false,
+    millX: -1,
+    millY: -1,
+    hasPort: false,
+    portX: -1,
+    portY: -1,
+    hasMine: false,
+    mineX: -1,
+    mineY: -1,
+    tradeRuns: 0,
+    surplus: {},
+    attractiveness: 12,
+    isRegionalHub: false,
+    prosperity: 38,
+    loyalty: 0.55,
+    security: 0.45,
+    recentDeaths: 0,
+    recentThefts: 0,
+    specialty: 'mixed',
+    lastProsperLogTick: -9999,
+    cohesion: 0.45,
+    peaceTicks: 0,
+    inequalityStress: 0,
+    lastRitualTick: 0,
+    development: 0.22,
+    standardOfLiving: 0.38,
+    laborBalance: 0,
+    solBand: null,
+    style: freshStyle(rng),
+    knowledge: [],
+  }
+  state.villages.push(village)
+  return village
+}
+
+/**
+ * Stamp 1–2 pioneer cabins + workbench per founding cluster so craft / stone / farm
+ * loops unlock within the first sim days instead of a naked wander-only boot.
+ */
+export function seedPioneerCamps(
+  state: SimState,
+  groupCenters: { x: number; y: number }[],
+  villagers: Villager[],
+  foundingGroups: number,
+  rng: () => number,
+): void {
+  const grid = state.grid
+  for (let g = 0; g < foundingGroups; g++) {
+    const center = groupCenters[g]
+    if (!center) continue
+    const members = villagers.filter((_, i) => i % foundingGroups === g)
+    members.sort((a, b) => {
+      const da = Math.abs(a.x - center.x) + Math.abs(a.y - center.y)
+      const db = Math.abs(b.x - center.x) + Math.abs(b.y - center.y)
+      return da - db
+    })
+    const pioneerCount = Math.min(2, Math.max(1, Math.floor(members.length * 0.35)))
+    const pioneers = members.slice(0, pioneerCount)
+    if (pioneers.length === 0) continue
+
+    const village = emptyFoundingVillage(state, center.x, center.y, rng)
+    let placed = 0
+    for (const v of pioneers) {
+      const plot =
+        findBuildSite(grid, center.x + (placed % 2 === 0 ? -6 : 6), center.y + (placed < 1 ? -4 : 5), 2, 28, 6) ??
+        findBuildSite(grid, v.x, v.y, 2, 22, 8)
+      if (!plot) continue
+      const design = { ...PIONEER_DESIGN }
+      const fp = houseFootprint(design, plot.x, plot.y)
+      clearPlotVegetation(grid, [...fp.walls, ...fp.interior, ...fp.open, fp.door])
+      for (const c of fp.walls) {
+        if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, HOUSE)
+      }
+      stampHouseFloors(grid, fp)
+      claimCells(grid, fp.walls, CLAIM_HOUSE)
+      claimCells(grid, fp.interior, CLAIM_HOUSE)
+      claimCells(grid, fp.open, CLAIM_HOUSE)
+
+      const slots = furnitureSlots(fp)
+      setTerrain(grid, slots.workbench.x, slots.workbench.y, WORKBENCH)
+      setTerrain(grid, slots.chest.x, slots.chest.y, CHEST)
+
+      v.house = design
+      v.hasHome = true
+      v.homeX = plot.x
+      v.homeY = plot.y
+      v.homeOwnerId = v.id
+      v.hasWorkbench = true
+      v.workbenchX = slots.workbench.x
+      v.workbenchY = slots.workbench.y
+      v.hasChest = true
+      v.chestX = slots.chest.x
+      v.chestY = slots.chest.y
+      v.chestInventory = createInventory(20)
+      v.x = fp.door.x
+      v.y = fp.door.y
+      v.villageId = village.id
+      village.memberIds.push(v.id)
+      placed++
+    }
+    if (village.memberIds.length > 0) {
+      stampPlaza(grid, village.centerX, village.centerY)
+      logCause(state, 'fondation', `${placed} cabane${placed > 1 ? 's' : ''} pioneer près de (${village.centerX},${village.centerY})`)
+    } else {
+      state.villages = state.villages.filter((vg) => vg.id !== village.id)
+    }
   }
 }
