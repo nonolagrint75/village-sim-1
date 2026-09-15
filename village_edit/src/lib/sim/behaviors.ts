@@ -41,6 +41,7 @@ import {
   sleepSpot,
   spendFurnitureRecipe,
   storeSpot,
+  syncFurnitureQueueWithOwned,
   woodCostOf,
   type FurnitureKind,
 } from './furniture'
@@ -261,6 +262,8 @@ import {
   FENCE,
   GOLD,
   GRASS,
+  HEARTH,
+  BENCH,
   HOUSE,
   IRON,
   HEARTH,
@@ -654,6 +657,8 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
     kind === 'buildChest' ||
     kind === 'buildBed' ||
     kind === 'buildTable' ||
+    kind === 'buildHearth' ||
+    kind === 'buildBench' ||
     kind === 'buildCart' ||
     kind === 'buildBoat' ||
     kind === 'craftSpear' ||
@@ -686,7 +691,21 @@ function laborSuccessChance(v: Villager, kind: TaskKind): number {
 }
 
 function laborWorkNeeded(kind: TaskKind): number {
-  if (kind === 'buildWorkbench' || kind === 'buildChest' || kind === 'buildBed' || kind === 'buildTable') return 2.2
+  if (
+    kind === 'buildWorkbench' ||
+    kind === 'buildChest' ||
+    kind === 'buildBed' ||
+    kind === 'buildTable' ||
+    kind === 'buildHearth' ||
+    kind === 'buildBench' ||
+    kind === 'buildStool' ||
+    kind === 'buildShelf' ||
+    kind === 'buildCupboard' ||
+    kind === 'buildCradle' ||
+    kind === 'buildLoom' ||
+    kind === 'buildWashingTub'
+  )
+    return 2.2
   if (kind === 'buildCart') return 3.5
   if (kind === 'buildBoat') return 2.0
   if (kind === 'craftSpear' || kind === 'craftStoneSpear') return 1.6
@@ -718,13 +737,15 @@ function ensureHomeLayout(v: Villager): HouseLayout | null {
 }
 
 function seedFurnitureQueue(v: Villager, layout: HouseLayout) {
-  if (v.furnitureQueue.length > 0) return
-  v.furnitureQueue = planFurnitureJobs(layout, {
-    beds: v.house?.bedSlots ?? 1,
-    wantWorkshop: !!v.house?.hasWorkshop || layout.rooms.some((r) => r.kind === 'atelier'),
-    wantStore: !!v.house?.hasStoreroom || layout.rooms.some((r) => r.kind === 'reserve'),
-    household: Math.max(1, v.house?.bedSlots ?? 1),
-  })
+  if (v.furnitureQueue.length === 0) {
+    v.furnitureQueue = planFurnitureJobs(layout, {
+      beds: v.house?.bedSlots ?? 1,
+      wantWorkshop: !!v.house?.hasWorkshop || layout.rooms.some((r) => r.kind === 'atelier'),
+      wantStore: !!v.house?.hasStoreroom || layout.rooms.some((r) => r.kind === 'reserve'),
+      household: Math.max(1, v.house?.bedSlots ?? 1),
+    })
+  }
+  syncFurnitureQueueWithOwned(v.furnitureQueue, v)
 }
 
 function taskForFurniture(kind: FurnitureKind): TaskKind {
@@ -734,7 +755,8 @@ function taskForFurniture(kind: FurnitureKind): TaskKind {
 function woodNeededForFurniture(kind: FurnitureKind): number {
   if (kind === 'bed') return BED_COST
   if (kind === 'chest' || kind === 'cupboard' || kind === 'shelf' || kind === 'tub') return CHEST_COST
-  if (kind === 'workbench' || kind === 'loom' || kind === 'hearth') return WORKBENCH_COST
+  if (kind === 'workbench' || kind === 'loom') return WORKBENCH_COST
+  if (kind === 'hearth') return woodCostOf('hearth')
   if (kind === 'table' || kind === 'bench' || kind === 'stool') return TABLE_COST
   return woodCostOf(kind)
 }
@@ -791,6 +813,7 @@ function maybeExpandHome(state: SimState, v: Villager, rng: () => number): boole
   for (const j of fresh) {
     if (!existingKeys.has(`${j.kind}@${j.roomKind}`)) v.furnitureQueue.push(j)
   }
+  syncFurnitureQueueWithOwned(v.furnitureQueue, v)
   const roomsFr = expanded.map((k) => ROOM_LABEL_FR[k]).join(', ')
   logEvent(
     state,
@@ -2251,7 +2274,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.toolTier === 'none') {
     const armUrge = 55 + danger * 70 + p.courage * 35
-    if (wood >= SPEAR_WOOD_COST) add('craftSpear', v.x, v.y, armUrge)
+    const craftX = v.hasWorkbench ? v.workbenchX : v.x
+    const craftY = v.hasWorkbench ? v.workbenchY : v.y
+    if (wood >= SPEAR_WOOD_COST) add('craftSpear', craftX, craftY, armUrge * (v.hasWorkbench ? reach(v, craftX, craftY) : 1))
     else if (tree) add('gatherWood', tree.x, tree.y, armUrge * 0.85 * reach(v, tree.x, tree.y))
   }
 
@@ -2287,8 +2312,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const liveFp = homeFootprint(v) ?? fp
     // Finish any new exterior/partition walls after expansion.
     const wallGap = liveFp.walls.find((c) => getTerrain(grid, c.x, c.y) !== HOUSE)
+    const coreFurnitureMissing = !v.hasWorkbench || !v.hasChest || v.bedCount <= 0 || !v.hasTable
     if (wallGap) {
-      const expandUrge = 40 + p.ambition * 30
+      // Finish exterior after the household can sleep/eat/store — otherwise furniture never wins.
+      const expandUrge = (coreFurnitureMissing ? 18 : 40) + p.ambition * 30
       if (needsClearing(grid, wallGap.x, wallGap.y)) {
         add('clearLand', wallGap.x, wallGap.y, expandUrge * 1.1 * reach(v, wallGap.x, wallGap.y))
       } else if (wood >= TILE_COST) {
@@ -2298,10 +2325,20 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       }
     }
 
+    syncFurnitureQueueWithOwned(v.furnitureQueue, v)
     const job = nextFurnitureJob(v.furnitureQueue)
-    if (job && !wallGap) {
+    // Interiors stay usable during expansion — do not block furniture on unfinished walls.
+    if (job) {
       const taskKind = taskForFurniture(job.kind)
-      const drive = 48 + p.ambition * 35 + (job.kind === 'bed' ? 12 : job.kind === 'hearth' ? 10 : 0)
+      const needBoost =
+        (job.kind === 'bed' && v.bedCount <= 0 ? 40 : 0) +
+        (job.kind === 'table' && !v.hasTable ? 28 : 0) +
+        (job.kind === 'hearth' && !v.homeFurniture.some((p) => p.id === 'hearth') ? 22 : 0) +
+        (job.kind === 'workbench' && !v.hasWorkbench ? 35 : 0) +
+        (job.kind === 'chest' && !v.hasChest ? 30 : 0)
+      const drive =
+        (55 + p.ambition * 35 + needBoost + (job.kind === 'bed' ? 12 : job.kind === 'hearth' ? 10 : 0)) *
+        (wallGap && !coreFurnitureMissing ? 0.85 : 1)
       if (canAffordFurniture(v.inventory, job.kind)) {
         add(taskKind, job.x, job.y, drive * reach(v, job.x, job.y))
       } else {
@@ -2934,7 +2971,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     return true
   }
 
-  if (task.kind === 'craftSpear') {
+  if (task.kind === 'craftSpear' && (arrived || !v.hasWorkbench)) {
     if (countOf(v.inventory, 'wood') < SPEAR_WOOD_COST) return false
     const labor = accumulateLabor('craftSpear')
     if (labor === 'abort') return false
@@ -2947,7 +2984,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     if (q === 'masterwork') noteMasterworkCraft(state, v, 'lance de bois')
     return false
   }
-  if (task.kind === 'craftStoneSpear') {
+  if (task.kind === 'craftStoneSpear' && arrived) {
     if (!v.hasWorkbench) return false
     if (countOf(v.inventory, 'stone') < STONE_SPEAR_COST) return false
     const labor = accumulateLabor('craftStoneSpear')
@@ -3914,6 +3951,38 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       addToInventory(v.inventory, recipe.output, recipe.outputCount)
       onCognitiveEvent(v, 'craft_joy', 0.35)
       logEvent(state, `${v.name} fabrique ${recipe.labelFr}`)
+      return false
+    }
+    case 'buildHearth': {
+      const cost = woodNeededForFurniture('hearth')
+      if (countOf(v.inventory, 'wood') < cost) return false
+      const labor = accumulateLabor('buildHearth')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      setTerrain(grid, task.targetX, task.targetY, HEARTH)
+      removeFromInventory(v.inventory, 'wood', cost)
+      if (!v.homeFurniture.some((p) => p.id === 'hearth')) {
+        v.homeFurniture.push({ id: 'hearth', x: task.targetX, y: task.targetY })
+      }
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'cuisine'
+      logEvent(state, `${v.name} maçonne un âtre dans ${roomFr}`)
+      return false
+    }
+    case 'buildBench': {
+      const cost = woodNeededForFurniture('bench')
+      if (countOf(v.inventory, 'wood') < cost) return false
+      const labor = accumulateLabor('buildBench')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      setTerrain(grid, task.targetX, task.targetY, BENCH)
+      removeFromInventory(v.inventory, 'wood', cost)
+      if (!v.homeFurniture.some((p) => p.id === 'bench')) {
+        v.homeFurniture.push({ id: 'bench', x: task.targetX, y: task.targetY })
+      }
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'salle à manger'
+      logEvent(state, `${v.name} fabrique un banc dans ${roomFr}`)
       return false
     }
     case 'buildWall': {

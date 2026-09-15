@@ -31,6 +31,7 @@ import {
 import { stampPlaza } from './roads'
 import { logEvent } from './social'
 import {
+  BED,
   CHEST,
   CLAIM_FIELD,
   CLAIM_HOUSE,
@@ -701,6 +702,8 @@ export function seedPioneerCamps(
       const slots = furnitureSlots(fp)
       setTerrain(grid, slots.workbench.x, slots.workbench.y, WORKBENCH)
       setTerrain(grid, slots.chest.x, slots.chest.y, CHEST)
+      const bedCell = slots.beds[0]
+      if (bedCell) setTerrain(grid, bedCell.x, bedCell.y, BED)
 
       v.house = design
       v.hasHome = true
@@ -714,6 +717,7 @@ export function seedPioneerCamps(
       v.chestX = slots.chest.x
       v.chestY = slots.chest.y
       v.chestInventory = createInventory(20)
+      v.bedCount = bedCell ? 1 : 0
       v.homeLayout = buildHouseLayout(design, fp)
       const jobs = planFurnitureJobs(v.homeLayout, {
         beds: design.bedSlots,
@@ -721,14 +725,25 @@ export function seedPioneerCamps(
         wantStore: true,
         household: 2,
       })
+      let bedsMarked = 0
       v.furnitureQueue = jobs.map((j) => {
         if (j.kind === 'workbench') return { ...j, done: true, x: slots.workbench.x, y: slots.workbench.y }
         if (j.kind === 'chest') return { ...j, done: true, x: slots.chest.x, y: slots.chest.y }
+        if (j.kind === 'bed' && bedCell && bedsMarked < 1) {
+          bedsMarked++
+          return { ...j, done: true, x: bedCell.x, y: bedCell.y }
+        }
         return j
       })
-      addToInventory(v.inventory, 'stone', 3)
+      addToInventory(v.inventory, 'wood', 10)
+      addToInventory(v.inventory, 'stone', 4)
+      addToInventory(v.inventory, 'food', 8)
+      addToInventory(v.inventory, 'wheat', 4)
       // Larder seed so pioneers eat while clearing/sowing the first field.
-      if (v.chestInventory) addToInventory(v.chestInventory, 'food', 8)
+      if (v.chestInventory) {
+        addToInventory(v.chestInventory, 'food', 8)
+        addToInventory(v.chestInventory, 'wood', 4)
+      }
       // Claim a nearby field plot so sow/harvest can start in the first spring
       // instead of waiting for a rare chooseOptions window under rest lock.
       if (v.fieldX === -1) {
