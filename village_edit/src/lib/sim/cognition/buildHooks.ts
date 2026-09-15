@@ -33,9 +33,16 @@ function villageHasOpenFortify(state: SimState, villageId: number): boolean {
   )
 }
 
-function villageHasDoneKeep(state: SimState, villageId: number): boolean {
+function villageHasAnyFort(state: SimState, villageId: number): boolean {
+  return state.projects.some((p) => p.villageId === villageId && fortifyIsBuilt(state, p))
+}
+
+function villageHasStoneKeep(state: SimState, villageId: number): boolean {
   return state.projects.some(
-    (p) => p.villageId === villageId && fortifyIsBuilt(state, p) && (p.params.towers || p.params.wallMaterial === 'stone' || p.intent.scale >= 0.5),
+    (p) =>
+      p.villageId === villageId &&
+      fortifyIsBuilt(state, p) &&
+      (p.params.wallMaterial === 'stone' || (p.params.towers && p.intent.scale >= 0.7 && p.params.wallMaterial !== 'wood')),
   )
 }
 
@@ -74,30 +81,29 @@ export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: Cogn
       (village.recentDeaths ?? 0) > 0.15 ||
       (village.security ?? 0.5) < 0.48
     const midSettled = village.memberIds.length >= 3 && (v.hasHome || village.memberIds.length >= 5)
-    const wantsKeepUpgrade = keepKnown || (stackKnown && prosperous)
-    const alreadyKeep = villageHasDoneKeep(state, village.id)
+    const hasFort = villageHasAnyFort(state, village.id)
+    const hasKeep = villageHasStoneKeep(state, village.id)
 
-    // Threat → palissade / fort even before stone walls exist.
-    if (threatened && midSettled && (village.wallTier !== 'stone' || !alreadyKeep)) {
+    // Threat → first palissade / fort.
+    if (threatened && midSettled && !hasFort) {
       const baseScale = village.memberIds.length >= 6 ? 0.55 : 0.38
-      const stoneBias = stone >= wood || keepKnown || stackKnown || stoneSurplus > 0.5 ? 0.78 : 0.48
+      const wantStone = keepKnown || (stackKnown && stoneSurplus >= 0.8) || stone >= 4
       return intentFromReasons(
         [wolvesNear || fear > 0.35 ? 'loups / menace' : 'sécurité du village', 'fortifier'],
         {
           purposes: ['fortify'],
           scale: keepKnown ? Math.min(1, baseScale + 0.28) : stackKnown ? Math.min(1, baseScale + 0.12) : baseScale,
-          wood: stoneBias > 0.6 ? 0.28 : 0.58,
-          stone: stoneBias,
+          wood: wantStone ? 0.28 : 0.62,
+          stone: wantStone ? 0.78 : 0.35,
         },
       )
     }
 
-    // Wealth / tech → stone keep / towers even after a wood enceinte.
+    // Wealth / tech → stone keep / towers (upgrade even after a wood enceinte).
     if (
       midSettled &&
-      !alreadyKeep &&
-      (wantsKeepUpgrade || (prosperous && (stone >= 2 || stoneSurplus >= 0.55 || stackKnown))) &&
-      (keepKnown || stackKnown || prosperous)
+      !hasKeep &&
+      (keepKnown || (stackKnown && prosperous) || (prosperous && (stone >= 3 || stoneSurplus >= 0.85)))
     ) {
       return intentFromReasons(
         [
@@ -106,9 +112,9 @@ export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: Cogn
         ],
         {
           purposes: ['fortify'],
-          scale: keepKnown ? 0.78 : stackKnown ? 0.62 : 0.5,
-          wood: 0.22,
-          stone: 0.85,
+          scale: keepKnown ? 0.78 : stackKnown ? 0.62 : 0.52,
+          wood: 0.2,
+          stone: 0.88,
         },
       )
     }

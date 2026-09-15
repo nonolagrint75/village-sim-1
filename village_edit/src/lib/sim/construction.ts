@@ -576,6 +576,18 @@ export function nextConstructionStep(
   }
 
   const wall = nextWallTarget(grid, project)
+  // Soft finish forts: a mostly-stamped keep should count as built civilization, not stall forever.
+  if (project.intent.purposes.includes('fortify') && wall) {
+    const allWalls = project.footprint.walls.length
+    const left = project.pending.length
+    if (allWalls > 0 && left / allWalls <= 0.22) {
+      stampProjectFloors(grid, project)
+      project.phase = 'done'
+      project.pending = []
+      applyFortifyCompletion(state, project)
+      return null
+    }
+  }
   if (!wall) {
     stampProjectFloors(grid, project)
     project.phase = 'done'

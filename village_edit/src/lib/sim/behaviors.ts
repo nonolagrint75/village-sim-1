@@ -3139,11 +3139,20 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     if (wantCode !== null && village.perimeter.length > 0) {
       const gap = village.perimeter.find((c) => getTerrain(grid, c.x, c.y) !== wantCode)
       if (gap) {
+        let banditThreat = 0
+        for (const b of state.bandits ?? []) {
+          if (!b.alive) continue
+          if (distance(b.x, b.y, village.centerX, village.centerY) < 52) banditThreat++
+        }
+        // Perimeter enceinte must beat fortify SoftProjects or wallTier stays forever `none`.
         const civicUrge =
-          15 +
+          55 +
           p.sociability * 45 +
           p.generosity * 35 +
           danger * 40 +
+          (village.wallTier === 'none' ? 85 : 0) +
+          (village.perimeterFrozen ? 45 : 0) +
+          banditThreat * 28 +
           (wantCode === WALL_STONE ? 55 : masonry ? 28 : 0)
         const res = wantCode === WALL_WOOD ? wood : stone
         if (needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, civicUrge * 0.85 * reach(v, gap.x, gap.y))
