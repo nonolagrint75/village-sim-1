@@ -11,15 +11,26 @@ Prérequis : [Node.js](https://nodejs.org/) 18 ou plus récent.
 npm install
 ```
 
-## Lancer l'interface (comme sur Macaly)
+## Appli Windows (plein CPU)
+
+La sim tourne dans un worker dédié (un cœur à fond, l’affichage à part). Bouton **CPU** = vitesse max.
+
+```bash
+npm install
+npm run app
+```
+
+Pour un .exe portable (dossier `release/`) :
+
+```bash
+npm run dist
+```
+
+## Lancer dans le navigateur
 
 ```bash
 npm run dev
 ```
-
-Puis ouvre http://localhost:3000. Tu retrouveras exactement l'interface actuelle (carte, panneau
-de stats, marché, chronique, fiche de personnage).
-
 ## Lancer la simulation SANS interface — pour vraiment pousser à fond
 
 L'interface est volontairement bridée à ~130ms par tick + le coût de dessin du canvas. Si tu veux

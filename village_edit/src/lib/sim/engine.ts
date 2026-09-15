@@ -13,19 +13,45 @@ import {
   tickVillager,
   tickWolf,
   tickWolfReproduction,
+  checkRoadMilestones,
 } from './behaviors'
-import { tickMarketPrices } from './commerce'
+import { tickMarketPrices, tickUrbanNetwork } from './commerce'
 import { makeHorse } from './horses'
+import { createEmptyEquipment, seedStarterKit } from './equipment'
 import { addToInventory, countOf, createInventory } from './inventory'
+import {
+  applyGeneticPersonalityBias,
+  createFounderGenome,
+  expressPhenotype,
+} from './genetics'
+import { seedFounderKin, tickAncestorMemory, tickLineages } from './family'
+import { tickAdoption, tickMarriage } from './marriage'
 import { generateName, generatePersonality } from './personality'
 import { compactIndex } from './resourceIndex'
+import { resetPathBudget } from './pathfinding'
+import { agentHash } from './kernels'
 import { tickRoadWear } from './roads'
-import { pickAmbition } from './social'
+import { pickAmbition, setRememberBridge } from './social'
+import { mindOf, onRemember, resetCognitionCaches } from './cognition'
+import { getSimPerfBudget } from './perfBudget'
+import { tickBuildProjects } from './construction'
+import { tickTechnology } from './technology'
 import {
-  SEASONS,
-  TICKS_PER_SEASON,
+  resetEthnosCaches,
+  seedFounderEthnos,
+  tickEthnosWorld,
+} from './ethnos'
+import { resetPoliticsCaches, tickPolitics, politicsSummary } from './politics'
+import {
+  getCalendar,
+  seasonFromTick,
+  seasonProgressFromTick,
+  yearFromTick,
+} from './calendar'
+import {
   WALL_STONE,
   WALL_WOOD,
+  setWorldSize,
   type Horse,
   type Profession,
   type SimState,
@@ -34,21 +60,27 @@ import {
   type Villager,
   type Wolf,
 } from './types'
+import { createClimate, tickClimate } from './climate'
+import { applySimConfig, type SimConfigInput } from './simConfig'
 import { createWorldGrid, makeRng, randomWalkableTile, randomWalkableTileNear, resourceDensity } from './world'
 
-const VILLAGER_COUNT = 26
-const WILD_SHEEP_COUNT = 40
-const WILD_HORSE_COUNT = 14
-const WOLF_COUNT = 3
-const FOUNDING_GROUPS = 4
 const GROUP_SPREAD = 14
 const HORSE_HERDS = 3
 /** A small starting purse so the coin economy (buying materials, minting, trade) isn't stuck at zero forever waiting for the first lucky gold find. */
 const STARTER_COINS = 4
+/** Rations de fondation — sans ça, BMR + cueillette race → morts de faim dès les premiers jours-sim. */
+const STARTER_FOOD = 5
+/**
+ * Âge tick des fondateurs : adultes (CHILD_AGE≈220, ELDER_AGE≈800).
+ * age=0 les traitait comme enfants pendant ~3 jours-sim.
+ */
+const FOUNDER_AGE_MIN = 280
+const FOUNDER_AGE_SPAN = 420
 
 function newVillagerInventory() {
   const inv = createInventory(5)
   addToInventory(inv, 'coin', STARTER_COINS)
+  addToInventory(inv, 'food', STARTER_FOOD)
   return inv
 }
 
@@ -79,38 +111,66 @@ function pickFoundingSite(grid: ReturnType<typeof createWorldGrid>, rng: () => n
   return best ?? randomWalkableTile(grid, rng)
 }
 
-export function createSimulation(seed = 1): SimState {
+export function createSimulation(seed = 1, configInput?: SimConfigInput): SimState {
+  const cfg = applySimConfig({ ...configInput, seed })
+  setWorldSize(cfg.worldSize)
+  resetPoliticsCaches()
+  resetCognitionCaches()
+  resetEthnosCaches()
+  setRememberBridge(onRemember)
   const grid = createWorldGrid(seed)
+  const climate = createClimate(grid, seed)
   const rng = makeRng(seed + 1)
   let nextId = 1
 
-  const groupCenters = Array.from({ length: FOUNDING_GROUPS }, () => pickFoundingSite(grid, rng))
+  const foundingGroups = Math.max(2, Math.min(8, Math.ceil(cfg.initialVillagers / 8)))
+  const groupSpread = Math.max(10, Math.round(GROUP_SPREAD * (cfg.worldSize / 1000)))
+
+  const groupCenters = Array.from({ length: foundingGroups }, () => pickFoundingSite(grid, rng))
 
   const villagers: Villager[] = []
-  for (let i = 0; i < VILLAGER_COUNT; i++) {
-    const base = groupCenters[i % FOUNDING_GROUPS]
-    const spot = randomWalkableTileNear(grid, rng, base.x, base.y, GROUP_SPREAD)
+  for (let i = 0; i < cfg.initialVillagers; i++) {
+    const base = groupCenters[i % foundingGroups]
+    const spot = randomWalkableTileNear(grid, rng, base.x, base.y, groupSpread)
     const personSeed = Math.floor(rng() * 4294967296)
-    const personality = generatePersonality(personSeed)
+    const genome = createFounderGenome(rng)
+    const phenotype = expressPhenotype(genome, rng)
+    const personality = applyGeneticPersonalityBias(generatePersonality(personSeed), genome, rng)
     villagers.push({
       id: nextId++,
       seed: personSeed,
       name: generateName(personSeed),
+      surname: '',
+      lineageId: null,
+      familyId: null,
+      spouseId: null,
+      marriageKind: null,
+      marriedTick: 0,
+      refusesMarriage: false,
+      adoptiveParentIds: [],
       personality,
       profession: 'none',
       ambition: pickAmbition(personality, rng),
       grudgeTarget: null,
       parentIds: [],
+      motherId: null,
+      fatherId: null,
+      genome,
+      phenotype,
       x: spot.x,
       y: spot.y,
       health: 4,
       hunger: 4,
+      stamina: 4,
       starveTimer: 0,
       healTimer: 0,
       inventory: newVillagerInventory(),
       task: null,
+      savedTask: null,
       nextThinkTick: 0,
       toolTier: 'none',
+      toolWear: 0,
+      equipment: createEmptyEquipment(),
       memories: [],
       relations: new Map(),
       house: null,
@@ -118,6 +178,7 @@ export function createSimulation(seed = 1): SimState {
       mounted: false,
       hasCart: false,
       boatId: null,
+      embarked: false,
       tradeCooldown: 0,
       hasWorkbench: false,
       workbenchX: -1,
@@ -139,15 +200,21 @@ export function createSimulation(seed = 1): SimState {
       chestY: -1,
       chestInventory: null,
       villageId: null,
-      hue: Math.floor(rng() * 360),
+      hue: phenotype.hue,
       alive: true,
-      age: 0,
+      age: FOUNDER_AGE_MIN + Math.floor(rng() * FOUNDER_AGE_SPAN),
       reproCooldown: 0,
+      activeProjectId: null,
+      knowledge: [],
     })
   }
 
+  for (const v of villagers) {
+    seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng)
+  }
+
   const sheep: Sheep[] = []
-  for (let i = 0; i < WILD_SHEEP_COUNT; i++) {
+  for (let i = 0; i < cfg.sheepCount; i++) {
     const spot = randomWalkableTile(grid, rng)
     sheep.push({
       id: nextId++,
@@ -167,14 +234,14 @@ export function createSimulation(seed = 1): SimState {
 
   const horses: Horse[] = []
   const herdCentres = Array.from({ length: HORSE_HERDS }, () => randomWalkableTile(grid, rng))
-  for (let i = 0; i < WILD_HORSE_COUNT; i++) {
+  for (let i = 0; i < cfg.horseCount; i++) {
     const base = herdCentres[i % HORSE_HERDS]
     const spot = randomWalkableTileNear(grid, rng, base.x, base.y, 10)
     horses.push(makeHorse(nextId++, spot.x, spot.y, 3 + rng()))
   }
 
   const wolves: Wolf[] = []
-  for (let i = 0; i < WOLF_COUNT; i++) {
+  for (let i = 0; i < cfg.wolfCount; i++) {
     const spot = randomWalkableTile(grid, rng)
     wolves.push({
       id: nextId++,
@@ -191,11 +258,12 @@ export function createSimulation(seed = 1): SimState {
     })
   }
 
-  return {
+  const state: SimState = {
     tick: 0,
     season: 'spring',
     year: 1,
     famine: false,
+    climate,
     grid,
     villagers,
     sheep,
@@ -214,7 +282,40 @@ export function createSimulation(seed = 1): SimState {
     tradeRoutes: new Set<string>(),
     log: [],
     prices: {},
+    milestones: {
+      firstHouse: false,
+      firstPath: false,
+      firstRoad: false,
+      firstMill: false,
+      firstPort: false,
+      firstBoatVoyage: false,
+      firstBirth: false,
+      firstMarriage: false,
+      firstAdoption: false,
+      firstFamine: false,
+      firstRegionalHub: false,
+      firstStorm: false,
+      firstMasterwork: false,
+    },
+    circles: [],
+    nextCircleId: 1,
+    rumors: [],
+    nextRumorId: 1,
+    projects: [],
+    nextProjectId: 1,
+    families: [],
+    nextFamilyId: 1,
+    lineages: [],
+    nextLineageId: 1,
+    genealogy: [],
+    languages: [],
+    nextLanguageId: 1,
+    ethnies: [],
+    nextEthnieId: 1,
   }
+  seedFounderKin(state, villagers, rng)
+  seedFounderEthnos(state, villagers, rng)
+  return state
 }
 
 const stepRng = makeRng(42)
@@ -222,8 +323,16 @@ const stepRng = makeRng(42)
 function tickBoats(state: SimState) {
   for (const b of state.boats) {
     if (!b.alive || b.ownerId === null) continue
-    const owner = state.villagers.find((v) => v.id === b.ownerId && v.alive)
-    if (owner) {
+    let owner = null as (typeof state.villagers)[0] | null
+    const oid = b.ownerId
+    for (let i = 0; i < state.villagers.length; i++) {
+      const v = state.villagers[i]
+      if (v.id === oid && v.alive) {
+        owner = v
+        break
+      }
+    }
+    if (owner?.embarked) {
       b.x = owner.x
       b.y = owner.y
     }
@@ -232,31 +341,48 @@ function tickBoats(state: SimState) {
 
 export function stepSimulation(state: SimState): SimState {
   state.tick += 1
+  let aliveAgents = 0
+  for (let i = 0; i < state.villagers.length; i++) {
+    if (state.villagers[i].alive) aliveAgents++
+  }
+  resetPathBudget(aliveAgents)
+  agentHash.rebuild(state)
 
-  const seasonIndex = Math.floor(state.tick / TICKS_PER_SEASON) % SEASONS.length
-  state.season = SEASONS[seasonIndex]
-  state.year = 1 + Math.floor(state.tick / (TICKS_PER_SEASON * SEASONS.length))
+  state.season = seasonFromTick(state.tick)
+  state.year = yearFromTick(state.tick)
+
+  tickClimate(state, stepRng)
 
   if (state.tick % 40 === 0) tickFamine(state)
-  if (state.tick % 300 === 0) {
+  const commerceEvery = Math.max(200, Math.round(300 * getSimPerfBudget().commercePeriodMul))
+  if (state.tick % commerceEvery === 0) {
     tickVillageEconomy(state)
+    tickUrbanNetwork(state)
     tickMarketPrices(state)
   }
 
-  for (const v of state.villagers) {
+  for (let vi = 0; vi < state.villagers.length; vi++) {
+    const v = state.villagers[vi]
     if (v.alive) tickVillager(state, v, stepRng)
   }
   tickTrade(state)
+  tickMarriage(state, stepRng)
   tickReproduction(state, stepRng)
+  tickAdoption(state, stepRng)
   tickFields(state)
-  for (const s of state.sheep) {
+  for (let si = 0; si < state.sheep.length; si++) {
+    const s = state.sheep[si]
     if (s.alive && ((state.tick + s.id) & 1) === 0) tickSheep(state, s, stepRng)
   }
   if (state.tick % 2 === 0) {
-    for (const h of state.horses) if (h.alive) tickHorse(state, h, stepRng)
+    for (let hi = 0; hi < state.horses.length; hi++) {
+      const h = state.horses[hi]
+      if (h.alive) tickHorse(state, h, stepRng)
+    }
   }
   tickBoats(state)
-  for (const w of state.wolves) {
+  for (let wi = 0; wi < state.wolves.length; wi++) {
+    const w = state.wolves[wi]
     if (w.alive) tickWolf(state, w, stepRng)
   }
   tickCombat(state, stepRng)
@@ -265,8 +391,19 @@ export function stepSimulation(state: SimState): SimState {
     tickHorseBreeding(state)
   }
   tickRegrowth(state, stepRng)
-  if (state.tick % 5 === 0) tickRoadWear(state.grid, state.tick)
+  if (state.tick % 4 === 0) tickRoadWear(state.grid, state.tick)
+  if (state.tick % 60 === 0) checkRoadMilestones(state)
   if (state.tick % 4 === 0) state.compactCursor = compactIndex(state.grid.index, state.grid, state.compactCursor)
+
+  tickPolitics(state)
+  tickBuildProjects(state)
+  tickTechnology(state, stepRng)
+  tickLineages(state, stepRng)
+  tickAncestorMemory(state)
+  tickEthnosWorld(state, stepRng, (v) => {
+    const mind = mindOf(v)
+    return { cultureTag: mind.cultureTag, rivalId: mind.rivalId }
+  })
 
   if (state.tick % 200 === 0) {
     state.villagers = state.villagers.filter((v) => v.alive)
@@ -274,10 +411,16 @@ export function stepSimulation(state: SimState): SimState {
     state.horses = state.horses.filter((h) => h.alive)
     state.wolves = state.wolves.filter((w) => w.alive)
     state.boats = state.boats.filter((b) => b.alive)
+    const aliveIds = new Set<number>()
+    for (let i = 0; i < state.villagers.length; i++) aliveIds.add(state.villagers[i].id)
     for (const village of state.villages) {
-      village.memberIds = village.memberIds.filter((id) => state.villagers.some((v) => v.id === id && v.alive))
+      village.memberIds = village.memberIds.filter((id) => aliveIds.has(id))
     }
     state.villages = state.villages.filter((vg) => vg.memberIds.length > 0)
+    for (const c of state.circles) {
+      c.memberIds = c.memberIds.filter((id) => aliveIds.has(id))
+    }
+    state.circles = state.circles.filter((c) => c.memberIds.length >= 2)
   }
 
   return state
@@ -367,11 +510,15 @@ export function computeStats(state: SimState): SimStats {
     }
   }
 
+  const pol = politicsSummary(state)
+
+  const calendar = getCalendar(state.tick)
   return {
     tick: state.tick,
-    season: state.season,
-    seasonProgress: (state.tick % TICKS_PER_SEASON) / TICKS_PER_SEASON,
-    year: state.year,
+    season: calendar.season,
+    seasonProgress: seasonProgressFromTick(state.tick),
+    year: calendar.year,
+    calendar,
     famine: state.famine,
     villagers,
     sheep,
@@ -403,5 +550,10 @@ export function computeStats(state: SimState): SimStats {
     professions,
     shapes,
     prices: state.prices,
+    circles: pol.circles,
+    institutions: pol.institutions,
+    rumors: pol.rumors,
+    leadingCircle: pol.leadingName,
+    leadingLegitimacy: pol.leadingLegitimacy,
   }
 }

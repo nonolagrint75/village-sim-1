@@ -218,3 +218,95 @@ export function furnitureSlots(footprint: HouseFootprint): { workbench: Cell; ch
   for (let i = 2; i < sorted.length - 2 && beds.length < 6; i += 3) beds.push(sorted[i])
   return { workbench, chest, beds }
 }
+
+/** Wall shell material for generative structures — stamped as terrain codes, not building enums. */
+export type WallMaterial = 'wood' | 'stone' | 'timber'
+
+export type FloorMaterial = 'plank' | 'dirt' | 'none'
+
+/**
+ * Parametric structure brief. AI / cognition fills scale & features;
+ * rasterization yields cells, never a fixed Castle/TownHall sprite id.
+ */
+export interface StructureParams {
+  shape: HouseShape
+  rx: number
+  ry: number
+  wallMaterial: WallMaterial
+  floorMaterial: FloorMaterial
+  towers: boolean
+  courtyard: boolean
+  door: boolean
+  /** Hauteur mur soft (m) — lore / futur rendu ; pas de collision 3D. */
+  wallHeightM?: number
+}
+
+export interface StructureFootprint {
+  walls: Cell[]
+  /** Corner tower cells (optional); placed as same wall terrain, thicker presence. */
+  towers: Cell[]
+  interior: Cell[]
+  open: Cell[]
+  door: Cell | null
+}
+
+/**
+ * Generative footprint from size / material / optional towers & courtyard.
+ * Reuses house geometry, then adds corner towers when requested.
+ */
+export function structureFootprint(params: StructureParams, cx: number, cy: number): StructureFootprint {
+  const design: HouseDesign = {
+    shape: params.courtyard ? 'courtyard' : params.shape,
+    rx: params.rx,
+    ry: params.ry,
+    bedSlots: 0,
+    hasWorkshop: false,
+    hasStoreroom: false,
+  }
+  const base = houseFootprint(design, cx, cy)
+  const walls = params.door ? base.walls : [...base.walls, base.door]
+  const door = params.door ? base.door : null
+  const towers: Cell[] = []
+
+  if (params.towers) {
+    const corners: Cell[] = [
+      { x: cx - params.rx, y: cy - params.ry },
+      { x: cx + params.rx, y: cy - params.ry },
+      { x: cx - params.rx, y: cy + params.ry },
+      { x: cx + params.rx, y: cy + params.ry },
+    ]
+    const seen = new Set(walls.map((c) => `${c.x},${c.y}`))
+    for (const corner of corners) {
+      for (const [dx, dy] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+        [0, -1],
+      ] as const) {
+        const x = corner.x + dx
+        const y = corner.y + dy
+        const key = `${x},${y}`
+        if (seen.has(key)) continue
+        if (door && door.x === x && door.y === y) continue
+        seen.add(key)
+        towers.push({ x, y })
+      }
+    }
+  }
+
+  return {
+    walls,
+    towers,
+    interior: base.interior,
+    open: base.open,
+    door,
+  }
+}
+
+/** All cells that must be clear / claimed for a structure site. */
+export function structurePlotCells(fp: StructureFootprint): Cell[] {
+  const out = [...fp.walls, ...fp.towers, ...fp.interior, ...fp.open]
+  if (fp.door) out.push(fp.door)
+  return out
+}

@@ -1,0 +1,827 @@
+import { packCognitionDebug, type CognitionDebug } from './cognition'
+import { mindOf } from './cognition/tick'
+import { computeStats } from './engine'
+import type { HouseDesign } from './architecture'
+import { packEthnosSummary } from './ethnos'
+import { packFamilySummary, type FamilySummary } from './family'
+import { HORSE_CARRY_BONUS } from './horses'
+import { carriedMass, carryCapacityOf, type ResourceType, type Slot } from './inventory'
+import {
+  equipmentEffectsOf,
+  packEquipmentForUi,
+  type PackedEquipmentSlot,
+  type GearEffects,
+} from './equipment'
+import { bodyMassKgFromPhenotype } from './physicsScale'
+import { takeUiLightGate } from './perfBudget'
+import {
+  circleKindLabel,
+  circlesOf,
+  creedLabel,
+  politicsOf,
+  NORM_FR,
+  type CircleKind,
+  type CreedId,
+  type NormId,
+} from './politics'
+import type { Ambition, Memory, Relation } from './social'
+import { knowledgeCount, knowledgeLabelsFr } from './technology'
+import { ensureLivelihood, topActivitiesFr, livelihoodLabelForUi } from './livelihood'
+import { getCalendar } from './calendar'
+import type {
+  BoatKind,
+  Phenotype,
+  Profession,
+  Season,
+  SimState,
+  SimStats,
+  Task,
+  ToolTier,
+  Villager,
+  WallTier,
+} from './types'
+
+export type ActorVillager = {
+  id: number
+  name: string
+  x: number
+  y: number
+  hue: number
+  mounted: boolean
+  embarked: boolean
+  hasCart: boolean
+  toolTier: ToolTier
+  grudgeTarget: number | null
+  alive: boolean
+}
+
+export type ActorSheep = { x: number; y: number; captured: boolean; alive: boolean }
+export type ActorHorse = { x: number; y: number; tamed: boolean; riderId: number | null; alive: boolean }
+export type ActorBoat = { x: number; y: number; kind: BoatKind; alive: boolean }
+export type ActorWolf = { x: number; y: number; alive: boolean }
+export type ActorVillage = {
+  centerX: number
+  centerY: number
+  hasPort: boolean
+  portX: number
+  portY: number
+  hasMill: boolean
+  millX: number
+  millY: number
+  hasMine: boolean
+  mineX: number
+  mineY: number
+  wallTier: WallTier
+  perimeter: { x: number; y: number }[]
+  gates: { x: number; y: number }[]
+}
+
+export type InventoryLine = { type: ResourceType; count: number }
+
+/** Continous appearance phrases — never race / ethnicity labels. */
+export type PhenotypeSummary = {
+  teint: string
+  taille: string
+  corpulence: string
+  yeux: string
+  cheveux: string
+  lines: string[]
+} | null
+
+export type IdentitySummary = {
+  cultureTag: string | null
+  cultureWeight: number
+  creedLabel: string
+  birthPlace: string | null
+  migrationUrge: number
+  diasporaNote: string | null
+} | null
+
+export type SelectedVillager = {
+  id: number
+  name: string
+  surname: string
+  fullName: string
+  hue: number
+  /** False when inspecting a corpse / recently deceased. */
+  alive: boolean
+  profession: Profession
+  /** Métier émergent (pratique + reconnaissance). */
+  livelihoodTitle: string
+  livelihoodRole: string | null
+  livelihoodActivities: string[]
+  guildName: string | null
+  unemployed: boolean
+  ambition: Ambition
+  grudgeTarget: number | null
+  task: Task | null
+  mounted: boolean
+  embarked: boolean
+  health: number
+  hunger: number
+  stamina: number
+  staminaMax: number
+  loadMass: number
+  loadCap: number
+  personality: Villager['personality']
+  house: HouseDesign | null
+  /** Non-empty stacks only — lean for UI transfer. */
+  inventory: InventoryLine[]
+  horseId: number | null
+  hasCart: boolean
+  boatId: number | null
+  boatKind: BoatKind | null
+  toolTier: ToolTier
+  /** On-person medieval kit (body slots). */
+  equipment: PackedEquipmentSlot[]
+  equipmentEffects: Pick<GearEffects, 'clo' | 'protect' | 'prestige' | 'wealthDisplay' | 'carryKg'>
+  gearPrestige01: number
+  purseCoins: number
+  relations: [number, Relation][]
+  memories: Memory[]
+  creed: CreedId | null
+  creedLabel: string
+  legitimacy: number
+  grievance: number
+  circleNames: string[]
+  cognition: CognitionDebug
+  /** Null if family module not ready. */
+  family: FamilySummary | null
+  /** Null if genetics not expressed yet. */
+  phenotype: PhenotypeSummary
+  identity: IdentitySummary
+  lineageWealth: number | null
+  descendantCount: number
+  /** Generative techniques known by this villager. */
+  knowledgeCount: number
+  knowledgeLabels: string[]
+  /** Shared village technique library size (0 if no village). */
+  villageKnowledgeCount: number
+}
+
+/** Lean lineage row for Société « Généalogie ». */
+export type UiLineageRow = {
+  id: number
+  surname: string
+  livingCount: number
+  deadCount: number
+  reputation: number
+  wealthEstimate: number
+  traditions: string[]
+  faded: boolean
+  renamedFrom: string | null
+  memberNames: string[]
+  moreMembers: number
+  summary: string
+}
+
+export type UiCountRow = { label: string; count: number }
+
+export type DrawFrame = {
+  season: Season
+  /** Calendar hour-of-day (0–23) for visual day/night overlay. */
+  hour: number
+  villagers: ActorVillager[]
+  sheep: ActorSheep[]
+  horses: ActorHorse[]
+  boats: ActorBoat[]
+  wolves: ActorWolf[]
+  villages: ActorVillage[]
+  tradeLinks: { ax: number; ay: number; bx: number; by: number }[]
+  ticksPerSec: number
+}
+
+/** Lean group row for the Société « Groupes » view — members capped. */
+export type UiGroupRow = {
+  id: number
+  name: string
+  kind: CircleKind
+  kindLabel: string
+  memberCount: number
+  /** Up to MAX_UI_GROUP_MEMBERS living member names. */
+  memberNames: string[]
+  moreMembers: number
+  leaderName: string | null
+  isInstitution: boolean
+  legitimacy: number
+  reputation: number
+  villageLabel: string | null
+  /** Short goal / norm / origin blurb. */
+  summary: string
+}
+
+export type UiFrame = {
+  stats: SimStats
+  chronicle: string[]
+  /** Id the worker packed for — used to ignore stale UI vs a newer local click. */
+  selectedId: number | null
+  selected: SelectedVillager | null
+  groups: UiGroupRow[]
+  lineages: UiLineageRow[]
+  /** Emergent culture-tag histogram (not languages unless ethnos lands). */
+  cultures: UiCountRow[]
+  creeds: UiCountRow[]
+  ticksPerSec: number
+}
+
+const MAX_UI_GROUP_MEMBERS = 8
+const MAX_UI_LINEAGE_MEMBERS = 8
+
+function continuumBand(v: number, low: string, mid: string, high: string): string {
+  if (v < 0.34) return low
+  if (v < 0.67) return mid
+  return high
+}
+
+/** French continuous-trait summary — genetics ≠ race labels. */
+export function packPhenotypeSummary(ph: Phenotype | null | undefined): PhenotypeSummary {
+  if (!ph) return null
+  const teint = continuumBand(ph.pigmentation, 'teint clair', 'teint moyen', 'teint foncé')
+  const taille = continuumBand(ph.height, 'petite stature', 'taille moyenne', 'grande stature')
+  const corpulence = continuumBand(ph.build, 'silhouette fine', 'silhouette moyenne', 'silhouette robuste')
+  const yeux = continuumBand(ph.eyeTone, 'yeux clairs', 'yeux mixtes', 'yeux sombres')
+  const hairTone = continuumBand(ph.hairTone, 'cheveux clairs', 'cheveux mixtes', 'cheveux sombres')
+  const hairCurl = continuumBand(ph.hairCurl, 'lisses', 'ondulés', 'crépus')
+  const cheveux = `${hairTone}, ${hairCurl}`
+  const lines = [teint, taille, corpulence, yeux, cheveux]
+  return { teint, taille, corpulence, yeux, cheveux, lines }
+}
+
+function packIdentitySummary(state: SimState, v: Villager): IdentitySummary {
+  try {
+    const mind = mindOf(v)
+    const pol = politicsOf(v)
+    const eth = packEthnosSummary(state, v)
+    let birthPlace: string | null = eth.birthRegion ? `région ${eth.birthRegion}` : null
+    if (v.villageId !== null) {
+      const vg = state.villages.find((g) => g.id === v.villageId)
+      birthPlace = vg
+        ? `village n°${vg.id} (${Math.round(vg.centerX)}, ${Math.round(vg.centerY)})`
+        : `village n°${v.villageId}`
+    } else if (v.hasHome) {
+      birthPlace = `foyer (${Math.round(v.homeX)}, ${Math.round(v.homeY)})`
+    }
+    let diasporaNote: string | null = null
+    if (eth.diaspora) diasporaNote = 'diaspora (garde langue / culture avec adaptation)'
+    else if (pol.migrationUrge > 0.55) diasporaNote = 'envie de partir forte'
+    else if (pol.migrationUrge > 0.3) diasporaNote = 'inquiétude migratoire'
+    const bits: string[] = []
+    if (eth.language) bits.push(`langue ${eth.language}`)
+    if (eth.ethnie) bits.push(`peuple ${eth.ethnie}`)
+    else if (eth.hybrid) bits.push('identité métissée')
+    return {
+      cultureTag: mind.cultureTag ?? eth.selfTags[0] ?? null,
+      cultureWeight: mind.cultureWeight,
+      creedLabel: creedLabel(pol.creed),
+      birthPlace,
+      migrationUrge: pol.migrationUrge,
+      diasporaNote: bits.length ? `${diasporaNote ? diasporaNote + ' · ' : ''}${bits.join(' · ')}` : diasporaNote,
+    }
+  } catch {
+    return null
+  }
+}
+
+function countDescendants(state: SimState, rootId: number, maxDepth = 4): number {
+  let n = 0
+  const visit = (id: number, depth: number) => {
+    if (depth > maxDepth) return
+    for (const o of state.villagers) {
+      if (!o.alive) continue
+      if (o.parentIds.includes(id) || o.motherId === id || o.fatherId === id) {
+        n++
+        visit(o.id, depth + 1)
+      }
+    }
+  }
+  visit(rootId, 0)
+  return n
+}
+
+function groupSummaryText(norms: NormId[], originStory: string | null, creed: string | null, memory: string[]): string {
+  if (norms.length > 0) {
+    return norms.map((n) => NORM_FR[n] ?? n).join(' · ')
+  }
+  if (originStory) return originStory
+  if (creed) return creed
+  if (memory.length > 0) return memory[memory.length - 1]
+  return 'Pas de norme affichée'
+}
+
+export function packGroups(state: SimState): UiGroupRow[] {
+  const byId = new Map<number, string>()
+  for (const v of state.villagers) {
+    if (v.alive) byId.set(v.id, v.name)
+  }
+  const rows: UiGroupRow[] = new Array(state.circles.length)
+  for (let i = 0; i < state.circles.length; i++) {
+    const c = state.circles[i]
+    const names: string[] = []
+    for (const mid of c.memberIds) {
+      const n = byId.get(mid)
+      if (!n) continue
+      if (names.length < MAX_UI_GROUP_MEMBERS) names.push(n)
+    }
+    const aliveCount = c.memberIds.reduce((acc, mid) => acc + (byId.has(mid) ? 1 : 0), 0)
+    const leaderName = c.leaderId !== null ? (byId.get(c.leaderId) ?? null) : null
+    let villageLabel: string | null = null
+    if (c.villageId !== null) {
+      const vg = state.villages.find((v) => v.id === c.villageId)
+      villageLabel = vg
+        ? `Village n°${vg.id} (${Math.round(vg.centerX)}, ${Math.round(vg.centerY)})`
+        : `Village n°${c.villageId}`
+    }
+    rows[i] = {
+      id: c.id,
+      name: c.name,
+      kind: c.kind,
+      kindLabel: c.isGuild ? 'guilde' : circleKindLabel(c.kind),
+      memberCount: aliveCount,
+      memberNames: names,
+      moreMembers: Math.max(0, aliveCount - names.length),
+      leaderName,
+      isInstitution: c.isInstitution || !!c.isGuild,
+      legitimacy: c.legitimacy,
+      reputation: c.reputation,
+      villageLabel,
+      summary: c.isGuild
+        ? `guilde · ${groupSummaryText(c.norms, c.originStory, c.creed, c.memory)}`
+        : groupSummaryText(c.norms, c.originStory, c.creed, c.memory),
+    }
+  }
+  rows.sort((a, b) => {
+    if (a.isInstitution !== b.isInstitution) return a.isInstitution ? -1 : 1
+    if (a.name.startsWith('guilde') !== b.name.startsWith('guilde')) return a.name.startsWith('guilde') ? -1 : 1
+    if (b.legitimacy !== a.legitimacy) return b.legitimacy - a.legitimacy
+    return a.name.localeCompare(b.name, 'fr')
+  })
+  return rows
+}
+
+export function packLineages(state: SimState): UiLineageRow[] {
+  if (!state.lineages || state.lineages.length === 0) return []
+  const byId = new Map<number, string>()
+  for (const v of state.villagers) {
+    if (v.alive) byId.set(v.id, v.surname ? `${v.name} ${v.surname}` : v.name)
+  }
+  const rows: UiLineageRow[] = []
+  for (const L of state.lineages) {
+    if (L.faded && L.livingCount === 0) continue
+    const names: string[] = []
+    let alive = 0
+    for (const mid of L.memberIds) {
+      const n = byId.get(mid)
+      if (!n) continue
+      alive++
+      if (names.length < MAX_UI_LINEAGE_MEMBERS) names.push(n)
+    }
+    const living = Math.max(alive, L.livingCount)
+    rows.push({
+      id: L.id,
+      surname: L.surname || 'sans nom',
+      livingCount: living,
+      deadCount: L.deadCount,
+      reputation: L.reputation,
+      wealthEstimate: L.wealthEstimate,
+      traditions: L.traditions.slice(-4),
+      faded: L.faded,
+      renamedFrom: L.renamedFrom,
+      memberNames: names,
+      moreMembers: Math.max(0, living - names.length),
+      summary:
+        L.traditions.length > 0
+          ? L.traditions.slice(-3).join(' · ')
+          : L.renamedFrom
+            ? `ex-${L.renamedFrom}`
+            : living > 0
+              ? 'lignée vivante'
+              : 'mémoire seule',
+    })
+  }
+  rows.sort((a, b) => {
+    if (b.livingCount !== a.livingCount) return b.livingCount - a.livingCount
+    if (b.reputation !== a.reputation) return b.reputation - a.reputation
+    return a.surname.localeCompare(b.surname, 'fr')
+  })
+  return rows
+}
+
+export function packCultureCounts(state: SimState): UiCountRow[] {
+  const map = new Map<string, number>()
+  for (const v of state.villagers) {
+    if (!v.alive) continue
+    try {
+      const tag = mindOf(v).cultureTag
+      if (!tag) continue
+      map.set(tag, (map.get(tag) ?? 0) + 1)
+    } catch {
+      /* mind not ready */
+    }
+  }
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'fr'))
+    .slice(0, 12)
+}
+
+export function packCreedCounts(state: SimState): UiCountRow[] {
+  const map = new Map<string, number>()
+  for (const v of state.villagers) {
+    if (!v.alive) continue
+    const label = creedLabel(politicsOf(v).creed)
+    if (!label || label === 'aucune') continue
+    map.set(label, (map.get(label) ?? 0) + 1)
+  }
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+}
+
+export const EMPTY_STATS: SimStats = {
+  tick: 0,
+  season: 'spring',
+  seasonProgress: 0,
+  year: 1,
+  calendar: getCalendar(0),
+  famine: false,
+  villagers: 0,
+  sheep: 0,
+  horsesWild: 0,
+  horsesTamed: 0,
+  riders: 0,
+  carts: 0,
+  boats: 0,
+  ports: 0,
+  tradeRunsTotal: 0,
+  wolves: 0,
+  totalCoins: 0,
+  totalBread: 0,
+  houses: 0,
+  pens: 0,
+  fields: 0,
+  mills: 0,
+  villages: 0,
+  bridges: 0,
+  roadTiles: 0,
+  wallTiles: 0,
+  naturalCover: 0,
+  births: 0,
+  deaths: 0,
+  thefts: 0,
+  brawls: 0,
+  friendships: 0,
+  feuds: 0,
+  professions: {
+    none: 0,
+    forager: 0,
+    farmer: 0,
+    fisher: 0,
+    miller: 0,
+    lumberjack: 0,
+    mason: 0,
+    guard: 0,
+    builder: 0,
+    herder: 0,
+    trader: 0,
+    weaver: 0,
+    blacksmith: 0,
+    miner: 0,
+  },
+  shapes: {},
+  prices: {},
+  circles: 0,
+  institutions: 0,
+  rumors: 0,
+  leadingCircle: null,
+  leadingLegitimacy: 0,
+}
+
+export type WorldFrame = {
+  width: number
+  height: number
+  terrain: Uint8Array
+  amount: Uint16Array
+}
+
+export type DirtyFrame = {
+  indices: Uint32Array
+  terrain: Uint8Array
+  amount: Uint16Array
+}
+
+function summarizeInventory(inv: Slot[]): InventoryLine[] {
+  const map = new Map<ResourceType, number>()
+  for (const slot of inv) {
+    if (!slot.type || slot.count <= 0) continue
+    map.set(slot.type, (map.get(slot.type) ?? 0) + slot.count)
+  }
+  return [...map.entries()]
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
+/** Prefer causal / milestone lines; keep a short readable chronicle. */
+export function packChronicle(log: string[], limit = 14): string[] {
+  if (log.length === 0) return []
+  const window = log.slice(-40)
+  const causal: string[] = []
+  const notable: string[] = []
+  const rest: string[] = []
+  const notableRe =
+    /famine|moulin|port|bateau|barque|chaland|institution|cercle|guilde|creed|naissance|né de|naît|mariage|unissent|adopte|adoption|enceinte|rempart|pont|sentier|chemin|route|mort|loup|légitimité|norme|creed|fortification|halle|grenier|projet|chantier|gisement|surpeuplement|tempête|orage|front froid|pénurie|migration|errance|découvert|enseigne|savoir|mélange explosif|donjon|meurtrière|charbon|nitrate|souffle de mine|métier|troubadour|gourou|réputation|forme |enseigne|apprenti|oisiveté|divertit|console/i
+
+  for (let i = window.length - 1; i >= 0; i--) {
+    const entry = window[i]
+    if (entry.includes(' → ')) causal.push(entry)
+    else if (notableRe.test(entry)) notable.push(entry)
+    else rest.push(entry)
+  }
+
+  const out: string[] = []
+  const seen = new Set<string>()
+  const push = (list: string[]) => {
+    for (const e of list) {
+      if (out.length >= limit) return
+      if (seen.has(e)) continue
+      seen.add(e)
+      out.push(e)
+    }
+  }
+  push(causal)
+  push(notable)
+  push(rest)
+  return out
+}
+
+export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
+  const villagers: ActorVillager[] = []
+  const vv = state.villagers
+  for (let i = 0; i < vv.length; i++) {
+    const v = vv[i]
+    if (!v.alive) continue
+    villagers.push({
+      id: v.id,
+      name: v.name,
+      x: v.x,
+      y: v.y,
+      hue: v.hue,
+      mounted: v.mounted,
+      embarked: v.embarked,
+      hasCart: v.hasCart,
+      toolTier: v.toolTier,
+      grudgeTarget: v.grudgeTarget,
+      alive: true,
+    })
+  }
+  const sheep: ActorSheep[] = []
+  const ss = state.sheep
+  for (let i = 0; i < ss.length; i++) {
+    const s = ss[i]
+    if (!s.alive) continue
+    sheep.push({ x: s.x, y: s.y, captured: s.captured, alive: true })
+  }
+  const horses: ActorHorse[] = []
+  const hh = state.horses
+  for (let i = 0; i < hh.length; i++) {
+    const h = hh[i]
+    if (!h.alive) continue
+    horses.push({ x: h.x, y: h.y, tamed: h.tamed, riderId: h.riderId, alive: true })
+  }
+  const boats: ActorBoat[] = []
+  const bb = state.boats
+  for (let i = 0; i < bb.length; i++) {
+    const b = bb[i]
+    if (!b.alive) continue
+    boats.push({ x: b.x, y: b.y, kind: b.kind, alive: true })
+  }
+  const wolves: ActorWolf[] = []
+  const ww = state.wolves
+  for (let i = 0; i < ww.length; i++) {
+    const w = ww[i]
+    if (!w.alive) continue
+    wolves.push({ x: w.x, y: w.y, alive: true })
+  }
+  const villages: ActorVillage[] = new Array(state.villages.length)
+  const byId = new Map<number, (typeof state.villages)[0]>()
+  for (let i = 0; i < state.villages.length; i++) {
+    const vg = state.villages[i]
+    byId.set(vg.id, vg)
+    villages[i] = {
+      centerX: vg.centerX,
+      centerY: vg.centerY,
+      hasPort: vg.hasPort,
+      portX: vg.portX,
+      portY: vg.portY,
+      hasMill: vg.hasMill,
+      millX: vg.millX,
+      millY: vg.millY,
+      hasMine: vg.hasMine,
+      mineX: vg.mineX,
+      mineY: vg.mineY,
+      wallTier: vg.wallTier,
+      perimeter: vg.perimeter,
+      gates: vg.gates,
+    }
+  }
+  const tradeLinks: { ax: number; ay: number; bx: number; by: number }[] = []
+  for (const key of state.tradeRoutes) {
+    const dash = key.indexOf('-')
+    if (dash < 0) continue
+    const a = Number(key.slice(0, dash))
+    const b = Number(key.slice(dash + 1))
+    const va = byId.get(a)
+    const vb = byId.get(b)
+    if (va && vb) tradeLinks.push({ ax: va.centerX, ay: va.centerY, bx: vb.centerX, by: vb.centerY })
+  }
+  return {
+    season: state.season,
+    hour: getCalendar(state.tick).hour,
+    villagers,
+    sheep,
+    horses,
+    boats,
+    wolves,
+    villages,
+    tradeLinks,
+    ticksPerSec,
+  }
+}
+
+function packSelected(state: SimState, v: Villager): SelectedVillager {
+  const pol = politicsOf(v)
+  const boat = v.boatId !== null ? state.boats.find((b) => b.id === v.boatId && b.alive) : undefined
+  let family: FamilySummary | null = null
+  try {
+    family = packFamilySummary(state, v)
+  } catch {
+    family = null
+  }
+  const lineage =
+    v.lineageId !== null && state.lineages
+      ? state.lineages.find((L) => L.id === v.lineageId) ?? null
+      : null
+  const mind = mindOf(v)
+  const live = ensureLivelihood(mind)
+  const guild = circlesOf(state, v).find((c) => c.isGuild || (c.kind === 'craft' && c.isInstitution))
+  const packedEq = packEquipmentForUi(v)
+  const gearFx = equipmentEffectsOf(v)
+  const cap =
+    carryCapacityOf({
+      hasCart: v.hasCart,
+      mounted: v.mounted,
+      horseBonus: HORSE_CARRY_BONUS,
+      bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
+      strength01: v.phenotype.strengthBias,
+    }) + gearFx.carryKg
+  return {
+    id: v.id,
+    name: v.name,
+    surname: v.surname ?? '',
+    fullName: v.surname ? `${v.name} ${v.surname}` : v.name,
+    hue: v.hue,
+    alive: v.alive,
+    profession: v.profession,
+    livelihoodTitle: livelihoodLabelForUi(v),
+    livelihoodRole: live.roleTag,
+    livelihoodActivities: topActivitiesFr(live, 3),
+    guildName: guild ? guild.name : null,
+    unemployed: live.unemployedStreak > 40,
+    ambition: v.ambition,
+    grudgeTarget: v.grudgeTarget,
+    task: v.task
+      ? {
+          kind: v.task.kind,
+          targetX: v.task.targetX,
+          targetY: v.task.targetY,
+          targetId: v.task.targetId,
+          resource: v.task.resource,
+          stuckTicks: v.task.stuckTicks,
+          ageTicks: v.task.ageTicks,
+          work: v.task.work,
+          path: null,
+          pathI: 0,
+          pathTx: v.task.targetX,
+          pathTy: v.task.targetY,
+          pathTick: 0,
+        }
+      : null,
+    mounted: v.mounted,
+    embarked: v.embarked,
+    health: v.health,
+    hunger: v.hunger,
+    stamina: v.stamina,
+    staminaMax: 4,
+    loadMass: carriedMass(v.inventory),
+    loadCap: cap,
+    personality: v.personality,
+    house: v.house,
+    inventory: summarizeInventory(v.inventory),
+    horseId: v.horseId,
+    hasCart: v.hasCart,
+    boatId: v.boatId,
+    boatKind: boat?.kind ?? null,
+    toolTier: v.toolTier,
+    equipment: packedEq.slots,
+    equipmentEffects: {
+      clo: gearFx.clo,
+      protect: gearFx.protect,
+      prestige: gearFx.prestige,
+      wealthDisplay: gearFx.wealthDisplay,
+      carryKg: gearFx.carryKg,
+    },
+    gearPrestige01: packedEq.prestige01,
+    purseCoins: packedEq.purseCoins,
+    relations: (() => {
+      const entries = [...v.relations.entries()]
+      entries.sort((a, b) => {
+        const sa =
+          Math.abs(a[1].affinity) * 1.2 +
+          (a[1].respect ?? 0) * 0.9 +
+          (a[1].grudge ?? 0) * 0.8 +
+          (a[1].kinship ?? 0) * 0.5 +
+          a[1].trust * 0.2
+        const sb =
+          Math.abs(b[1].affinity) * 1.2 +
+          (b[1].respect ?? 0) * 0.9 +
+          (b[1].grudge ?? 0) * 0.8 +
+          (b[1].kinship ?? 0) * 0.5 +
+          b[1].trust * 0.2
+        return sb - sa
+      })
+      return entries.slice(0, 12)
+    })(),
+    memories: v.memories.length <= 8 ? v.memories : v.memories.slice(-8),
+    creed: pol.creed,
+    creedLabel: creedLabel(pol.creed),
+    legitimacy: pol.legitimacy,
+    grievance: pol.grievance,
+    circleNames: circlesOf(state, v).map((c) =>
+      c.isGuild ? `${c.name} (guilde)` : c.isInstitution ? `${c.name} (institution)` : c.name,
+    ),
+    cognition: packCognitionDebug(v),
+    family,
+    phenotype: packPhenotypeSummary(v.phenotype),
+    identity: packIdentitySummary(state, v),
+    lineageWealth: lineage ? lineage.wealthEstimate : null,
+    descendantCount: countDescendants(state, v.id),
+    knowledgeCount: knowledgeCount(v.knowledge),
+    knowledgeLabels: knowledgeLabelsFr(v.knowledge, 5),
+    villageKnowledgeCount:
+      v.villageId !== null
+        ? knowledgeCount(state.villages.find((g) => g.id === v.villageId)?.knowledge)
+        : 0,
+  }
+}
+
+export function packUi(state: SimState, selectedId: number | null, ticksPerSec: number): UiFrame {
+  let selected: SelectedVillager | null = null
+  if (selectedId !== null) {
+    const list = state.villagers
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i]
+      // Keep packing after death so the portrait can show a sensible "deceased" state.
+      if (o.id === selectedId) {
+        try {
+          selected = packSelected(state, o)
+        } catch {
+          selected = null
+        }
+        break
+      }
+    }
+  }
+  // Under load: still pack groups (small); stagger heavier lineage/culture tallies.
+  const light = takeUiLightGate()
+  return {
+    stats: computeStats(state),
+    chronicle: packChronicle(state.log),
+    selectedId,
+    selected,
+    groups: packGroups(state),
+    lineages: light ? [] : packLineages(state),
+    cultures: light ? [] : packCultureCounts(state),
+    creeds: light ? [] : packCreedCounts(state),
+    ticksPerSec,
+  }
+}
+
+export function takeDirty(state: SimState): DirtyFrame | null {
+  const dirty = state.grid.dirty
+  const n = dirty.length
+  if (n === 0) return null
+  // TypedArrays transfer cheaper across worker boundary than number[].
+  const indices = new Uint32Array(n)
+  const terrain = new Uint8Array(n)
+  const amount = new Uint16Array(n)
+  const terr = state.grid.terrain
+  const amt = state.grid.amount
+  for (let i = 0; i < n; i++) {
+    const idx = dirty[i]
+    indices[i] = idx
+    terrain[i] = terr[idx]
+    amount[i] = amt[idx]
+  }
+  dirty.length = 0
+  return { indices, terrain, amount }
+}

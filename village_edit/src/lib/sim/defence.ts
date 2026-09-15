@@ -132,5 +132,6 @@ export function occupiedTiles(
   }
   if (village.hasMill) tiles.push({ x: village.millX, y: village.millY })
   if (village.hasPort) tiles.push({ x: village.portX, y: village.portY })
+  if (village.hasMine) tiles.push({ x: village.mineX, y: village.mineY })
   return tiles
 }

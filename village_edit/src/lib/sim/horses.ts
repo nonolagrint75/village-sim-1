@@ -1,3 +1,4 @@
+import { LAND_PROFILE, nudgeToward } from './pathfinding'
 import { countOf, removeFromInventory } from './inventory'
 import { logEvent } from './social'
 import { DIRT, GRASS, type Horse, type SimState, type Villager } from './types'
@@ -10,7 +11,8 @@ const HORSE_STARVE_TICKS = 300
 const HORSE_BREED_COOLDOWN = 700
 export const MAX_WILD_HORSES = 22
 export const HORSE_SPEED_BONUS = 2
-export const HORSE_CARRY_BONUS = 4
+/** Capacité pack cheval (kg) — alignée physicsScale.HORSE_PACK_KG. */
+export const HORSE_CARRY_BONUS = 35
 const FLEE_RADIUS = 12
 
 export function makeHorse(id: number, x: number, y: number, hunger = 3): Horse {
@@ -104,12 +106,7 @@ export function tickHorse(state: SimState, h: Horse, rng: () => number) {
       }
     }
     if (threatened) {
-      const nx = clamp(h.x + Math.sign(threatX) * 3, 0, state.grid.width - 1)
-      const ny = clamp(h.y + Math.sign(threatY) * 3, 0, state.grid.height - 1)
-      if (!isBlockingWall(state.grid, nx, ny)) {
-        h.x = nx
-        h.y = ny
-      }
+      nudgeToward(state.grid, h, h.x + Math.sign(threatX) * 8, h.y + Math.sign(threatY) * 8, 3, LAND_PROFILE)
       return
     }
 
@@ -127,12 +124,7 @@ export function tickHorse(state: SimState, h: Horse, rng: () => number) {
       const cx = mateX / mates
       const cy = mateY / mates
       if (distance(cx, cy, h.x, h.y) > 5) {
-        const nx = clamp(h.x + Math.sign(cx - h.x) * 2, 0, state.grid.width - 1)
-        const ny = clamp(h.y + Math.sign(cy - h.y) * 2, 0, state.grid.height - 1)
-        if (!isBlockingWall(state.grid, nx, ny)) {
-          h.x = nx
-          h.y = ny
-        }
+        nudgeToward(state.grid, h, Math.round(cx), Math.round(cy), 2, LAND_PROFILE)
         return
       }
     }

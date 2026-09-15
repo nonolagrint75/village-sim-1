@@ -1,4 +1,30 @@
-export type ResourceType = 'wood' | 'stone' | 'gold' | 'food' | 'coin' | 'wheat' | 'flour' | 'bread' | 'wool' | 'cloth' | 'clothing' | 'hide' | 'leather' | 'iron'
+import {
+  CART_CARGO_KG,
+  HORSE_PACK_KG,
+  ITEM_MASS_KG,
+  carryCapacityKg,
+} from './physicsScale'
+import {
+  EDIBLE_PRIORITY,
+  RESOURCE_NUTRITION,
+  type ResourceType,
+} from './resources'
+
+export type { ResourceType } from './resources'
+export {
+  RESOURCE_IDS,
+  RESOURCE_LABELS_UI,
+  RESOURCE_LABELS_LOG,
+  isEdible,
+  isStoreable,
+  isTradeable,
+  isFuel,
+  isMedicine,
+  isGrain,
+  EDIBLE_PRIORITY,
+  STOREABLE_RESOURCES,
+  TRADEABLE_RESOURCES,
+} from './resources'
 
 export interface Slot {
   type: ResourceType | null
@@ -7,11 +33,10 @@ export interface Slot {
 
 export const STACK_SIZE = 10
 
-export const NUTRITION: Partial<Record<ResourceType, number>> = {
-  food: 1,
-  wheat: 0.5,
-  bread: 2,
-}
+/** Masse unitaire (kg) — source de vérité : physicsScale.ITEM_MASS_KG. */
+export const ITEM_MASS: Record<ResourceType, number> = ITEM_MASS_KG
+
+export const NUTRITION: Partial<Record<ResourceType, number>> = RESOURCE_NUTRITION
 
 export function createInventory(size: number): Slot[] {
   return Array.from({ length: size }, () => ({ type: null, count: 0 }))
@@ -76,6 +101,72 @@ export function transferAll(from: Slot[], to: Slot[], type: ResourceType) {
   removeFromInventory(from, type, amount - leftover)
 }
 
+/** Soft edible stock — nutrition-weighted across all edible resources. */
 export function edibleValue(inv: Slot[]): number {
-  return countOf(inv, 'bread') * 2 + countOf(inv, 'food') + countOf(inv, 'wheat') * 0.5
+  let v = 0
+  for (const slot of inv) {
+    if (!slot.type || slot.count <= 0) continue
+    const n = NUTRITION[slot.type]
+    if (n) v += slot.count * n
+  }
+  return v
+}
+
+/** Best edible currently carried (priority list from catalog). */
+export function bestEdibleIn(inv: Slot[]): ResourceType | null {
+  for (const type of EDIBLE_PRIORITY) {
+    if (countOf(inv, type) > 0) return type
+  }
+  return null
+}
+
+/** Masse totale portée (kg). */
+export function carriedMass(inv: Slot[]): number {
+  let mass = 0
+  for (const slot of inv) {
+    if (!slot.type || slot.count <= 0) continue
+    mass += ITEM_MASS[slot.type] * slot.count
+  }
+  return mass
+}
+
+/** @deprecated Prefer carryCapacityKg via physics — kept as fallback mean adult. */
+export const CARRY_BASE = 42
+export const CARRY_CART_BONUS = CART_CARGO_KG
+
+export function carryCapacityOf(opts: {
+  hasCart: boolean
+  mounted: boolean
+  horseBonus?: number
+  bodyMassKg?: number
+  strength01?: number
+}): number {
+  if (opts.bodyMassKg != null && opts.strength01 != null) {
+    return carryCapacityKg({
+      bodyMassKg: opts.bodyMassKg,
+      strength01: opts.strength01,
+      hasCart: opts.hasCart,
+      mounted: opts.mounted,
+      horseBonusKg: opts.horseBonus ?? HORSE_PACK_KG,
+    })
+  }
+  let cap = CARRY_BASE
+  if (opts.hasCart) cap += CARRY_CART_BONUS
+  if (opts.mounted) cap += opts.horseBonus ?? HORSE_PACK_KG
+  return cap
+}
+
+export function freeSlotSpace(inv: Slot[], type: ResourceType): number {
+  let space = 0
+  for (const slot of inv) {
+    if (slot.type === type && slot.count < STACK_SIZE) space += STACK_SIZE - slot.count
+    else if (slot.type === null) space += STACK_SIZE
+  }
+  return space
+}
+
+export function inventoryNearlyFull(inv: Slot[]): boolean {
+  let empty = 0
+  for (const slot of inv) if (slot.type === null) empty++
+  return empty === 0
 }

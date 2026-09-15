@@ -1,13 +1,192 @@
-import { designHouse, freshStyle, houseFootprint, furnitureSlots, pickShape, reinforceStyle, type HouseFootprint } from './architecture'
+import {
+  biomeSuitability,
+  boatCurrentSpeedMul,
+  coldStress01,
+  cropTempFactor,
+  fishingCurrentBonus,
+  heatStress01,
+  sampleMoisture,
+  sampleRain,
+  sampleTempC,
+} from './climate'
+import {
+  designHouse,
+  freshStyle,
+  furnitureSlots,
+  houseFootprint,
+  pickShape,
+  reinforceStyle,
+  type HouseFootprint,
+} from './architecture'
+import { getSimConfig } from './simConfig'
+import {
+  applyConstructionStep,
+  findProject,
+  nextConstructionStep,
+  nextWallTarget,
+  pickProjectForVillager,
+  projectTaskUrge,
+} from './construction'
 import { computePerimeter, occupiedTiles } from './defence'
-import { conductTrade, findTradeOpportunity, portEligible, priceOf, targetPerCapita, tickVillageEconomy, TRADE_COOLDOWN } from './commerce'
-import { HORSE_SPEED_BONUS, tickHorse, tickHorseBreeding, tryTame } from './horses'
-import { addToInventory, countOf, createInventory, edibleValue, removeFromInventory, transferAll, type ResourceType } from './inventory'
-import { creditRescue, doConfront, doGiveFood, doSocialise, doSteal, onDeath, tickSocialUpkeep } from './interactions'
+import { conductTrade, findTradeOpportunity, portEligible, priceOf, targetPerCapita, tickVillageEconomy, TRADE_COOLDOWN, villageBirthBias } from './commerce'
+import { nearbyVillagers } from './kernels'
+import { HORSE_CARRY_BONUS, tickHorse, tickHorseBreeding, tryTame } from './horses'
+import {
+  addToInventory,
+  bestEdibleIn,
+  carriedMass,
+  carryCapacityOf,
+  countOf,
+  createInventory,
+  edibleValue,
+  freeSlotSpace,
+  inventoryNearlyFull,
+  ITEM_MASS,
+  removeFromInventory,
+  STOREABLE_RESOURCES,
+  transferAll,
+  NUTRITION,
+  type ResourceType,
+} from './inventory'
+import {
+  CRAFT_RECIPES,
+  cropDef,
+  EDIBLE_PRIORITY,
+  isEdible,
+  MILL_GRAINS,
+  pickCropId,
+  recipeCraftable,
+  rollGatherExtras,
+  spendRecipeInputs,
+} from './resources'
+import {
+  craftAndEquipGear,
+  createEmptyEquipment,
+  equipmentEffectsOf,
+  equipFromToolTier,
+  GEAR_DEFS,
+  pickGearCraftTarget,
+  tryEquipFromClothingCraft,
+} from './equipment'
+import {
+  bodyMassKgFromPhenotype,
+  boatCargoCapacityKg,
+  clothingClo,
+  heightMetersFromPhenotype,
+  hungerDrainFromBmr,
+  hungerRestoreFromFood,
+  staminaCostForStep,
+  thermalBurnMultiplier,
+  tilesPerTickFromMps,
+  walkSpeedMps,
+} from './physicsScale'
+import {
+  creditRescue,
+  doConfront,
+  doCounsel,
+  doEntertain,
+  doGiveFood,
+  doSocialise,
+  doSteal,
+  doTeachCraft,
+  onDeath,
+  onWolfKill,
+  SOCIAL_RANGE,
+  tickSocialUpkeep,
+} from './interactions'
+import {
+  canPracticeCraft,
+  ironToolCostFor,
+  livelihoodTaskBonus,
+  noteActivityPractice,
+  serviceUrge,
+  tickLivelihood,
+} from './livelihood'
+import {
+  gatherPressurePenalty,
+} from './ecology'
+import {
+  applyGeneticPersonalityBias,
+  birthGenetics,
+  diseasePressure,
+  fertilityModifier,
+  kinshipCoefficient,
+  physicalAptitudeModifiers,
+} from './genetics'
+import { TICKS_PER_YEAR } from './calendar'
+import { seedEthnosFromParents, cultureSimilarity, ensureCultureState, ethnosSocialBias, homophilyBias } from './ethnos'
+import { fullNameOf, registerBirth } from './family'
+import { bondedPartner, isMarriageAge, pedigreeLookup } from './marriage'
 import { generateName, inheritPersonality } from './personality'
-import { bestCrossing, markCrossingDemand, markTraffic, surfaceSpeedBonus } from './roads'
+import { chebyshev, LAND_PROFILE, landWalkable, findLaneBlocker, layCorridor, navigate, nudgeToward, seedTradeCorridor, type PathProfile } from './pathfinding'
+import { bestCrossing, isWornRoad, markTraffic, nearestPaveable, stampPlaza, tryPave } from './roads'
 import { isShore, type ResourceKind } from './resourceIndex'
-import { logEvent, pickAmbition, relationWith, remember } from './social'
+import {
+  depositSpoil,
+  digGoldYield,
+  digHpPerHit,
+  digIronYield,
+  digStaminaCost,
+  digStoneYield,
+  DIG_HITS_PER_SESSION,
+  DIG_TILES_PER_SESSION,
+  ensureMountainDigHp,
+  finalizeTunnelCell,
+  findMineEntranceSite,
+  nextCorridorTip,
+  pickDigTarget,
+} from './mining'
+import {
+  applyExperiment,
+  experimentUrge,
+  inheritKnowledge,
+  knowsBlastMining,
+  knowsTemperIron,
+  noteMiningInsight,
+  techCombatBonus,
+} from './technology'
+import {
+  cautionFactor,
+  dangerSpotsForPath,
+  inheritLaborPreferences,
+  isChild,
+  mindOf,
+  nearestTacticalThreat,
+  noteChosenAction,
+  noteMasterworkCraft,
+  noteWolfDanger,
+  onCognitiveEvent,
+  pickSafetyTarget,
+  pickTaskByPolicy,
+  professionSkillPrefScore,
+  recordTaskOutcome,
+  replanAfterFailure,
+  restoreInterruptedTask,
+  rollCraftQuality,
+  seedCultureFromParents,
+  senseResource,
+  shouldDeepThink,
+  shouldEngageThreat,
+  skillBonus,
+  skillSpeedBonus,
+  skillYieldBonus,
+  spotMemoryBias,
+  stashInterruptedTask,
+  tickCognition,
+} from './cognition'
+import { isGatheringHour, logEvent, pickAmbition, relationWith, remember } from './social'
+import {
+  activeNormsFor,
+  circlesOf,
+  lifeRoleOf,
+  logCause,
+  onPoliticalFamine,
+  onPoliticalTradeWindfall,
+  onPoliticalWolfAttack,
+  politicsOf,
+  professionLockInBonus,
+  villageCohesion,
+} from './politics'
 import {
   BED,
   BRIDGE,
@@ -27,10 +206,13 @@ import {
   LOOT,
   MILL,
   MOUNTAIN,
+  PATH,
   PLANK,
   PORT,
+  ROAD,
   SAND,
   STONE,
+  TRAIL,
   TREE,
   TUNNEL,
   WALL_STONE,
@@ -48,6 +230,7 @@ import {
   type Village,
   type Wolf,
 } from './types'
+import { TICKS_PER_DAY, TICKS_PER_SEASON } from './calendar'
 import {
   bridgeNearby,
   claimArea,
@@ -61,25 +244,30 @@ import {
   findNearbyShore,
   findNearbyTerrain,
   findNearest,
+  findOpenWater,
   getClaim,
   getTerrain,
   inBounds,
   isBlockingWall,
   isBuildableGround,
-  isWater,
-  nearestResource,
+  isNight,
+  isWoodPile,
+  needsClearing,
   resourceDensity,
   setClaim,
   setTerrain,
   singleDoorWallCells,
-  stepToward,
+  stampPort,
+  adjacentWater,
   touchesWater,
   type WorldGrid,
 } from './world'
 
 const HUNGER_MAX = 4
-const HUNGER_DECAY = 1 / 200
-const STARVE_DEATH_TICKS = 260
+/** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~3 jours-sim plein→vide. */
+const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 3)
+/** ~2 sim-days after hunger hits 0 before death. */
+const STARVE_DEATH_TICKS = Math.round(TICKS_PER_DAY * 2)
 const HEAL_TICKS = 120
 const HEAL_HUNGER_THRESHOLD = 3
 const VILLAGER_HEALTH_MAX = 4
@@ -87,6 +275,18 @@ const ANIMAL_HEALTH_MAX = 2
 const HUNGRY_THRESHOLD = 2
 const FOOD_TARGET = 4
 const WINTER_STOCK_TARGET = 10
+
+/** Embodied endurance — depleted by travel/labor, restored by rest/shelter. */
+export const STAMINA_MAX = 4
+const STAMINA_LABOR = 0.09
+const STAMINA_FIGHT = 0.07
+const STAMINA_REST_HOME = 0.085
+const STAMINA_REST_BED = 0.12
+const STAMINA_IDLE = 0.025
+const STAMINA_EXHAUSTED = 1.0
+const STAMINA_TIRED = 2.0
+
+const TOOL_WEAR_MAX = 28
 
 const SPEAR_WOOD_COST = 3
 const STONE_SPEAR_COST = 3
@@ -104,16 +304,13 @@ const CART_STONE_COST = 2
 const BOAT_FISH_WOOD_COST = 4
 const BOAT_CARGO_WOOD_COST = 6
 const BOAT_CARGO_STONE_COST = 3
-const PORT_WOOD_COST = 10
-const PORT_STONE_COST = 8
+const PORT_WOOD_COST = 6
+const PORT_STONE_COST = 4
 const WHEAT_PER_FLOUR = 2
 const BREAD_PER_FLOUR = 2
 const WOOL_PER_CLOTH = 3
 const CLOTH_PER_CLOTHING = 2
 const WOOL_YIELD_COOLDOWN = 260
-const MINE_STONE_YIELD = 2
-const MINE_IRON_YIELD = 2
-const MINE_GOLD_YIELD = 1
 const CHILD_STARTER_COINS = 2
 const WALL_HEALTH_PER_CELL = 3
 const NUGGETS_PER_COIN = 2
@@ -129,7 +326,11 @@ const IRON_TOOL_BONUS = 0.28
 const REPRO_HUNGER_THRESHOLD = 3
 const REPRO_FOOD_STOCK = 2
 const REPRO_COOLDOWN = 420
-const MAX_POPULATION = 250
+const MAX_POPULATION_DEFAULT = 250
+
+function maxPopulationCap(): number {
+  return getSimConfig().maxPopulation || MAX_POPULATION_DEFAULT
+}
 const WILD_SHEEP_BREED_COOLDOWN = 400
 const CAPTURED_SHEEP_BREED_COOLDOWN = 250
 const MAX_WILD_SHEEP = 100
@@ -145,12 +346,10 @@ const VILLAGE_JOIN_RADIUS = 140
 const PERIMETER_REFRESH = 1200
 const BRIDGE_DEMAND = 25
 
-const WOLF_HUNT_RADIUS = 14
-const WOLF_GIVE_UP_RADIUS = 17
+const WOLF_HUNT_RADIUS = 16
+const WOLF_GIVE_UP_RADIUS = 20
 const FLEE_RADIUS = 15
-const SEARCH_RADIUS = 70
-const DANGER_RADIUS = 90
-const VILLAGER_SPEED = 2
+const DANGER_RADIUS = 100
 const FLEE_SPEED = 3
 const WOLF_SPEED = 2
 const SHELTER_RADIUS = 3.5
@@ -161,7 +360,7 @@ const SPREAD_NEIGHBOURS_NEEDED = 3
 const SOCIAL_SIGHT = 22
 const MATERIAL_TRADE_RADIUS = 90
 /** Hunting for a wild sheep is a cheap linear scan over the (small) sheep list, not a terrain
- * search, so it can afford to look further than SEARCH_RADIUS — but not so far the herder
+ * search, so it can afford to look further than the short resource radar — but not so far the herder
  * abandons their pen and chest on a days-long chase; 260 caused exactly that. */
 const SHEEP_HUNT_RADIUS = 110
 const SOCIAL_STAGGER = 8
@@ -169,13 +368,25 @@ const THINK_COOLDOWN = 3
 const FISH_RADIUS = 18
 const OPEN_WATER_RADIUS = 22
 const MEMORY_SPOT_RADIUS = 12
-const MEMORY_SPOT_WEIGHT = 25
+const MEMORY_SPOT_WEIGHT = 22
+const PROFESSION_REVIEW = TICKS_PER_SEASON * 2
+/** Local perceive before blind search (non-omniscient radar). */
+const LOCAL_SENSE_R = 24
+const SHORT_BLIND_R = 38
 
-function berriesRipeIn(season: Season): boolean {
-  return season !== 'winter'
+function noteMilestone(state: SimState, key: keyof SimState['milestones'], text: string) {
+  if (state.milestones[key]) return
+  state.milestones[key] = true
+  logEvent(state, text)
 }
-function sowingSeason(season: Season): boolean {
-  return season === 'spring' || season === 'summer'
+
+function berriesRipeIn(season: Season, tempC = 12): boolean {
+  if (tempC < 3) return false
+  return season !== 'winter' || tempC > 9
+}
+function sowingSeason(season: Season, tempC = 12): boolean {
+  if (cropTempFactor(tempC) < 0.35) return false
+  return season === 'spring' || season === 'summer' || (season === 'autumn' && tempC > 14)
 }
 function growthRate(season: Season): number {
   if (season === 'spring') return 1
@@ -191,9 +402,8 @@ interface Needs {
   healTimer: number
 }
 
-function tickNeeds(entity: Needs, healthMax: number, season: Season, winterMultiplier = 1.25): boolean {
-  const decay = season === 'winter' ? HUNGER_DECAY * winterMultiplier : HUNGER_DECAY
-  entity.hunger = entity.hunger - decay
+function tickNeeds(entity: Needs, healthMax: number, decayPerTick: number): boolean {
+  entity.hunger = entity.hunger - decayPerTick
   if (entity.hunger < 0) entity.hunger = 0
   if (entity.hunger <= 0) {
     entity.starveTimer += 1
@@ -213,11 +423,189 @@ function tickNeeds(entity: Needs, healthMax: number, season: Season, winterMulti
   return false
 }
 
-/** Leather keeps the cold out better than plain cloth clothing; owning either helps in winter. */
-function warmthMultiplier(v: Villager): number {
-  if (countOf(v.inventory, 'leather') > 0) return 0.85
-  if (countOf(v.inventory, 'clothing') > 0) return 1.0
-  return 1.25
+function animalHungerDecay(season: Season): number {
+  return season === 'winter' ? HUNGER_DECAY * 1.25 : HUNGER_DECAY
+}
+
+/** Drain faim villageois : BMR Harris–Benedict soft × MET activité × thermique. */
+function villagerHungerDrain(state: SimState, v: Villager): number {
+  const massKg = bodyMassKgFromPhenotype(v.phenotype)
+  const heightM = heightMetersFromPhenotype(v.phenotype)
+  let activityMet = 1.05
+  if (v.task) {
+    const k = v.task.kind
+    if (
+      k === 'gatherWood' ||
+      k === 'gatherStone' ||
+      k === 'gatherIron' ||
+      k === 'mineTunnel' ||
+      k === 'mineGold' ||
+      k === 'clearLand' ||
+      k.startsWith('build') ||
+      k.startsWith('craft')
+    ) {
+      activityMet = 3.2
+    } else if (k === 'flee' || k === 'fight') {
+      activityMet = 4.5
+    } else if (k === 'rest' || k === 'eat') {
+      activityMet = 0.95
+    } else {
+      activityMet = 1.55
+    }
+  } else if (atHomeShelter(v)) {
+    activityMet = 1.0
+  }
+  return hungerDrainFromBmr({
+    massKg,
+    heightM,
+    ageTicks: v.age,
+    metabolism01: v.phenotype.metabolism,
+    activityMet,
+    warmthMul: warmthMultiplier(v, state),
+  })
+}
+
+function atHomeShelter(v: Villager): boolean {
+  return v.hasHome && distance(v.x, v.y, v.homeX, v.homeY) <= SHELTER_RADIUS
+}
+
+/** Clothing/leather + hearth vs local air temperature (°C) — clo × surface corporelle. */
+function warmthMultiplier(v: Villager, state: SimState): number {
+  const temp = sampleTempC(state.climate, v.x, v.y)
+  const cold = coldStress01(temp)
+  const heat = heatStress01(temp)
+  const rain = !atHomeShelter(v) ? sampleRain(state.climate, v.x, v.y) : 0
+  const massKg = bodyMassKgFromPhenotype(v.phenotype)
+  const heightM = heightMetersFromPhenotype(v.phenotype)
+  const gear = equipmentEffectsOf(v)
+  return thermalBurnMultiplier({
+    cold01: cold,
+    heat01: heat,
+    rain01: rain,
+    night: isNight(state.tick),
+    sheltered: atHomeShelter(v),
+    clo: clothingClo(countOf(v.inventory, 'leather') > 0, countOf(v.inventory, 'clothing') > 0, gear.clo),
+    massKg,
+    heightM,
+  })
+}
+
+function carryCapacity(v: Villager): number {
+  return (
+    carryCapacityOf({
+      hasCart: v.hasCart,
+      mounted: v.mounted,
+      horseBonus: HORSE_CARRY_BONUS,
+      bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
+      strength01: v.phenotype.strengthBias,
+    }) + equipmentEffectsOf(v).carryKg
+  )
+}
+
+function encumbranceRatio(v: Villager): number {
+  return carriedMass(v.inventory) / Math.max(1, carryCapacity(v))
+}
+
+/** True if adding `amount` of `type` would exceed mass capacity (slots may still have room). */
+function canLift(v: Villager, type: ResourceType, amount: number, state?: SimState): boolean {
+  if (amount <= 0) return true
+  if (freeSlotSpace(v.inventory, type) <= 0) return false
+  const next = carriedMass(v.inventory) + ITEM_MASS[type] * amount
+  let cap = carryCapacity(v)
+  // Embarqué : limite aussi par déplacement / cale du bateau.
+  if (state && v.embarked && v.boatId != null) {
+    const boat = boatOf(state, v)
+    if (boat) {
+      const hold = boatCargoCapacityKg(boat.kind)
+      cap = Math.min(cap, hold)
+    }
+  }
+  return next <= cap + 0.05
+}
+
+function spendStamina(v: Villager, amount: number) {
+  const next = v.stamina - amount
+  v.stamina = Number.isFinite(next) ? Math.max(0, next) : 0
+}
+
+function recoverStamina(v: Villager, amount: number) {
+  const next = v.stamina + amount
+  v.stamina = Number.isFinite(next) ? Math.min(STAMINA_MAX, next) : STAMINA_MAX
+}
+
+function wearTool(v: Villager, hits = 1) {
+  if (v.toolTier === 'none') return
+  v.toolWear += hits
+  if (v.toolWear < TOOL_WEAR_MAX) return
+  v.toolWear = 0
+  if (v.toolTier === 'iron') v.toolTier = 'stone'
+  else if (v.toolTier === 'stone') v.toolTier = 'wood'
+  else v.toolTier = 'none'
+}
+
+/** Chance to finish one labor tick (chop/mine/craft). Bare hands struggle; tools matter. */
+function laborSuccessChance(v: Villager, kind: TaskKind): number {
+  let base = 0.28
+  if (kind === 'gatherWood' || kind === 'clearLand') {
+    if (v.toolTier === 'none') base = 0.18
+    else if (v.toolTier === 'wood') base = 0.4
+    else if (v.toolTier === 'stone') base = 0.58
+    else base = 0.78
+    if (v.profession === 'lumberjack') base += 0.12
+  } else if (kind === 'gatherStone' || kind === 'gatherIron' || kind === 'mineTunnel' || kind === 'mineGold') {
+    if (v.toolTier === 'none') base = 0.08
+    else if (v.toolTier === 'wood') base = 0.22
+    else if (v.toolTier === 'stone') base = 0.48
+    else base = 0.72
+    if (v.profession === 'miner' || v.profession === 'mason') base += 0.1
+  } else if (kind === 'buildHouse' || kind === 'buildWall' || kind === 'buildBridge' || kind === 'buildPen' || kind === 'buildProject') {
+    base = v.toolTier === 'none' ? 0.45 : v.toolTier === 'wood' ? 0.62 : v.toolTier === 'stone' ? 0.75 : 0.88
+    if (v.profession === 'builder') base += 0.1
+  } else if (
+    kind === 'buildWorkbench' ||
+    kind === 'buildChest' ||
+    kind === 'buildBed' ||
+    kind === 'buildCart' ||
+    kind === 'buildBoat' ||
+    kind === 'craftSpear' ||
+    kind === 'craftStoneSpear' ||
+    kind === 'craftIronTool' ||
+    kind === 'makeCharcoal' ||
+    kind === 'craftGoods' ||
+    kind === 'craftGear'
+  ) {
+    base = 0.35 + (v.toolTier === 'none' ? 0 : v.toolTier === 'wood' ? 0.15 : v.toolTier === 'stone' ? 0.25 : 0.35)
+  }
+  if (v.stamina < STAMINA_EXHAUSTED) base *= 0.45
+  else if (v.stamina < STAMINA_TIRED) base *= 0.72
+  if (v.hunger < 1) base *= 0.75
+  base *= skillBonus(mindOf(v).skills, kind)
+  // Gants / outils équipés accélèrent le labeur (travail, pas combat).
+  const gearWork = equipmentEffectsOf(v).work
+  if (gearWork !== 0 && (kind.startsWith('gather') || kind.startsWith('craft') || kind.startsWith('build') || kind === 'mineTunnel' || kind === 'clearLand')) {
+    base *= 1 + gearWork
+  }
+  const apt = physicalAptitudeModifiers(v.phenotype)
+  if (kind === 'gatherWood' || kind === 'clearLand' || kind === 'mineTunnel' || kind.startsWith('build')) {
+    base *= 0.92 + apt.strength * 0.1
+  } else if (kind === 'fish' || kind === 'craftIronTool' || kind === 'craftSpear') {
+    base *= 0.92 + apt.agility * 0.1
+  } else {
+    base *= 0.94 + apt.endurance * 0.08
+  }
+  return clamp(base, 0.05, 0.95)
+}
+
+function laborWorkNeeded(kind: TaskKind): number {
+  if (kind === 'buildWorkbench' || kind === 'buildChest' || kind === 'buildBed') return 2.2
+  if (kind === 'buildCart' || kind === 'buildBoat') return 3.5
+  if (kind === 'craftSpear' || kind === 'craftStoneSpear') return 1.6
+  if (kind === 'craftIronTool' || kind === 'craftGear') return 2.8
+  if (kind === 'makeCharcoal') return 2.0
+  if (kind === 'craftGoods') return 2.2
+  if (kind === 'experiment') return 2.4
+  if (kind === 'buildPort' || kind === 'buildMill') return 4
+  return 1
 }
 
 function dropCarriedGold(state: SimState, v: Villager) {
@@ -230,73 +618,306 @@ function homeFootprint(v: Villager): HouseFootprint | null {
   return houseFootprint(v.house, v.homeX, v.homeY)
 }
 
-function canStep(grid: WorldGrid, x: number, y: number, allowWater: boolean): boolean {
-  if (allowWater && isWater(grid, x, y)) return true
-  return !isBlockingWall(grid, x, y)
+function moveToward(v: { x: number; y: number }, tx: number, ty: number, speed: number, grid: WorldGrid, wear = 0): boolean {
+  return nudgeToward(grid, v, tx, ty, speed, LAND_PROFILE, wear)
+}
+
+function boatOf(state: SimState, v: Villager) {
+  if (v.boatId === null) return undefined
+  const id = v.boatId
+  for (let i = 0; i < state.boats.length; i++) {
+    const b = state.boats[i]
+    if (b.id === id && b.alive) return b
+  }
+  return undefined
+}
+
+function dockBesideBoat(grid: WorldGrid, boat: { x: number; y: number }): { x: number; y: number } {
+  if (landWalkable(getTerrain(grid, boat.x, boat.y))) return { x: boat.x, y: boat.y }
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ] as const
+  for (const [dx, dy] of dirs) {
+    const x = boat.x + dx
+    const y = boat.y + dy
+    if (inBounds(grid, x, y) && landWalkable(getTerrain(grid, x, y))) return { x, y }
+  }
+  return { x: boat.x, y: boat.y }
 }
 
 /**
- * Like stepToward, but when the direct step and a worn neighbour make the same progress, the
- * worn one wins. Enough travellers doing this and independent trips stop each carving their own
- * faint line a tile or two apart — they converge onto one line, which is what actually lets a
- * path build up enough traffic to promote instead of staying dispersed grass forever. Only used
- * when wear > 0 (an actual travelling task), so sheep and wolves are unaffected.
+ * Board a boat that is either already afloat or docked on a port/shore tile.
+ * Docked boats must launch into adjacent water — otherwise villagers freeze beside the hull.
  */
-function wornStepToward(grid: WorldGrid, cx: number, cy: number, tx: number, ty: number, allowWater: boolean): { x: number; y: number } {
-  const base = stepToward(cx, cy, tx, ty)
-  const candidates: { x: number; y: number }[] = [base]
-  if (base.x !== cx && base.y !== cy) {
-    candidates.push({ x: base.x, y: cy })
-    candidates.push({ x: cx, y: base.y })
+function tryEmbarkBoat(
+  state: SimState,
+  v: Villager,
+  boat: { x: number; y: number; alive: boolean },
+): boolean {
+  if (v.embarked || !boat.alive) return false
+  if (chebyshev(v.x, v.y, boat.x, boat.y) > 1) return false
+  const grid = state.grid
+  const boatT = getTerrain(grid, boat.x, boat.y)
+  const fromX = v.x
+  const fromY = v.y
+  if (boatT === WATER) {
+    v.x = boat.x
+    v.y = boat.y
+    onVillagerStep(state, v, boat.x, boat.y, fromX, fromY)
+    return v.embarked
   }
-  let best = base
-  let bestTraffic = -1
-  for (const c of candidates) {
-    const nx = clamp(c.x, 0, grid.width - 1)
-    const ny = clamp(c.y, 0, grid.height - 1)
-    if (!canStep(grid, nx, ny, allowWater)) continue
-    const t = grid.traffic[ny * grid.width + nx]
-    if (t > bestTraffic) {
-      bestTraffic = t
-      best = { x: nx, y: ny }
-    }
-  }
-  return bestTraffic >= 0 ? best : base
+  const water = adjacentWater(grid, boat.x, boat.y)
+  if (!water) return false
+  boat.x = water.x
+  boat.y = water.y
+  v.x = water.x
+  v.y = water.y
+  onVillagerStep(state, v, water.x, water.y, fromX, fromY)
+  return v.embarked
 }
 
-function moveToward(v: { x: number; y: number }, tx: number, ty: number, speed: number, grid: WorldGrid, wear = 0, allowWater = false): boolean {
-  const startX = v.x
-  const startY = v.y
-  let cx = v.x
-  let cy = v.y
-  for (let s = 0; s < speed; s++) {
-    const next = wear > 0 ? wornStepToward(grid, cx, cy, tx, ty, allowWater) : stepToward(cx, cy, tx, ty)
-    const nx = clamp(next.x, 0, grid.width - 1)
-    const ny = clamp(next.y, 0, grid.height - 1)
-    if (canStep(grid, nx, ny, allowWater)) {
-      cx = nx
-      cy = ny
-      if (wear) markTraffic(grid, cx, cy, wear)
-      continue
-    }
-    if (wear && getTerrain(grid, nx, ny) === WATER) markCrossingDemand(grid, nx, ny)
-    const slideX = clamp(cx + Math.sign(tx - cx), 0, grid.width - 1)
-    if (slideX !== cx && canStep(grid, slideX, cy, allowWater)) {
-      cx = slideX
-      if (wear) markTraffic(grid, cx, cy, wear)
-      continue
-    }
-    const slideY = clamp(cy + Math.sign(ty - cy), 0, grid.height - 1)
-    if (slideY !== cy && canStep(grid, cx, slideY, allowWater)) {
-      cy = slideY
-      if (wear) markTraffic(grid, cx, cy, wear)
-      continue
-    }
-    break
+function pathProfileFor(state: SimState, v: Villager, task: { kind: TaskKind; targetId: number | null }): PathProfile {
+  const boat = boatOf(state, v)
+  const cargo = boat?.kind === 'cargo'
+  const onWater = getTerrain(state.grid, v.x, v.y) === WATER
+  let destHasPort = false
+  if (task.kind === 'tradeRun' && task.targetId !== null && task.targetId >= 0) {
+    const dest = state.villages.find((vg) => vg.id === task.targetId)
+    destHasPort = !!dest?.hasPort
   }
-  v.x = cx
-  v.y = cy
-  return cx !== startX || cy !== startY
+  const homeHasPort = v.villageId !== null && state.villages.some((vg) => vg.id === v.villageId && vg.hasPort)
+  const returning = task.kind === 'tradeRun' && task.targetId === -1
+  const useBoat =
+    !!boat &&
+    !v.hasCart &&
+    (v.embarked ||
+      onWater ||
+      task.kind === 'fish' ||
+      (task.kind === 'tradeRun' && !!cargo && (destHasPort || homeHasPort || returning)))
+  const mind = mindOf(v)
+  const fleeing = task.kind === 'flee' || task.kind === 'fight'
+  return {
+    amphibious: onWater || useBoat,
+    // Returning traders may beach without a home port rather than strand offshore.
+    cargo: !!cargo && !returning,
+    cart: v.hasCart,
+    boatX: boat ? boat.x : -1,
+    boatY: boat ? boat.y : -1,
+    // Path around remembered wolf tiles; courage / age modulate (budgets unchanged).
+    dangerSpots: fleeing && v.personality.courage > 0.75 && !isChild(v) ? undefined : dangerSpotsForPath(mind, v.memories, 6),
+    dangerCourage: v.personality.courage * (isChild(v) ? 0.55 : 1),
+  }
+}
+
+function travelSpeedFor(state: SimState, v: Villager): number {
+  const t = getTerrain(state.grid, v.x, v.y)
+  const boat = v.embarked ? boatOf(state, v) : undefined
+  let currentMul = 1
+  if (v.embarked && v.task) {
+    currentMul = boatCurrentSpeedMul(state.climate, v.x, v.y, v.task.targetX, v.task.targetY)
+  }
+  const air = sampleTempC(state.climate, v.x, v.y)
+  const mps = walkSpeedMps({
+    embarked: v.embarked,
+    boatKind: boat?.kind,
+    currentMul,
+    hasCart: v.hasCart,
+    mounted: v.mounted,
+    terrain: t,
+    loadRatio: encumbranceRatio(v),
+    stamina01: v.stamina / STAMINA_MAX,
+    night: isNight(state.tick),
+    cold01: coldStress01(air),
+    heat01: heatStress01(air),
+    storm: state.climate.weather === 'storm',
+    sheltered: atHomeShelter(v),
+    endurance01: v.phenotype.enduranceBias,
+  })
+  return tilesPerTickFromMps(mps)
+}
+
+function wearFor(v: Villager, kind: TaskKind): number {
+  if (kind === 'tradeRun') return v.hasCart || v.mounted ? 8 : 5
+  if (v.hasCart) return 6
+  if (v.mounted) return 4
+  return 2
+}
+
+function chopYield(v: Villager): number {
+  let n = 1
+  if (v.toolTier === 'wood') n = 1
+  else if (v.toolTier === 'stone') n = 2
+  else if (v.toolTier === 'iron') n = 3
+  else n = 1
+  if (v.toolTier === 'none') n = 1
+  if (v.profession === 'lumberjack') n += 1
+  // Cart helps haul, not fell trees faster.
+  return n
+}
+
+function woodCap(v: Villager): number {
+  const massLeft = Math.max(0, carryCapacity(v) - carriedMass(v.inventory))
+  const byMass = Math.floor(massLeft / ITEM_MASS.wood)
+  // Soft count caps — kg capacity already limits; keep haul batches playable.
+  const soft = v.hasCart && v.mounted ? 14 : v.hasCart || v.mounted ? 9 : 5
+  return Math.max(0, Math.min(soft, byMass))
+}
+
+/**
+ * Pull a resource off a tile into inventory. Leftover that does not fit stays on the tile —
+ * never converted away with amount 0 while discarding material.
+ */
+function takeFromTile(
+  grid: WorldGrid,
+  x: number,
+  y: number,
+  v: Villager,
+  resource: ResourceType,
+  yieldAmt: number,
+  keepTerrain: number,
+  emptyTerrain: number,
+  state?: SimState,
+): { gained: number; remaining: number } {
+  const i = y * grid.width + x
+  const available = grid.amount[i]
+  if (available <= 0) {
+    setTerrain(grid, x, y, emptyTerrain, 0)
+    return { gained: 0, remaining: 0 }
+  }
+  let potential = Math.min(yieldAmt, available)
+  // Encumbrance: only pick up what the body/cart can still carry — leftover stays on the tile.
+  while (potential > 0 && !canLift(v, resource, potential, state)) potential -= 1
+  if (potential <= 0) return { gained: 0, remaining: available }
+  const leftover = addToInventory(v.inventory, resource, potential)
+  const gained = potential - leftover
+  const remaining = available - gained
+  if (remaining <= 0) setTerrain(grid, x, y, emptyTerrain, 0)
+  else setTerrain(grid, x, y, keepTerrain, remaining)
+  return { gained, remaining }
+}
+
+function packTrailIfConnected(grid: WorldGrid, x: number, y: number) {
+  if (!isBuildableGround(grid, x, y)) return
+  let worn = 0
+  for (const [dx, dy] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ] as const) {
+    const nx = x + dx
+    const ny = y + dy
+    if (inBounds(grid, nx, ny) && isWornRoad(getTerrain(grid, nx, ny))) worn++
+  }
+  markTraffic(grid, x, y, 8)
+  if (worn >= 1) tryPave(grid, x, y, 0)
+}
+
+/** Move leftover wood off a plot/lane cell onto a neighbour so construction can proceed — never delete it. */
+function relocateWoodPile(grid: WorldGrid, fromX: number, fromY: number, amount: number): number {
+  if (amount <= 0) return 0
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ] as const
+  for (const [dx, dy] of dirs) {
+    const x = fromX + dx
+    const y = fromY + dy
+    if (!inBounds(grid, x, y)) continue
+    const t = getTerrain(grid, x, y)
+    if (t === TREE || t === BUSH || t === WATER || t === HOUSE || t === FENCE || t === WALL_WOOD || t === WALL_STONE) continue
+    if (t === GRASS || t === DIRT || t === SAND || t === TRAIL || isWoodPile(grid, x, y)) {
+      const cur = isWoodPile(grid, x, y) ? grid.amount[y * grid.width + x] : 0
+      setTerrain(grid, x, y, DIRT, cur + amount)
+      return 0
+    }
+  }
+  return amount
+}
+
+function firstPlotVegetation(grid: WorldGrid, fp: HouseFootprint): { x: number; y: number } | null {
+  for (const c of [...fp.walls, ...fp.interior, ...fp.open, fp.door]) {
+    if (needsClearing(grid, c.x, c.y)) return c
+  }
+  return null
+}
+
+function stampHouseFloors(grid: WorldGrid, fp: HouseFootprint) {
+  for (const c of fp.interior) {
+    if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, PLANK)
+  }
+  for (const c of fp.open) {
+    if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, DIRT)
+  }
+}
+
+function alreadyClearing(state: SimState, x: number, y: number, selfId: number): boolean {
+  for (const o of state.villagers) {
+    if (!o.alive || o.id === selfId || !o.task) continue
+    if (o.task.kind === 'clearLand' && o.task.targetX === x && o.task.targetY === y) return true
+  }
+  return false
+}
+
+function linkToHub(grid: WorldGrid, fromX: number, fromY: number, toX: number, toY: number, grade: 0 | 1 | 2) {
+  const start = nearestPaveable(grid, fromX, fromY, 3) ?? { x: fromX, y: fromY }
+  const end = nearestPaveable(grid, toX, toY, 3) ?? { x: toX, y: toY }
+  layCorridor(grid, start.x, start.y, end.x, end.y, grade === 0 ? 22 : 48, grade)
+}
+
+function onVillagerStep(state: SimState, v: Villager, nx: number, ny: number, fromX: number, fromY: number) {
+  const fromWater = getTerrain(state.grid, fromX, fromY) === WATER
+  const toT = getTerrain(state.grid, nx, ny)
+  const toWater = toT === WATER
+  const boat = boatOf(state, v)
+  if (fromWater && !toWater) {
+    v.embarked = false
+    if (boat) {
+      if (toT === PORT) {
+        boat.x = nx
+        boat.y = ny
+      } else {
+        boat.x = fromX
+        boat.y = fromY
+      }
+    }
+  } else if (!fromWater && toWater) {
+    v.embarked = true
+    noteMilestone(state, 'firstBoatVoyage', `${v.name} prend la mer`)
+    if (v.mounted) {
+      v.mounted = false
+      if (v.horseId !== null) {
+        const hid = v.horseId
+        for (let i = 0; i < state.horses.length; i++) {
+          const h = state.horses[i]
+          if (h.id === hid) {
+            h.riderId = null
+            break
+          }
+        }
+      }
+    }
+    if (boat) {
+      boat.x = nx
+      boat.y = ny
+    }
+  } else if (v.embarked && boat) {
+    boat.x = nx
+    boat.y = ny
+  }
 }
 
 function moveRandom(v: { x: number; y: number }, rng: () => number, grid: WorldGrid, range = 1) {
@@ -336,7 +957,21 @@ function nearestAlive<T extends { x: number; y: number; alive: boolean }>(
 }
 
 function setTask(v: Villager, kind: TaskKind, targetX: number, targetY: number, targetId: number | null = null, resource: ResourceType | null = null) {
-  v.task = { kind, targetX, targetY, targetId, resource, stuckTicks: 0, ageTicks: 0 }
+  v.task = {
+    kind,
+    targetX,
+    targetY,
+    targetId,
+    resource,
+    stuckTicks: 0,
+    ageTicks: 0,
+    work: 0,
+    path: null,
+    pathI: 0,
+    pathTx: targetX,
+    pathTy: targetY,
+    pathTick: -999,
+  }
 }
 
 function curiosityRadius(v: Villager, base: number): number {
@@ -371,9 +1006,30 @@ function findOrCreateVillage(state: SimState, x: number, y: number, joinRadius: 
     hasPort: false,
     portX: -1,
     portY: -1,
+    hasMine: false,
+    mineX: -1,
+    mineY: -1,
     tradeRuns: 0,
     surplus: {},
+    attractiveness: 0,
+    isRegionalHub: false,
+    prosperity: 35,
+    loyalty: 0.5,
+    security: 0.5,
+    recentDeaths: 0,
+    recentThefts: 0,
+    specialty: 'mixed',
+    lastProsperLogTick: -9999,
+    cohesion: 0.4,
+    peaceTicks: 0,
+    inequalityStress: 0,
+    lastRitualTick: 0,
+    development: 0.2,
+    standardOfLiving: 0.35,
+    laborBalance: 0,
+    solBand: null,
     style: freshStyle(rng),
+    knowledge: [],
   }
   state.villages.push(village)
   return village
@@ -432,32 +1088,61 @@ function assignProfession(state: SimState, v: Villager): Profession {
   }
   const countJob = (job: Profession) => jobCount[job] ?? 0
   const village = state.villages.find((vg) => vg.id === v.villageId)
+  const ox = village ? village.centerX : v.hasHome ? v.homeX : v.x
+  const oy = village ? village.centerY : v.hasHome ? v.homeY : v.y
 
-  const woodNear = resourceDensity(grid, v.x, v.y, 'tree', 14)
-  const stoneNear = resourceDensity(grid, v.x, v.y, 'stone', 14)
-  const berriesNear = resourceDensity(grid, v.x, v.y, 'bush', 14)
-  const ironNear = resourceDensity(grid, v.x, v.y, 'iron', 14)
+  const woodNear = resourceDensity(grid, ox, oy, 'tree', 14)
+  const stoneNear = resourceDensity(grid, ox, oy, 'stone', 14)
+  const berriesNear = resourceDensity(grid, ox, oy, 'bush', 14)
+  const ironNear = resourceDensity(grid, ox, oy, 'iron', 14)
+  const mountainNear = resourceDensity(grid, ox, oy, 'mountain', 28)
   let wolvesNear = 0
-  for (const w of state.wolves) if (w.alive && distance(w.x, w.y, v.x, v.y) < 40) wolvesNear++
-  const water = findNearbyShore(grid, v.x, v.y, 16) !== null
+  for (const w of state.wolves) if (w.alive && distance(w.x, w.y, ox, oy) < 40) wolvesNear++
+  const water = findNearbyShore(grid, ox, oy, 16) !== null
   let pensInVillage = 0
-  for (const o of state.villagers) if (o.alive && o.villageId === v.villageId && o.hasPen) pensInVillage++
+  let fieldsInVillage = 0
+  let wheatStock = 0
+  for (const o of state.villagers) {
+    if (!o.alive || o.villageId !== v.villageId) continue
+    if (o.hasPen) pensInVillage++
+    if (o.hasField || o.fieldX >= 0) fieldsInVillage++
+    wheatStock += countOf(o.inventory, 'wheat')
+    if (o.chestInventory) wheatStock += countOf(o.chestInventory, 'wheat')
+  }
+
+  // Comparative advantage: boost the locally dominant resource specializations.
+  const forestLead = woodNear >= Math.max(stoneNear, berriesNear, ironNear, mountainNear * 0.45) && woodNear > 6
+  const shoreLead = water && woodNear < 28
+  const mountainLead = mountainNear > 10 && mountainNear >= woodNear * 0.7
+  const ironLead = ironNear > 4 && ironNear >= Math.max(woodNear * 0.25, stoneNear * 0.4)
 
   const scores: Record<Profession, number> = {
     none: 0,
     forager: berriesNear * 1.4 + p.curiosity * 20 - countJob('forager') * 12,
-    farmer: (24 - Math.min(berriesNear, 24)) * 1.5 + p.ambition * 14 - countJob('farmer') * 8,
-    fisher: (water ? 34 : -50) + p.curiosity * 12 - countJob('fisher') * 10,
-    miller: (village?.hasMill ? 40 : 6) + p.ambition * 12 - countJob('miller') * 30,
-    lumberjack: woodNear * 0.7 + p.ambition * 18 - countJob('lumberjack') * 12,
-    mason: stoneNear * 1.1 + p.ambition * 15 - countJob('mason') * 12,
+    farmer: (24 - Math.min(berriesNear, 24)) * 1.5 + p.ambition * 14 + fieldsInVillage * 8 - countJob('farmer') * 8,
+    fisher: (water ? 48 : -50) + p.curiosity * 12 - countJob('fisher') * 10 + (shoreLead ? 28 : 0),
+    miller: (village?.hasMill ? 42 : wheatStock >= 2 || fieldsInVillage > 0 ? 12 : -30) + p.ambition * 12 - countJob('miller') * 30,
+    lumberjack: woodNear * 1.35 + p.ambition * 18 - countJob('lumberjack') * 12 + (forestLead ? 26 : 0),
+    mason: stoneNear * 1.25 + p.ambition * 15 - countJob('mason') * 12 + (mountainLead && !ironLead ? 10 : 0),
     guard: wolvesNear * 14 + p.courage * 34 - countJob('guard') * 14,
     builder: p.ambition * 26 + p.sociability * 16 - countJob('builder') * 12,
-    herder: (20 - Math.min(berriesNear, 20)) * 1.1 + p.generosity * 16 - countJob('herder') * 12,
-    trader: (1 - p.generosity) * 30 + p.sociability * 20 - countJob('trader') * 14,
+    herder: (pensInVillage > 0 ? 28 : 10) + (20 - Math.min(berriesNear, 20)) * 1.1 + p.generosity * 16 - countJob('herder') * 12,
+    trader:
+      (village?.hasPort ? 22 : 0) +
+      (village && village.attractiveness > 40 ? 12 : 0) +
+      (1 - p.generosity) * 30 +
+      p.sociability * 20 -
+      countJob('trader') * 14,
     weaver: (pensInVillage > 0 ? 35 : 8) + p.sociability * 18 + p.curiosity * 10 - countJob('weaver') * 12,
-    blacksmith: ironNear * 1.2 + p.ambition * 20 - countJob('blacksmith') * 14,
-    miner: resourceDensity(grid, v.x, v.y, 'mountain', 28) * 0.9 + p.ambition * 24 + p.courage * 12 - countJob('miner') * 16,
+    blacksmith: ironNear * 1.45 + p.ambition * 20 - countJob('blacksmith') * 14 + (ironLead ? 22 : 0),
+    miner: mountainNear * 1.25 + p.ambition * 24 + p.courage * 12 - countJob('miner') * 16 + (mountainLead ? 28 : 0),
+  }
+
+  // DF-like: skill + labor preference drift the profession over time (keeps resource scores).
+  const mind = mindOf(v)
+  for (const key of Object.keys(scores) as Profession[]) {
+    if (key === 'none') continue
+    scores[key] += professionSkillPrefScore(mind.skills, mind.preferences, key)
   }
 
   let best: Profession = 'forager'
@@ -473,36 +1158,76 @@ function assignProfession(state: SimState, v: Villager): Profession {
 }
 
 function jobBonus(v: Villager, kind: TaskKind): number {
+  let base = 1
   switch (v.profession) {
     case 'forager':
-      return kind === 'gatherFood' ? 1.7 : 1
+      base = kind === 'gatherFood' ? 2.0 : 1
+      break
     case 'farmer':
-      return kind === 'sowField' || kind === 'harvestWheat' ? 2 : 1
+      base = kind === 'sowField' || kind === 'harvestWheat' ? 2.35 : 1
+      break
     case 'fisher':
-      return kind === 'fish' || kind === 'buildBoat' ? 2.2 : 1
+      base = kind === 'fish' || kind === 'buildBoat' ? 2.5 : 1
+      break
     case 'miller':
-      return kind === 'buildMill' ? 2.4 : kind === 'grindFlour' || kind === 'bakeBread' ? 2.2 : 1
+      base = kind === 'buildMill' ? 2.6 : kind === 'grindFlour' || kind === 'bakeBread' ? 2.5 : 1
+      break
     case 'lumberjack':
-      return kind === 'gatherWood' ? 1.8 : 1
+      base = kind === 'gatherWood' || kind === 'clearLand' ? 2.15 : 1
+      break
     case 'mason':
-      return kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' ? 1.7 : 1
+      base = kind === 'gatherStone' || kind === 'buildWall' || kind === 'mineTunnel' ? 2.0 : 1
+      break
     case 'guard':
-      return kind === 'craftSpear' || kind === 'craftStoneSpear' || kind === 'buildWall' ? 1.6 : 1
+      base =
+        kind === 'craftSpear' || kind === 'craftStoneSpear' || kind === 'buildWall' || kind === 'defend' || kind === 'fight'
+          ? 2.0
+          : 1
+      break
     case 'builder':
-      return kind === 'buildHouse' || kind === 'buildWall' || kind === 'buildBridge' || kind === 'buildMill' || kind === 'buildPort' ? 1.8 : 1
+      base =
+        kind === 'buildHouse' ||
+        kind === 'buildProject' ||
+        kind === 'buildWall' ||
+        kind === 'buildBridge' ||
+        kind === 'buildMill' ||
+        kind === 'buildPort' ||
+        kind === 'clearLand'
+          ? 2.1
+          : 1
+      break
     case 'herder':
-      return kind === 'captureSheep' || kind === 'feedPen' || kind === 'buildPen' || kind === 'tameHorse' || kind === 'tanHide' ? 1.9 : 1
+      base =
+        kind === 'captureSheep' || kind === 'feedPen' || kind === 'buildPen' || kind === 'tameHorse' || kind === 'tanHide'
+          ? 2.2
+          : 1
+      break
     case 'trader':
-      return kind === 'mineGold' || kind === 'mintCoins' || kind === 'buildBridge' || kind === 'tameHorse' || kind === 'tradeRun' || kind === 'buildCart' || kind === 'buildBoat'
-        ? 1.8
-        : 1
+      base =
+        kind === 'mineGold' ||
+        kind === 'mintCoins' ||
+        kind === 'buildBridge' ||
+        kind === 'tameHorse' ||
+        kind === 'tradeRun' ||
+        kind === 'buildCart' ||
+        kind === 'buildBoat'
+          ? 2.25
+          : 1
+      break
     case 'weaver':
-      return kind === 'weaveCloth' || kind === 'sewClothing' ? 2.2 : 1
+      base = kind === 'weaveCloth' || kind === 'sewClothing' || kind === 'craftGear' ? 2.5 : 1
+      break
     case 'blacksmith':
-      return kind === 'gatherIron' || kind === 'craftIronTool' || kind === 'mineTunnel' ? 2.2 : 1
+      base = kind === 'gatherIron' || kind === 'craftIronTool' || kind === 'mineTunnel' || kind === 'makeCharcoal' || kind === 'craftGear' ? 2.5 : 1
+      break
+    case 'miner':
+      base = kind === 'mineTunnel' || kind === 'gatherIron' || kind === 'gatherStone' ? 2.6 : 1
+      break
     default:
-      return 1
+      base = 1
   }
+  // Overlay: pratique émergente pèse autant que le soft métier legacy.
+  return base * (0.55 + 0.45 * livelihoodTaskBonus(v, kind))
 }
 
 function ambitionBonus(v: Villager, kind: TaskKind): number {
@@ -514,7 +1239,7 @@ function ambitionBonus(v: Villager, kind: TaskKind): number {
     case 'protector':
       return kind === 'buildWall' || kind === 'craftStoneSpear' || kind === 'defend' || kind === 'fight' ? 1.6 : 1
     case 'builder':
-      return kind.startsWith('build') ? 1.5 : 1
+      return kind.startsWith('build') || kind === 'clearLand' ? 1.5 : 1
     case 'explorer':
       return kind === 'idle' ? 2.4 : kind === 'tameHorse' || kind === 'tradeRun' ? 2 : 1
     case 'revenge':
@@ -532,7 +1257,8 @@ interface Option {
   y: number
   id: number | null
   resource: ResourceType | null
-  score: number
+  /** Situational base before factor-matrix / softmax. */
+  baseScore: number
 }
 
 function reach(v: Villager, tx: number, ty: number): number {
@@ -542,10 +1268,33 @@ function reach(v: Villager, tx: number, ty: number): number {
 }
 
 function bestEdible(v: Villager): ResourceType | null {
-  if (countOf(v.inventory, 'bread') > 0) return 'bread'
-  if (countOf(v.inventory, 'food') > 0) return 'food'
-  if (countOf(v.inventory, 'wheat') > 0) return 'wheat'
-  return null
+  return bestEdibleIn(v.inventory)
+}
+
+function grantGatherExtras(v: Villager, source: 'bush' | 'tree' | 'stone' | 'fish' | 'sheep' | 'hunt', rng: () => number, state?: SimState) {
+  for (const drop of rollGatherExtras(source, rng, { skipPrimary: true })) {
+    if (state && !canLift(v, drop.resource, drop.amount, state)) continue
+    addToInventory(v.inventory, drop.resource, drop.amount)
+  }
+}
+
+function digSideOre(
+  grid: WorldGrid,
+  i: number,
+  v: Villager,
+  state: SimState,
+  deposit: 'copperDeposit' | 'tinDeposit' | 'leadDeposit' | 'silverDeposit' | 'coalDeposit',
+  resource: ResourceType,
+  want: number,
+) {
+  if (want <= 0) return
+  const available = grid[deposit][i]
+  if (available <= 0) return
+  const take = Math.min(want, available)
+  if (!canLift(v, resource, take, state)) return
+  const left = addToInventory(v.inventory, resource, take)
+  const gained = take - left
+  grid[deposit][i] = Math.max(0, available - gained)
 }
 
 function planHouse(state: SimState, v: Villager, village: Village | undefined, rng: () => number) {
@@ -593,150 +1342,55 @@ function planHouse(state: SimState, v: Villager, village: Village | undefined, r
 
 
 /**
- * Emergent long-horizon mind. This deliberately lives outside Villager so the existing save/data
- * shape stays compatible. It is a utility/needs layer, not an LLM: the same simulation rules can
- * produce very different lives because every person has different history, relationships and
- * pressures.
+ * Long-horizon cognition lives in `./cognition` (Map by villager id, same pattern as politics).
+ * Behaviors keep task execution; cognition biases scores, goals, memory and emotions.
  */
-type MindGoal = 'survive' | 'home' | 'wealth' | 'family' | 'status' | 'community' | 'explore' | 'security' | 'craft' | 'revenge'
-interface EmergentMind {
-  goal: MindGoal
-  goalX: number
-  goalY: number
-  goalId: number | null
-  commitment: number
-  stress: number
-  loneliness: number
-  security: number
-  status: number
-  wealth: number
-  family: number
-  curiosity: number
-  lastKind: TaskKind | null
-  lastChange: number
-  failures: number
-  successes: number
-}
-const MINDS = new Map<number, EmergentMind>()
-
-function mindOf(v: Villager): EmergentMind {
-  let m = MINDS.get(v.id)
-  if (!m) {
-    m = { goal: 'survive', goalX: v.x, goalY: v.y, goalId: null, commitment: 0, stress: 0, loneliness: 0, security: 0, status: 0, wealth: 0, family: 0, curiosity: 0, lastKind: null, lastChange: 0, failures: 0, successes: 0 }
-    MINDS.set(v.id, m)
-  }
-  return m
-}
-
-function updateMind(state: SimState, v: Villager) {
-  const m = mindOf(v)
-  const p = v.personality
-  const food = edibleValue(v.inventory)
-  const coins = countOf(v.inventory, 'coin')
-  let nearbyPeople = 0, friends = 0, enemies = 0
-  for (const o of state.villagers) {
-    if (!o.alive || o.id === v.id) continue
-    const d = distance(v.x, v.y, o.x, o.y)
-    if (d <= SOCIAL_SIGHT) {
-      nearbyPeople++
-      const r = v.relations.get(o.id)
-      const affinity = r?.affinity ?? 0
-      if (affinity > 0.45) friends++
-      if (affinity < -0.45) enemies++
-    }
-  }
-  m.stress = clamp(m.stress + (v.hunger < 1 ? 0.035 : -0.012) + enemies * 0.002 - p.courage * 0.004, 0, 1)
-  m.loneliness = clamp(m.loneliness + (nearbyPeople === 0 ? 0.018 : -0.012) - friends * 0.004, 0, 1)
-  m.security = clamp(m.security + (state.villages.find(g => g.id === v.villageId)?.wallTier === 'none' ? 0.006 : -0.003) + enemies * 0.004, 0, 1)
-  m.status = clamp(m.status + (v.ambition === 'leader' || v.ambition === 'builder' ? 0.004 : -0.001), 0, 1)
-  m.wealth = clamp(m.wealth + ((coins < 3 ? 0.015 : -0.006) + p.ambition * 0.004), 0, 1)
-  m.family = clamp(m.family + (v.parentIds.length ? -0.001 : p.generosity * 0.004), 0, 1)
-  m.curiosity = clamp(m.curiosity + p.curiosity * 0.006 - 0.002, 0, 1)
-
-  const urgent: [MindGoal, number][] = [
-    ['survive', (1 - v.hunger / HUNGER_MAX) * 3 + (v.health < VILLAGER_HEALTH_MAX * 0.55 ? 2 : 0) + m.stress],
-    ['home', (!v.hasHome ? 2.8 : 0) + (state.season === 'winter' && !v.hasHome ? 1.8 : 0)],
-    ['security', m.security * 1.7],
-    ['family', m.family + (v.hasHome ? 0.4 : 0)],
-    ['wealth', m.wealth + (v.ambition === 'wealth' ? 0.9 : 0)],
-    ['community', m.loneliness + (v.ambition === 'leader' || v.ambition === 'protector' ? 0.8 : 0)],
-    ['explore', m.curiosity + (v.ambition === 'explorer' ? 1 : 0)],
-    ['craft', (v.hasWorkbench ? 0.3 : 0) + p.ambition * 0.7],
-    ['status', m.status],
-    ['revenge', v.grudgeTarget !== null ? 2.4 : 0],
-  ]
-  urgent.sort((a,b)=>b[1]-a[1])
-  const desired = urgent[0][0]
-  // Goals have inertia. A slightly better need does not erase months of plans instantly.
-  if (m.goal !== desired) {
-    const pressure = urgent[0][1] - (urgent.find(x => x[0] === m.goal)?.[1] ?? 0)
-    if (m.commitment <= 0 || pressure > 1.15 || m.failures >= 4) {
-      m.goal = desired; m.goalX = v.x; m.goalY = v.y; m.goalId = v.grudgeTarget; m.commitment = 18 + p.ambition * 35; m.failures = 0; m.lastChange = state.tick
-    }
-  } else m.commitment = Math.max(0, m.commitment - 1)
-
-  // Keep the target attached to a known relationship when revenge is active.
-  if (m.goal === 'revenge' && v.grudgeTarget !== null) m.goalId = v.grudgeTarget
-  void food
-}
-
-function emergentTaskModifier(state: SimState, v: Villager, kind: TaskKind, x: number, y: number, id: number | null): number {
-  const m = mindOf(v)
-  const p = v.personality
-  let mult = 1
-  const d = distance(v.x, v.y, x, y)
-  const goal: Record<MindGoal, Partial<Record<TaskKind, number>>> = {
-    survive: { eat: 3.2, gatherFood: 2.4, fish: 1.8, harvestWheat: 1.7, takeFromChest: 2.2, rest: 1.4 },
-    home: { buildHouse: 3.0, gatherWood: 1.5, buildBed: 1.4, buildChest: 1.2 },
-    wealth: { tradeRun: 2.2, mineGold: 2.0, mintCoins: 1.8, buyMaterial: 1.4, buildCart: 1.4, buildPort: 1.3 },
-    family: { buildHouse: 1.8, buildBed: 2.0, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4 },
-    status: { buildHouse: 1.5, buildWall: 1.5, buildPort: 1.35, buildMill: 1.3, craftIronTool: 1.5 },
-    community: { socialise: 2.0, giveFood: 1.8, defend: 1.8, buildWall: 1.6, buildMill: 1.35, buildBridge: 1.3 },
-    explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2 },
-    security: { flee: 2.5, fight: 1.8, defend: 2.1, buildWall: 2.0, craftSpear: 1.5, craftStoneSpear: 1.6, craftIronTool: 1.7, rest: 1.1 },
-    craft: { buildWorkbench: 2, craftSpear: 1.5, craftStoneSpear: 1.6, craftIronTool: 1.8, weaveCloth: 1.7, sewClothing: 1.5, tanHide: 1.5, grindFlour: 1.4, bakeBread: 1.4 },
-    revenge: { confront: 3.0, steal: 1.3, fight: 1.4, socialise: 0.75 },
-  }
-  const g = goal[m.goal][kind]
-  if (g) mult *= g
-  if (kind === 'socialise') mult *= 1 + m.loneliness * 0.8 + p.sociability * 0.4
-  if (kind === 'giveFood') mult *= 1 + p.generosity * 0.7
-  if (kind === 'steal') mult *= 1 + Math.max(0, m.wealth - 0.35) * (1 - p.generosity) * 0.9
-  if (kind === 'confront' && id === m.goalId) mult *= 1.8
-  if (d > SEARCH_RADIUS * 0.75) mult *= 0.85 - p.courage * 0.08
-  // Prefer known productive places; danger memories suppress destinations.
-  for (const mem of v.memories) {
-    if (distance(x, y, mem.x, mem.y) > MEMORY_SPOT_RADIUS) continue
-    if (mem.kind === 'dangerSpot') mult *= 1 - Math.min(0.75, mem.weight * 0.12 * (1 - p.courage))
-    if (mem.kind === 'goodSpot') mult *= 1 + Math.min(0.45, mem.weight * 0.04 * (0.5 + p.curiosity))
-  }
-  // Traffic makes infrastructure, trade and crossings more attractive as the world develops.
-  const i = y * state.grid.width + x
-  const traffic = state.grid.traffic[i] ?? 0
-  if (kind === 'buildBridge' || kind === 'buildPort' || kind === 'tradeRun') mult *= 1 + Math.min(1.2, traffic * 0.04)
-  return mult
-}
 
 function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const grid = state.grid
   const season = state.season
   const famine = state.famine
   const p = v.personality
-  const searchR = curiosityRadius(v, SEARCH_RADIUS)
+  const night = isNight(state.tick)
+  const tired = v.stamina < STAMINA_TIRED
+  const exhausted = v.stamina < STAMINA_EXHAUSTED
+  const overloaded = encumbranceRatio(v) > 0.92 || inventoryNearlyFull(v.inventory)
+  const mind = mindOf(v)
+  const airT = sampleTempC(state.climate, v.x, v.y)
+  const cold = coldStress01(airT)
+  const heat = heatStress01(airT)
+  let searchR = curiosityRadius(v, SHORT_BLIND_R)
+  if (night) searchR = Math.round(searchR * 0.55)
+  if (exhausted) searchR = Math.round(searchR * 0.65)
+  const localR = Math.min(LOCAL_SENSE_R, searchR)
   const options: Option[] = []
-  const memoryBias = (x: number, y: number): number => {
-    let bias = 0
-    for (const m of v.memories) {
-      if (m.kind !== 'goodSpot' && m.kind !== 'dangerSpot') continue
-      const d = distance(x, y, m.x, m.y)
-      if (d > MEMORY_SPOT_RADIUS) continue
-      bias += m.emotion * m.weight * (1 - d / MEMORY_SPOT_RADIUS) * MEMORY_SPOT_WEIGHT
-    }
-    return bias
-  }
+  const memoryBias = (x: number, y: number): number =>
+    spotMemoryBias(mind, v.memories, x, y, MEMORY_SPOT_RADIUS, MEMORY_SPOT_WEIGHT)
   const add = (kind: TaskKind, x: number, y: number, score: number, id: number | null = null, resource: ResourceType | null = null) => {
-    const final = score * jobBonus(v, kind) * ambitionBonus(v, kind) * emergentTaskModifier(state, v, kind, x, y, id) + memoryBias(x, y)
-    if (final > 0) options.push({ kind, x, y, id, resource, score: final })
+    let s = score
+    // Exhaustion: abandon hard outdoor labor; prioritize shelter/food/rest.
+    if (exhausted && (kind === 'gatherWood' || kind === 'gatherStone' || kind === 'gatherIron' || kind === 'mineTunnel' || kind === 'mineGold' || kind === 'clearLand' || kind === 'buildWall' || kind === 'tradeRun')) {
+      s *= 0.25
+    } else if (tired && (kind === 'mineTunnel' || kind === 'mineGold' || kind === 'buildPort' || kind === 'buildMill')) {
+      s *= 0.55
+    }
+    if (night && (kind === 'idle' || kind === 'tradeRun' || kind === 'mineTunnel' || kind === 'mineGold')) s *= 0.4
+    if (overloaded && (kind === 'gatherWood' || kind === 'gatherStone' || kind === 'gatherIron' || kind === 'gatherFood' || kind === 'mineTunnel' || kind === 'mineGold' || kind === 'harvestWheat')) {
+      s *= 0.15
+    }
+    // Depleted neighbourhoods are less attractive (Sugarscape-style pressure).
+    if (kind === 'gatherWood' || kind === 'gatherStone') {
+      s *= 0.55 + gatherPressurePenalty(grid, x, y) * 0.45
+    }
+    // Base only — métier/ambition/cognition/politique enter via factor matrix + softmax.
+    const base = s + memoryBias(x, y)
+    if (base > 0) options.push({ kind, x, y, id, resource, baseScore: base })
+  }
+  const considerLane = (fromX: number, fromY: number, toX: number, toY: number, score: number) => {
+    if (fromX < 0 || fromY < 0 || toX < 0 || toY < 0) return
+    const b = findLaneBlocker(grid, fromX, fromY, toX, toY)
+    if (!b || alreadyClearing(state, b.x, b.y, v.id)) return
+    add('clearLand', b.x, b.y, score * reach(v, b.x, b.y))
   }
 
   const wood = countOf(v.inventory, 'wood')
@@ -751,41 +1405,118 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const larder = edibleValue(v.inventory)
   const starving = (1 - v.hunger / HUNGER_MAX) * (1 - v.hunger / HUNGER_MAX)
   const village = state.villages.find((vg) => vg.id === v.villageId)
-  const stockTarget = season === 'autumn' ? WINTER_STOCK_TARGET : season === 'winter' ? WINTER_STOCK_TARGET * 0.6 : FOOD_TARGET
+  const stockTarget =
+    season === 'autumn'
+      ? WINTER_STOCK_TARGET + 4
+      : season === 'winter'
+        ? WINTER_STOCK_TARGET * 0.85
+        : FOOD_TARGET
+  // Village granary pressure: low food surplus → stash harder before winter.
+  const villageFoodGap =
+    village && season !== 'summer'
+      ? Math.max(0, -(village.surplus.food ?? 0) - (village.surplus.bread ?? 0) - (village.surplus.wheat ?? 0) * 0.4)
+      : 0
+  const granaryPush = villageFoodGap * 28 + (season === 'autumn' ? 22 : season === 'winter' ? 18 : 0)
 
-  const bush = berriesRipeIn(season) || famine ? nearestResource(grid, v.x, v.y, 'bush', searchR) : null
-  const tree = nearestResource(grid, v.x, v.y, 'tree', searchR)
-  const rock = v.hasWorkbench ? nearestResource(grid, v.x, v.y, 'stone', searchR) : null
-  const ironOre = v.hasWorkbench ? nearestResource(grid, v.x, v.y, 'iron', searchR) : null
-  const mountainOre = v.hasWorkbench && v.toolTier !== 'none' && v.toolTier !== 'wood' ? nearestResource(grid, v.x, v.y, 'mountain', searchR) : null
-  const goldTile = nearestResource(grid, v.x, v.y, 'gold', Math.round(searchR * 0.6))
+  // Non-omniscient radar: local perceive → semantic/episodic spots → short blind search.
+  const senseOpts = { localR, shortR: searchR, allowBlind: true as const }
+  const bushSense =
+    berriesRipeIn(season, airT) || famine ? senseResource(grid, v, mind, 'bush', senseOpts) : null
+  const treeSense = senseResource(grid, v, mind, 'tree', senseOpts)
+  let bush = bushSense ? { x: bushSense.x, y: bushSense.y } : null
+  let tree = treeSense ? { x: treeSense.x, y: treeSense.y } : null
+  // Mild score penalty when relying on blind search (unknown territory).
+  const bushKnown = bushSense?.source !== 'search'
+  const woodKnowMul = treeSense?.source === 'search' ? 0.78 : 1.12
+  const rock = v.hasWorkbench
+    ? (() => {
+        const s = senseResource(grid, v, mind, 'stone', senseOpts)
+        return s ? { x: s.x, y: s.y } : null
+      })()
+    : null
+  const ironOre = v.hasWorkbench
+    ? (() => {
+        const s = senseResource(grid, v, mind, 'iron', senseOpts)
+        return s ? { x: s.x, y: s.y } : null
+      })()
+    : null
+  const mountainOre =
+    v.hasWorkbench && v.toolTier !== 'none' && v.toolTier !== 'wood'
+      ? (() => {
+          const preferDeeper = v.profession === 'miner' || v.toolTier === 'iron'
+          const anchor =
+            village?.hasMine
+              ? { x: village.mineX, y: village.mineY }
+              : mind.semantic.find((s) => s.kind === 'mine_spot' && s.confidence > 0.3)
+                ? (() => {
+                    const s = mind.semantic.find((f) => f.kind === 'mine_spot')!
+                    return { x: s.x, y: s.y }
+                  })()
+                : null
+          const face = pickDigTarget(grid, v.x, v.y, {
+            maxRadius: Math.round(searchR * 0.9),
+            preferDeeper,
+            anchorX: anchor?.x,
+            anchorY: anchor?.y,
+            anchorBias: village?.hasMine ? 28 : 14,
+          })
+          if (face) return face
+          const s = senseResource(grid, v, mind, 'mountain', { ...senseOpts, shortR: Math.round(searchR * 0.85) })
+          if (!s) return null
+          // Sense may return buried rock — snap to a diggable face nearby.
+          return pickDigTarget(grid, s.x, s.y, { maxRadius: 8, preferDeeper, anchorX: s.x, anchorY: s.y }) ?? null
+        })()
+      : null
+  const goldSense = senseResource(grid, v, mind, 'gold', { ...senseOpts, shortR: Math.round(searchR * 0.7) })
+  const goldTile = goldSense ? { x: goldSense.x, y: goldSense.y } : null
 
-  if (bestEdible(v)) add('eat', v.x, v.y, starving * 260)
+  if (bestEdible(v)) {
+    // Manger dès que la faim devient réelle — pas seulement à jeun (sinon craft/build gagne).
+    const eatUrge =
+      v.hunger < 2.6 ? Math.max(starving * 280, 95 + (2.6 - v.hunger) * 85) : starving * 200
+    add('eat', v.x, v.y, eatUrge)
+  }
   if (v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0) {
     add('takeFromChest', v.chestX, v.chestY, starving * 200 * reach(v, v.chestX, v.chestY))
+  }
+  if (overloaded && v.hasChest && v.chestInventory) {
+    add('storeChest', v.chestX, v.chestY, 160 * reach(v, v.chestX, v.chestY))
   }
 
   if (bush) {
     const seasonMul = berriesRipeIn(season) ? 1 : 0.35
     const pantryNeed = Math.max(0, (stockTarget - larder) / stockTarget)
-    add('gatherFood', bush.x, bush.y, (starving * 220 + pantryNeed * 90) * seasonMul * reach(v, bush.x, bush.y))
+    const knowMul = bushKnown ? 1.15 : 0.72
+    const ecoMul = gatherPressurePenalty(grid, bush.x, bush.y)
+    add(
+      'gatherFood',
+      bush.x,
+      bush.y,
+      (starving * 220 + pantryNeed * 90) * seasonMul * knowMul * ecoMul * reach(v, bush.x, bush.y),
+    )
+  } else if ((berriesRipeIn(season) || famine) && (starving > 0.2 || larder < stockTarget)) {
+    // Short exploratory idle toward curiosity when food is unknown locally.
+    const sx = clamp(v.x + Math.floor((rng() - 0.5) * searchR), 0, grid.width - 1)
+    const sy = clamp(v.y + Math.floor((rng() - 0.5) * searchR), 0, grid.height - 1)
+    add('idle', sx, sy, 8 + starving * 40 + p.curiosity * 20)
   }
 
-  const hasFishBoat = v.boatId !== null && state.boats.some((b) => b.id === v.boatId && b.alive)
+  const fishBoat = boatOf(state, v)
   if (v.profession === 'fisher' || larder < stockTarget || season === 'winter') {
-    const spot = hasFishBoat
-      ? findNearbyTerrain(grid, v.x, v.y, OPEN_WATER_RADIUS, WATER)
+    const spot = fishBoat
+      ? findOpenWater(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, 2) ??
+        findNearbyTerrain(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, WATER)
       : findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
     if (spot) {
       const winterBonus = season === 'winter' ? 70 : 0
-      const boatBonus = hasFishBoat ? 30 : 0
+      const boatBonus = fishBoat ? 30 : 0
       add('fish', spot.x, spot.y, (30 + starving * 150 + winterBonus + boatBonus) * reach(v, spot.x, spot.y))
     }
   }
 
   if (v.fieldX !== -1) {
     const ripe = findNearest(grid, v.fieldX, v.fieldY, FIELD_RADIUS + 1, (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE)
-    if (ripe) add('harvestWheat', ripe.x, ripe.y, (55 + starving * 140 + (season === 'autumn' ? 60 : 0)) * reach(v, ripe.x, ripe.y))
+    if (ripe) add('harvestWheat', ripe.x, ripe.y, (55 + starving * 140 + (season === 'autumn' ? 95 : 0) + (famine ? 50 : 0)) * reach(v, ripe.x, ripe.y))
     else if (famine) {
       const green = findNearest(grid, v.fieldX, v.fieldY, FIELD_RADIUS + 1, (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_SPROUT)
       if (green) add('harvestWheat', green.x, green.y, starving * 120 * reach(v, green.x, green.y))
@@ -822,29 +1553,40 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   if (v.hasHome && v.homeOwnerId === v.id && v.horseId !== null && !v.hasCart) {
-    const cartUrge = 20 + p.ambition * 25 + (v.profession === 'trader' ? 20 : 0)
+    const cartUrge = 28 + p.ambition * 28 + (v.profession === 'trader' ? 35 : 0)
     if (wood >= CART_WOOD_COST && stone >= CART_STONE_COST) add('buildCart', v.homeX, v.homeY, cartUrge * reach(v, v.homeX, v.homeY))
-    else if (tree) add('gatherWood', tree.x, tree.y, cartUrge * 0.6 * reach(v, tree.x, tree.y))
+    else if (tree) add('gatherWood', tree.x, tree.y, cartUrge * 0.6 * woodKnowMul * reach(v, tree.x, tree.y))
   }
 
-  if (v.hasHome && v.homeOwnerId === v.id && v.boatId === null && (v.profession === 'fisher' || v.profession === 'trader')) {
-    const dock = findMillSite(grid, v.homeX, v.homeY, 14)
+  if (v.hasHome && v.homeOwnerId === v.id && v.boatId === null && (v.profession === 'fisher' || v.profession === 'trader' || p.curiosity > 0.55)) {
+    const dock = findMillSite(grid, v.homeX, v.homeY, 18)
     if (dock) {
       const cargo = v.profession === 'trader'
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
       const needStone = cargo ? BOAT_CARGO_STONE_COST : 0
-      const boatUrge = 22 + p.ambition * 20 + p.curiosity * 12
+      const boatUrge = 55 + p.ambition * 24 + p.curiosity * 20 + (v.profession === 'fisher' ? 35 : 0) + (v.profession === 'trader' ? 30 : 0)
       if (wood >= needWood && stone >= needStone) add('buildBoat', dock.x, dock.y, boatUrge * reach(v, dock.x, dock.y))
-      else if (tree) add('gatherWood', tree.x, tree.y, boatUrge * 0.6 * reach(v, tree.x, tree.y))
+      else if (tree) add('gatherWood', tree.x, tree.y, boatUrge * 0.7 * woodKnowMul * reach(v, tree.x, tree.y))
     }
   }
 
-  if (village && v.hasHome && v.tradeCooldown <= 0 && (v.profession === 'trader' || v.ambition === 'wealth')) {
-    const deal = findTradeOpportunity(state, village, v.x, v.y)
+  if (village && v.hasHome && v.tradeCooldown <= 0 && (v.profession === 'trader' || v.ambition === 'wealth' || (village.prosperity ?? 0) > 55)) {
+    const deal = findTradeOpportunity(state, village, v.x, v.y, v)
     if (deal) {
-      const travelPenalty = deal.distance * 0.1
-      const cargoBonus = v.hasCart ? 12 : 0
-      add('tradeRun', deal.target.centerX, deal.target.centerY, 24 + deal.gain * 9 + p.sociability * 15 + p.ambition * 8 + cargoBonus - travelPenalty, deal.target.id)
+      const travelPenalty = deal.distance * 0.08
+      const cargoBonus = (v.hasCart ? 36 : 0) + (v.boatId !== null ? 24 : 0) + (v.mounted ? 8 : 0)
+      const surplusPush = Math.min(48, deal.gain * 16)
+      const hubBonus = deal.target.isRegionalHub ? 14 : Math.min(18, deal.target.attractiveness * 0.09)
+      const prosperPush = Math.min(20, (village.prosperity ?? 35) * 0.12)
+      const destX = deal.target.hasPort ? deal.target.portX : deal.target.centerX
+      const destY = deal.target.hasPort ? deal.target.portY : deal.target.centerY
+      add(
+        'tradeRun',
+        destX,
+        destY,
+        32 + surplusPush + p.sociability * 15 + p.ambition * 8 + cargoBonus + hubBonus + prosperPush - travelPenalty,
+        deal.target.id,
+      )
     }
   }
 
@@ -857,36 +1599,126 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       }
     }
     if (village.portX !== -1) {
-      const portUrge = 30 + p.ambition * 25 + p.sociability * 15
-      if (wood >= PORT_WOOD_COST && stone >= PORT_STONE_COST) add('buildPort', village.portX, village.portY, portUrge * reach(v, village.portX, village.portY))
+      const portUrge = 70 + p.ambition * 30 + p.sociability * 18 + (v.profession === 'builder' || v.profession === 'trader' ? 25 : 0)
+      if (needsClearing(grid, village.portX, village.portY)) add('clearLand', village.portX, village.portY, portUrge * 0.85 * reach(v, village.portX, village.portY))
+      else if (wood >= PORT_WOOD_COST && stone >= PORT_STONE_COST) add('buildPort', village.portX, village.portY, portUrge * reach(v, village.portX, village.portY))
       else if (wood < PORT_WOOD_COST && tree) add('gatherWood', tree.x, tree.y, portUrge * 0.5 * reach(v, tree.x, tree.y))
       else if (rock) add('gatherStone', rock.x, rock.y, portUrge * 0.5 * reach(v, rock.x, rock.y))
     }
   }
 
-  for (const other of state.villagers) {
-    if (!other.alive || other.id === v.id) continue
-    const dx = other.x - v.x
-    const dy = other.y - v.y
-    if (dx > SOCIAL_SIGHT || dx < -SOCIAL_SIGHT || dy > SOCIAL_SIGHT || dy < -SOCIAL_SIGHT) continue
+  const socialNear = nearbyVillagers(state, v.x, v.y, SOCIAL_SIGHT, v.id, 32)
+  for (let si = 0; si < socialNear.length; si++) {
+    const other = socialNear[si]
 
     const rel = v.relations.get(other.id)
     const affinity = rel ? rel.affinity : 0
     const trust = rel ? rel.trust : 0.25
-    add('socialise', other.x, other.y, (10 + p.sociability * 40 + affinity * 30) * reach(v, other.x, other.y), other.id)
+    const respect = rel?.respect ?? 0
+    const kinship = rel?.kinship ?? 0
+    const isSpouse = v.spouseId === other.id
+    const friendPull = affinity > 0.35 ? 22 : 0
+    const kinPull = kinship > 0.4 || isSpouse ? 28 : 0
+    const admirePull = respect * 35
+    const mind = mindOf(v)
+    const om = mindOf(other)
+    ensureCultureState(mind, v, () => 0.5)
+    ensureCultureState(om, other, () => 0.5)
+    const cultSim = cultureSimilarity(mind.cultureFeatures, om.cultureFeatures)
+    const homo = homophilyBias(cultSim, 'socialise')
+    const ethBias = ethnosSocialBias(state, v, other, mind.rivalId)
+    add(
+      'socialise',
+      other.x,
+      other.y,
+      (12 + p.sociability * 42 + affinity * 35 + friendPull + kinPull + admirePull) * homo * ethBias * reach(v, other.x, other.y),
+      other.id,
+    )
     if (other.hunger < HUNGRY_THRESHOLD && larder > 1) {
-      add('giveFood', other.x, other.y, (p.generosity * 55 + affinity * 45) * reach(v, other.x, other.y), other.id)
+      const norms = activeNormsFor(state, v)
+      let share = p.generosity * 55 + affinity * 45 + respect * 40 + kinship * 25 + (isSpouse ? 30 : 0)
+      share *= homophilyBias(cultSim, 'giveFood')
+      if (norms.includes('share_famine') && famine) share *= 1.8
+      if (other.villageId === v.villageId) share *= 1.15
+      // Reciprocity: repay debts first (Mauss).
+      const myDebt = rel?.debt ?? 0
+      if (myDebt > 0.35) share *= 1.4 + Math.min(1, myDebt) * 0.5
+      if (norms.includes('reciprocate') && myDebt > 0.2) share *= 1.25
+      add('giveFood', other.x, other.y, share * reach(v, other.x, other.y), other.id)
     }
-    if (affinity < -0.5 || v.grudgeTarget === other.id) {
+    if (affinity < -0.5 || v.grudgeTarget === other.id || (rel?.grudge ?? 0) > 0.6) {
       const nerve = p.courage * 60 + (v.toolTier !== 'none' ? 25 : 0) - (other.toolTier !== 'none' ? 20 : 0)
-      add('confront', other.x, other.y, (Math.max(0, -affinity) * 70 + nerve - 40) * reach(v, other.x, other.y), other.id)
+      const feud = (rel?.grudge ?? 0) * 48 + (rel?.debt ?? 0) * 8
+      const outgroup = other.villageId !== v.villageId
+      const coh = villageCohesion(state, v.villageId)
+      const asabiya = outgroup && coh > 0.5 ? 25 + coh * 40 : coh < 0.28 ? 12 : 0
+      add(
+        'confront',
+        other.x,
+        other.y,
+        (Math.max(0, -affinity) * 70 + nerve + feud + asabiya - 40) * reach(v, other.x, other.y),
+        other.id,
+      )
     }
     if (other.hasChest && other.chestInventory && edibleValue(other.chestInventory) > 0) {
       const need = larder <= 0 ? starving * 120 : 0
       const greed = (1 - p.generosity) * 35 * (v.ambition === 'wealth' ? 1.5 : 1)
-      const restraint = trust * 60 + Math.max(0, affinity) * 70 + p.generosity * 30
-      const score = need + greed + (famine ? 45 : 0) + p.courage * 25 - restraint
+      const restraint = trust * 60 + Math.max(0, affinity) * 70 + p.generosity * 30 + respect * 25
+      let score = need + greed + (famine ? 45 : 0) + p.courage * 25 - restraint
+      score += (rel?.debt ?? 0) * 12
       if (score > 0) add('steal', other.chestX, other.chestY, score * reach(v, other.chestX, other.chestY), other.id)
+    }
+  }
+
+  if (village && isGatheringHour(state.tick) && state.season !== 'winter') {
+    const cx = village.centerX
+    const cy = village.centerY
+    let plazaFolk = 0
+    let plazaFriend: Villager | null = null
+    const plazaNear = nearbyVillagers(state, cx, cy, 8, v.id, 24)
+    for (let pi = 0; pi < plazaNear.length; pi++) {
+      const o = plazaNear[pi]
+      if (o.villageId !== village.id) continue
+      plazaFolk++
+      const r = v.relations.get(o.id)
+      if (!plazaFriend && r && (r.affinity > 0.2 || (r.respect ?? 0) > 0.4 || (r.kinship ?? 0) > 0.3)) plazaFriend = o
+    }
+    const gatherUrge =
+      (18 +
+        p.sociability * 50 +
+        plazaFolk * 12 +
+        (v.ambition === 'leader' ? 20 : 0) +
+        villageCohesion(state, village.id) * 20 +
+        (lifeRoleOf(v) === 'elder' ? 15 : 0)) *
+      (v.hunger > 1.2 ? 1 : 0.35) *
+      reach(v, cx, cy)
+    if (gatherUrge > 8) {
+      if (plazaFriend) add('socialise', plazaFriend.x, plazaFriend.y, gatherUrge * 1.15, plazaFriend.id)
+      else add('socialise', cx, cy, gatherUrge, null)
+    }
+  }
+
+  // Services émergents : spectacle, conseil, enseignement (temps + demande sociale).
+  {
+    const pol = politicsOf(v)
+    const urge = serviceUrge(state, v, pol.beliefs.piety, pol.creed === 'piete', lifeRoleOf(v) === 'elder')
+    let serviceTarget: Villager | null = null
+    let youthTarget: Villager | null = null
+    for (let si = 0; si < socialNear.length; si++) {
+      const o = socialNear[si]
+      if (!serviceTarget) serviceTarget = o
+      if (!youthTarget && o.age < 280) youthTarget = o
+    }
+    if (urge.entertain > 28) {
+      const t = serviceTarget
+      add('entertain', t ? t.x : v.x, t ? t.y : v.y, urge.entertain * (t ? reach(v, t.x, t.y) : 1), t?.id ?? null)
+    }
+    if (urge.counsel > 26 && serviceTarget) {
+      add('counsel', serviceTarget.x, serviceTarget.y, urge.counsel * reach(v, serviceTarget.x, serviceTarget.y), serviceTarget.id)
+    }
+    if (urge.teach > 24) {
+      const pupil = youthTarget ?? serviceTarget
+      if (pupil) add('teachCraft', pupil.x, pupil.y, urge.teach * reach(v, pupil.x, pupil.y), pupil.id)
     }
   }
 
@@ -894,11 +1726,21 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const danger = wolf ? clamp(1 - distance(v.x, v.y, wolf.x, wolf.y) / DANGER_RADIUS, 0, 1) : 0
 
   if (wolf && v.toolTier !== 'none') {
-    for (const o of state.villagers) {
-      if (!o.alive || o.id === v.id || o.toolTier !== 'none') continue
-      if (distance(o.x, o.y, wolf.x, wolf.y) >= 4) continue
+    const rescueNear = nearbyVillagers(state, wolf.x, wolf.y, 4, v.id, 12)
+    for (let ri = 0; ri < rescueNear.length; ri++) {
+      const o = rescueNear[ri]
+      if (o.toolTier !== 'none') continue
       const bond = Math.max(0, v.relations.get(o.id)?.affinity ?? 0)
-      add('defend', wolf.x, wolf.y, (p.courage * 70 + bond * 60 + p.generosity * 25) * reach(v, wolf.x, wolf.y), o.id)
+      const respect = v.relations.get(o.id)?.respect ?? 0
+      const kin = v.relations.get(o.id)?.kinship ?? 0
+      const guardBoost = v.profession === 'guard' || v.ambition === 'protector' ? 1.65 : 1
+      add(
+        'defend',
+        wolf.x,
+        wolf.y,
+        (p.courage * 70 + bond * 60 + respect * 40 + kin * 35 + p.generosity * 25) * guardBoost * reach(v, wolf.x, wolf.y),
+        o.id,
+      )
       break
     }
   }
@@ -915,9 +1757,17 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     if (fp) {
       const winterUrgency = season === 'autumn' ? 35 : season === 'winter' ? 55 : 0
       const shelterUrge = 60 + danger * 55 + (1 - p.courage) * 40 + p.ambition * 25 + winterUrgency
+      const veg = firstPlotVegetation(grid, fp)
       const gap = fp.walls.find((c) => getTerrain(grid, c.x, c.y) !== HOUSE)
-      if (gap && wood >= TILE_COST) add('buildHouse', gap.x, gap.y, shelterUrge * reach(v, gap.x, gap.y))
+      const gapClear = gap && !needsClearing(grid, gap.x, gap.y)
+      // Prefer raising walls when wood is ready; clear only when the next cell is blocked or we lack timber.
+      if (gap && wood >= TILE_COST && gapClear) add('buildHouse', gap.x, gap.y, shelterUrge * reach(v, gap.x, gap.y))
+      else if (veg) add('clearLand', veg.x, veg.y, shelterUrge * 1.15 * reach(v, veg.x, veg.y))
+      else if (gap && wood >= TILE_COST) add('buildHouse', gap.x, gap.y, shelterUrge * reach(v, gap.x, gap.y))
       else if (gap && tree) add('gatherWood', tree.x, tree.y, shelterUrge * 0.8 * reach(v, tree.x, tree.y))
+      if (v.hasChest && wood >= woodCap(v)) {
+        add('storeChest', v.chestX, v.chestY, shelterUrge * 0.5 * reach(v, v.chestX, v.chestY))
+      }
     }
   }
 
@@ -947,15 +1797,42 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     else if (rock) add('gatherStone', rock.x, rock.y, upgrade * 0.8 * reach(v, rock.x, rock.y))
   }
 
-  if (v.hasWorkbench && v.toolTier === 'stone' && v.profession === 'blacksmith') {
+  if (v.hasWorkbench && v.toolTier === 'stone' && canPracticeCraft(v, 'iron')) {
     const upgradeIron = 34 + p.ambition * 30 + danger * 20
-    if (iron >= IRON_TOOL_COST) add('craftIronTool', v.x, v.y, upgradeIron)
+    const vgKnow = village?.knowledge
+    const ironNeed = ironToolCostFor(v, IRON_TOOL_COST, vgKnow)
+    if (iron >= ironNeed) add('craftIronTool', v.x, v.y, upgradeIron)
     else if (ironOre) add('gatherIron', ironOre.x, ironOre.y, upgradeIron * 0.8 * reach(v, ironOre.x, ironOre.y))
   }
 
   if (mountainOre) {
-    const mineUrge = 20 + p.ambition * 25 + p.courage * 10 + (v.profession === 'mason' || v.profession === 'blacksmith' || v.profession === 'miner' ? 25 : 0)
+    const minerBoost = v.profession === 'miner' ? 40 : v.profession === 'mason' || v.profession === 'blacksmith' ? 25 : 0
+    const ironBoost = v.toolTier === 'iron' ? 18 : 0
+    const deeperBoost = village?.hasMine ? 12 : 0
+    const mineUrge = 20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost
     add('mineTunnel', mountainOre.x, mountainOre.y, mineUrge * reach(v, mountainOre.x, mountainOre.y))
+  }
+
+  // Claim a mine mouth near the village so digs deepen into one corridor system.
+  if (
+    village &&
+    !village.hasMine &&
+    v.hasWorkbench &&
+    (v.profession === 'miner' || v.profession === 'mason' || v.toolTier === 'iron') &&
+    v.toolTier !== 'none' &&
+    v.toolTier !== 'wood'
+  ) {
+    const site = findMineEntranceSite(grid, village.centerX, village.centerY, 55)
+    if (site) {
+      village.mineX = site.mountainX
+      village.mineY = site.mountainY
+      const claimUrge = 22 + p.ambition * 20 + (v.profession === 'miner' ? 30 : 0)
+      add('mineTunnel', site.mountainX, site.mountainY, claimUrge * reach(v, site.mountainX, site.mountainY))
+      if (wood >= 1) {
+        // Soft mining_access staging pad beside the face (generative purpose).
+        add('idle', site.x, site.y, 6)
+      }
+    }
   }
 
   if (v.hasWorkbench && gold >= NUGGETS_PER_COIN && v.profession === 'trader') {
@@ -964,59 +1841,154 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (v.hasHome && isOwner) {
     if (v.fieldX === -1) {
-      const site = findBuildSite(grid, v.homeX - 9, v.homeY, FIELD_RADIUS, 25)
+      const site = findBuildSite(grid, v.homeX - 9, v.homeY, FIELD_RADIUS, 25, 3)
       if (site) {
         v.fieldX = site.x
         v.fieldY = site.y
         claimArea(grid, site.x, site.y, FIELD_RADIUS, CLAIM_FIELD)
+        linkToHub(grid, v.homeX, v.homeY, site.x, site.y, 0)
       }
     }
-    if (v.fieldX !== -1 && sowingSeason(season)) {
+    if (v.fieldX !== -1 && sowingSeason(season, sampleTempC(state.climate, v.fieldX, v.fieldY))) {
+      const veg = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => needsClearing(grid, c.x, c.y))
       const bare = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => isBuildableGround(grid, c.x, c.y))
-      if (bare) add('sowField', bare.x, bare.y, (30 + (season === 'spring' ? 45 : 20) + p.ambition * 15) * reach(v, bare.x, bare.y))
+      if (veg) add('clearLand', veg.x, veg.y, (36 + p.ambition * 12) * reach(v, veg.x, veg.y))
+      else if (bare) {
+        const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
+        add('sowField', bare.x, bare.y, (30 + (season === 'spring' ? 45 : 20) + p.ambition * 15) * tFac * reach(v, bare.x, bare.y))
+      }
     }
   }
 
   if (village && village.memberIds.length >= 2 && !village.hasMill && v.hasHome) {
-    if (village.millX === -1) {
-      const site = findMillSite(grid, village.centerX, village.centerY, 45)
-      if (site) {
-        village.millX = site.x
-        village.millY = site.y
-        setClaim(grid, site.x, site.y, CLAIM_MILL)
-      }
+    let villageWheat = wheat
+    let villageFields = v.hasField || v.fieldX >= 0 ? 1 : 0
+    for (const o of state.villagers) {
+      if (!o.alive || o.villageId !== village.id || o.id === v.id) continue
+      villageWheat += countOf(o.inventory, 'wheat')
+      if (o.chestInventory) villageWheat += countOf(o.chestInventory, 'wheat')
+      if (o.hasField || o.fieldX >= 0) villageFields++
     }
-    if (village.millX !== -1) {
-      const millUrge = 26 + p.sociability * 20 + p.ambition * 24
-      if (wood >= MILL_WOOD_COST && stone >= MILL_STONE_COST) add('buildMill', village.millX, village.millY, millUrge * reach(v, village.millX, village.millY))
-      else if (wood < MILL_WOOD_COST && tree) add('gatherWood', tree.x, tree.y, millUrge * 0.6 * reach(v, tree.x, tree.y))
-      else if (rock) add('gatherStone', rock.x, rock.y, millUrge * 0.6 * reach(v, rock.x, rock.y))
+    if (villageWheat >= 2 || villageFields > 0) {
+      if (village.millX === -1) {
+        const site = findMillSite(grid, village.centerX, village.centerY, 45)
+        if (site) {
+          village.millX = site.x
+          village.millY = site.y
+          setClaim(grid, site.x, site.y, CLAIM_MILL)
+        }
+      }
+      if (village.millX !== -1) {
+        const millUrge = 26 + p.sociability * 20 + p.ambition * 24 + (villageWheat >= 4 ? 20 : 0)
+        if (needsClearing(grid, village.millX, village.millY)) add('clearLand', village.millX, village.millY, millUrge * 0.9 * reach(v, village.millX, village.millY))
+        else if (wood >= MILL_WOOD_COST && stone >= MILL_STONE_COST) add('buildMill', village.millX, village.millY, millUrge * reach(v, village.millX, village.millY))
+        else if (wood < MILL_WOOD_COST && tree) add('gatherWood', tree.x, tree.y, millUrge * 0.6 * reach(v, tree.x, tree.y))
+        else if (rock) add('gatherStone', rock.x, rock.y, millUrge * 0.6 * reach(v, rock.x, rock.y))
+      }
     }
   }
 
-  if (village?.hasMill && wheat >= WHEAT_PER_FLOUR) {
-    add('grindFlour', village.millX, village.millY, (34 + starving * 60) * reach(v, village.millX, village.millY))
+  if (village?.hasMill && (wheat >= WHEAT_PER_FLOUR || MILL_GRAINS.some((g) => countOf(v.inventory, g) >= 2))) {
+    add(
+      'grindFlour',
+      village.millX,
+      village.millY,
+      (42 + starving * 80 + (famine ? 40 : 0) + (season === 'winter' ? 25 : 0)) * reach(v, village.millX, village.millY),
+    )
   }
   if (v.hasWorkbench && flour > 0) {
     add('bakeBread', v.workbenchX, v.workbenchY, (40 + starving * 70) * reach(v, v.workbenchX, v.workbenchY))
   }
-  if (v.hasWorkbench && wool >= WOOL_PER_CLOTH && v.profession === 'weaver') {
+  if (v.hasWorkbench && wool >= WOOL_PER_CLOTH && canPracticeCraft(v, 'weave')) {
     add('weaveCloth', v.workbenchX, v.workbenchY, (30 + p.ambition * 20) * reach(v, v.workbenchX, v.workbenchY))
   }
-  if (v.hasWorkbench && cloth >= CLOTH_PER_CLOTHING && v.profession === 'weaver') {
+  if (v.hasWorkbench && (cloth >= CLOTH_PER_CLOTHING || countOf(v.inventory, 'leather') >= 1) && canPracticeCraft(v, 'sew')) {
     const winterPush = season === 'winter' ? 45 : season === 'autumn' ? 20 : 5
-    add('sewClothing', v.workbenchX, v.workbenchY, (30 + winterPush) * reach(v, v.workbenchX, v.workbenchY))
+    const coldPush = cold * 55
+    add('sewClothing', v.workbenchX, v.workbenchY, (30 + winterPush + coldPush) * reach(v, v.workbenchX, v.workbenchY))
   }
-  if (v.hasWorkbench && hide > 0 && v.profession === 'herder') {
+  if (v.hasWorkbench && hide > 0 && canPracticeCraft(v, 'tan')) {
     add('tanHide', v.workbenchX, v.workbenchY, (25 + p.ambition * 15) * reach(v, v.workbenchX, v.workbenchY))
+  }
+  // Chaîne bois → charbon (si technique connue).
+  if (v.hasWorkbench && wood >= 2 && canPracticeCraft(v, 'charcoal')) {
+    add(
+      'makeCharcoal',
+      v.workbenchX,
+      v.workbenchY,
+      (22 + p.curiosity * 25 + mindOf(v).skills.craft * 20) * reach(v, v.workbenchX, v.workbenchY),
+    )
+  }
+
+  // Kit corporel : souliers, cape, dague, parure… selon froid / métier / fortune.
+  if (v.hasWorkbench) {
+    const gearTarget = pickGearCraftTarget(v, {
+      season,
+      cold01: cold,
+      canCraft: (c) => canPracticeCraft(v, c),
+    })
+    if (gearTarget) {
+      const winterPush = season === 'winter' ? 28 : season === 'autumn' ? 14 : 4
+      const rolePush = v.profession === 'guard' || v.ambition === 'wealth' || v.ambition === 'leader' ? 12 : 0
+      add(
+        'craftGear',
+        v.workbenchX,
+        v.workbenchY,
+        (26 + winterPush + cold * 40 + rolePush + p.ambition * 10) * reach(v, v.workbenchX, v.workbenchY),
+      )
+    }
+  }
+
+  // Recettes catalogue (poix, linon, bronze, remèdes, salaisons…).
+  if (v.hasWorkbench) {
+    for (const recipe of CRAFT_RECIPES) {
+      if (recipe.station !== 'workbench') continue
+      if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
+      const score = (recipe.urge + p.ambition * 12 + mindOf(v).skills.craft * 18) * reach(v, v.workbenchX, v.workbenchY)
+      add('craftGoods', v.workbenchX, v.workbenchY, score, null, recipe.output)
+      break
+    }
+  }
+  if (village?.hasMill) {
+    for (const recipe of CRAFT_RECIPES) {
+      if (recipe.station !== 'mill') continue
+      if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) continue
+      add(
+        'craftGoods',
+        village.millX,
+        village.millY,
+        (recipe.urge + starving * 40) * reach(v, village.millX, village.millY),
+        null,
+        recipe.output,
+      )
+      break
+    }
+  }
+
+  // Remèdes si blessé.
+  if (v.health < VILLAGER_HEALTH_MAX - 0.5) {
+    const hasMed =
+      countOf(v.inventory, 'medicine') > 0 ||
+      countOf(v.inventory, 'herbs') > 0 ||
+      countOf(v.inventory, 'sage') > 0 ||
+      countOf(v.inventory, 'garlic') > 0
+    if (hasMed) {
+      add('useMedicine', v.x, v.y, (1 - v.health / VILLAGER_HEALTH_MAX) * 120)
+    }
+  }
+
+  // Soft R&D near workbench — curious / skilled villagers with surplus leisure.
+  const researchUrge = experimentUrge(v, state)
+  if (researchUrge > 20) {
+    add('experiment', v.workbenchX, v.workbenchY, researchUrge * reach(v, v.workbenchX, v.workbenchY))
   }
 
   const materialNeed: { resource: ResourceType; reserve: number } | null =
-    v.hasWorkbench && v.profession === 'weaver' && wool < WOOL_PER_CLOTH
+    v.hasWorkbench && canPracticeCraft(v, 'weave') && wool < WOOL_PER_CLOTH
       ? { resource: 'wool', reserve: targetPerCapita('wool') }
-      : v.hasWorkbench && v.profession === 'blacksmith' && v.toolTier === 'stone' && iron < IRON_TOOL_COST
+      : v.hasWorkbench && canPracticeCraft(v, 'iron') && v.toolTier === 'stone' && iron < ironToolCostFor(v, IRON_TOOL_COST, village?.knowledge)
         ? { resource: 'iron', reserve: targetPerCapita('iron') }
-        : v.hasWorkbench && v.profession === 'herder' && hide <= 0
+        : v.hasWorkbench && canPracticeCraft(v, 'tan') && hide <= 0
           ? { resource: 'hide', reserve: targetPerCapita('hide') }
           : v.hasWorkbench && v.profession === 'trader' && gold < NUGGETS_PER_COIN
             ? { resource: 'gold', reserve: targetPerCapita('gold') }
@@ -1024,7 +1996,7 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   if (materialNeed) {
     const coinHave = countOf(v.inventory, 'coin')
-    const price = priceOf(materialNeed.resource)
+    const price = priceOf(materialNeed.resource, state)
     if (coinHave >= price) {
       let bestSeller: Villager | null = null
       let bestSurplus = 0
@@ -1051,17 +2023,19 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   if (v.hasHome && v.hasWorkbench && isOwner) {
     if (!v.hasPen) {
       if (v.penX === -1) {
-        const site = findBuildSite(grid, v.homeX + 10, v.homeY + 10, PEN_RADIUS, 25)
+        const site = findBuildSite(grid, v.homeX + 10, v.homeY + 10, PEN_RADIUS, 25, 3)
         if (site) {
           v.penX = site.x
           v.penY = site.y
           claimArea(grid, site.x, site.y, PEN_RADIUS, CLAIM_PEN)
+          linkToHub(grid, v.homeX, v.homeY, site.x, site.y, 0)
         }
       }
       if (v.penX !== -1) {
         const farmUrge = 25 + berryScarcity * 50 + p.ambition * 20
         const gap = singleDoorWallCells(grid, v.penX, v.penY, PEN_RADIUS).find((c) => getTerrain(grid, c.x, c.y) !== FENCE)
-        if (gap && (wood >= TILE_COST || stone >= TILE_COST)) add('buildPen', gap.x, gap.y, farmUrge * reach(v, gap.x, gap.y))
+        if (gap && needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, farmUrge * 0.9 * reach(v, gap.x, gap.y))
+        else if (gap && (wood >= TILE_COST || stone >= TILE_COST)) add('buildPen', gap.x, gap.y, farmUrge * reach(v, gap.x, gap.y))
         else if (gap && tree) add('gatherWood', tree.x, tree.y, farmUrge * 0.7 * reach(v, tree.x, tree.y))
       }
     } else {
@@ -1083,11 +2057,25 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       if (gap) {
         const civicUrge = 15 + p.sociability * 45 + p.generosity * 35 + danger * 40
         const res = wantCode === WALL_WOOD ? wood : stone
-        if (res >= WALL_SEGMENT_COST) add('buildWall', gap.x, gap.y, civicUrge * reach(v, gap.x, gap.y))
+        if (needsClearing(grid, gap.x, gap.y)) add('clearLand', gap.x, gap.y, civicUrge * 0.85 * reach(v, gap.x, gap.y))
+        else if (res >= WALL_SEGMENT_COST) add('buildWall', gap.x, gap.y, civicUrge * reach(v, gap.x, gap.y))
         else {
           const src = wantCode === WALL_WOOD ? tree : rock
           if (src) add(wantCode === WALL_WOOD ? 'gatherWood' : 'gatherStone', src.x, src.y, civicUrge * 0.7 * reach(v, src.x, src.y))
         }
+      }
+    }
+  }
+
+  // Soft BuildProject continuum (halls / forts / manors — cognition enqueues intents).
+  {
+    const project = pickProjectForVillager(state, v)
+    if (project) {
+      const step = nextConstructionStep(grid, project, wood, stone)
+      if (step) {
+        v.activeProjectId = project.id
+        const urge = projectTaskUrge(project, p)
+        add(step.kind, step.x, step.y, urge * reach(v, step.x, step.y), step.projectId, step.resource)
       }
     }
   }
@@ -1099,33 +2087,128 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
+  if (v.hasHome && village) {
+    const door = homeFootprint(v)?.door
+    considerLane(door?.x ?? v.homeX, door?.y ?? v.homeY, village.centerX, village.centerY, 28 + p.sociability * 14)
+    if (village.millX >= 0) considerLane(village.centerX, village.centerY, village.millX, village.millY, 32)
+    if (village.portX >= 0) considerLane(village.centerX, village.centerY, village.portX, village.portY, 32)
+  }
+  if (v.hasHome && v.fieldX >= 0) considerLane(v.homeX, v.homeY, v.fieldX, v.fieldY, 22)
+  if (v.hasHome && v.penX >= 0) considerLane(v.homeX, v.homeY, v.penX, v.penY, 22)
+
   const sellableSurplus = wool > 3 || cloth > 2 || hide > 2 || iron > 3 || gold > 2 || countOf(v.inventory, 'coin') > 6
-  if (v.hasChest && (wood > 6 || stone > 6 || larder > stockTarget + 2 || sellableSurplus)) {
-    add('storeChest', v.chestX, v.chestY, (25 + p.ambition * 20) * reach(v, v.chestX, v.chestY))
+  if (v.hasChest && (wood > 6 || stone > 6 || larder > stockTarget + 2 || sellableSurplus || granaryPush > 12)) {
+    add(
+      'storeChest',
+      v.chestX,
+      v.chestY,
+      (25 + p.ambition * 20 + granaryPush + (season === 'autumn' ? 30 : 0)) * reach(v, v.chestX, v.chestY),
+    )
   }
 
-  if (goldTile) add('mineGold', goldTile.x, goldTile.y, (12 + (1 - p.generosity) * 35) * reach(v, goldTile.x, goldTile.y))
+  if (goldTile) add('mineGold', goldTile.x, goldTile.y, (12 + (1 - p.generosity) * 35) * (goldSense?.source === 'search' ? 0.75 : 1.1) * reach(v, goldTile.x, goldTile.y))
 
-  if (v.hasHome) add('rest', v.homeX, v.homeY, (season === 'winter' ? 22 : 8) * reach(v, v.homeX, v.homeY))
+  if (v.hasHome) {
+    const restNeed =
+      (season === 'winter' ? 38 : 8) +
+      cold * 55 +
+      heat * 28 +
+      (night ? 70 : 0) +
+      (exhausted ? 90 : tired ? 40 : 0) +
+      (1 - v.stamina / STAMINA_MAX) * 50 +
+      (!atHomeShelter(v) && cold > 0.25 ? 50 : 0)
+    add('rest', v.homeX, v.homeY, restNeed * reach(v, v.homeX, v.homeY))
+  } else if (exhausted || tired || cold > 0.4 || heat > 0.5) {
+    // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
+    add('rest', v.x, v.y, (exhausted ? 70 : 32) + (night ? 28 : 0) + cold * 40 + heat * 25)
+  }
 
   const goodMemory = v.memories.find((m) => m.kind === 'goodSpot')
-  const range = (25 + Math.round(p.curiosity * 60)) * (v.mounted ? 2 : 1)
-  const idleX = goodMemory && rng() < 0.4 ? goodMemory.x : clamp(v.x + Math.floor((rng() - 0.5) * range * 2), 0, grid.width - 1)
-  const idleY = goodMemory && rng() < 0.4 ? goodMemory.y : clamp(v.y + Math.floor((rng() - 0.5) * range * 2), 0, grid.height - 1)
-  add('idle', idleX, idleY, 6 + p.curiosity * 14)
-
-  let best: Option | null = null
-  let bestScore = -Infinity
-  for (let i = 0; i < options.length; i++) {
-    const o = options[i]
-    const jittered = o.score * (0.92 + rng() * 0.16)
-    if (jittered > bestScore) {
-      bestScore = jittered
-      best = o
-    }
+  const migrate = politicsOf(v).migrationUrge
+  const wanderBase = v.ambition === 'explorer' ? 25 + Math.round(p.curiosity * 60) : 10 + Math.round(p.curiosity * 28)
+  const fearStress = mind.emotions.fear + mind.emotions.stress
+  const burrowPull = (night || fearStress > 0.45 || isChild(v)) && v.hasHome
+  const range =
+    wanderBase *
+    (v.mounted ? 2 : 1) *
+    (1 + migrate * 1.8) *
+    (burrowPull ? 0.35 + p.courage * 0.25 : 1) *
+    (isChild(v) ? 0.55 : 1)
+  let idleX = goodMemory && rng() < 0.4 && !burrowPull ? goodMemory.x : clamp(v.x + Math.floor((rng() - 0.5) * range * 2), 0, grid.width - 1)
+  let idleY = goodMemory && rng() < 0.4 && !burrowPull ? goodMemory.y : clamp(v.y + Math.floor((rng() - 0.5) * range * 2), 0, grid.height - 1)
+  if (burrowPull) {
+    const hx = v.homeX
+    const hy = v.homeY
+    const hub = village ?? null
+    const tx = hub && rng() < 0.35 ? hub.centerX : hx
+    const ty = hub && rng() < 0.35 ? hub.centerY : hy
+    idleX = clamp(Math.round(tx + (rng() - 0.5) * 10), 0, grid.width - 1)
+    idleY = clamp(Math.round(ty + (rng() - 0.5) * 10), 0, grid.height - 1)
   }
-  if (best) setTask(v, best.kind, best.x, best.y, best.id, best.resource)
-  else setTask(v, 'idle', v.x, v.y)
+  // Soft migration: when oppression/famine urge is high, idle toward unfamiliar ground away from village centre.
+  if (migrate > 0.4 && village) {
+    const away = Math.atan2(v.y - village.centerY, v.x - village.centerX) + (rng() - 0.5) * 0.8
+    const dist = 40 + migrate * 80
+    idleX = clamp(Math.floor(v.x + Math.cos(away) * dist), 0, grid.width - 1)
+    idleY = clamp(Math.floor(v.y + Math.sin(away) * dist), 0, grid.height - 1)
+  }
+  // Found elsewhere: unaffiliated migrants with high urge seek empty ground far from other centres.
+  if (migrate > 0.5 && !village && !v.hasHome) {
+    let farX = idleX
+    let farY = idleY
+    let bestClear = -Infinity
+    for (let t = 0; t < 4; t++) {
+      const cx = clamp(v.x + Math.floor((rng() - 0.5) * 120), 0, grid.width - 1)
+      const cy = clamp(v.y + Math.floor((rng() - 0.5) * 120), 0, grid.height - 1)
+      let minD = Infinity
+      for (const vg of state.villages) {
+        const d = distance(cx, cy, vg.centerX, vg.centerY)
+        if (d < minD) minD = d
+      }
+      if (minD > bestClear) {
+        bestClear = minD
+        farX = cx
+        farY = cy
+      }
+    }
+    idleX = farX
+    idleY = farY
+    add('idle', idleX, idleY, 18 + migrate * 35 + p.curiosity * 20)
+  } else {
+    add('idle', idleX, idleY, 6 + p.curiosity * 14 + migrate * 20)
+  }
+
+  if (options.length === 0) {
+    setTask(v, 'idle', v.x, v.y)
+    noteChosenAction(v, 'idle', 'aucune option viable')
+    return
+  }
+
+  const policyOpts = options.map((o) => ({
+    kind: o.kind,
+    x: o.x,
+    y: o.y,
+    id: o.id,
+    resource: o.resource,
+    baseScore: o.baseScore,
+    jobMult: jobBonus(v, o.kind),
+    ambitionMult: ambitionBonus(v, o.kind),
+  }))
+  const pick = pickTaskByPolicy(state, v, policyOpts, rng)
+  if (pick && pick.index >= 0) {
+    const best = options[pick.index]
+    setTask(v, best.kind, best.x, best.y, best.id, best.resource)
+    const backend = pick.backend === 'webgpu' ? 'GPU' : 'CPU'
+    noteChosenAction(
+      v,
+      best.kind,
+      `U ${pick.utility.toFixed(1)} · T ${pick.temperature.toFixed(2)} · ${backend}`,
+      pick.whyFactors,
+    )
+  } else {
+    setTask(v, 'idle', v.x, v.y)
+    noteChosenAction(v, 'idle', 'aucune option viable')
+  }
 }
 
 function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
@@ -1136,31 +2219,106 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
   const maxAge = task.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE
   if (task.ageTicks > maxAge) return false
 
-  const arrived = distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
+  const boat = boatOf(state, v)
+  const arrived =
+    task.kind === 'fish' && boat
+      ? v.embarked && getTerrain(grid, v.x, v.y) === WATER && distance(v.x, v.y, task.targetX, task.targetY) <= 2.2
+      : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
 
   if (task.kind === 'eat') {
     const food = bestEdible(v)
     if (!food) return false
     removeFromInventory(v.inventory, food, 1)
-    v.hunger = Math.min(HUNGER_MAX, v.hunger + (food === 'bread' ? 2 : food === 'food' ? 1 : 0.5))
+    const fromKcal = hungerRestoreFromFood(food)
+    const legacy = NUTRITION[food] ?? 0.5
+    v.hunger = Math.min(HUNGER_MAX, v.hunger + Math.max(legacy, fromKcal))
+    recoverStamina(v, 0.15)
+    onCognitiveEvent(v, 'good_meal', (NUTRITION[food] ?? 0.5) >= 1.4 ? 1 : 0.75)
     return false
   }
+
+  /** Multi-tick craft/build: accumulate `work` until threshold; materials only spent on finish. */
+  const accumulateLabor = (kind: TaskKind): 'abort' | 'continue' | 'complete' => {
+    if (v.stamina <= 0.15) {
+      v.nextThinkTick = state.tick + THINK_COOLDOWN + 8
+      return 'abort'
+    }
+    spendStamina(v, STAMINA_LABOR)
+    if (rng() >= laborSuccessChance(v, kind)) return 'continue'
+    task.work += skillSpeedBonus(mindOf(v).skills, kind)
+    wearTool(v, 0.35)
+    return task.work < laborWorkNeeded(kind) ? 'continue' : 'complete'
+  }
+  const exhaustedAbort = (): boolean => {
+    if (v.stamina > 0.15) return false
+    v.nextThinkTick = state.tick + THINK_COOLDOWN + 8
+    return true
+  }
+
   if (task.kind === 'craftSpear') {
     if (countOf(v.inventory, 'wood') < SPEAR_WOOD_COST) return false
+    const labor = accumulateLabor('craftSpear')
+    if (labor === 'abort') return false
+    if (labor === 'continue') return true
     removeFromInventory(v.inventory, 'wood', SPEAR_WOOD_COST)
     v.toolTier = 'wood'
+    equipFromToolTier(v, 'wood')
+    const q = rollCraftQuality(mindOf(v).skills.craft, rng)
+    v.toolWear = q === 'masterwork' ? -TOOL_WEAR_MAX * 0.35 : q === 'fine' ? -8 : 0
+    if (q === 'masterwork') noteMasterworkCraft(state, v, 'lance de bois')
     return false
   }
   if (task.kind === 'craftStoneSpear') {
     if (countOf(v.inventory, 'stone') < STONE_SPEAR_COST) return false
+    const labor = accumulateLabor('craftStoneSpear')
+    if (labor === 'abort') return false
+    if (labor === 'continue') return true
     removeFromInventory(v.inventory, 'stone', STONE_SPEAR_COST)
     v.toolTier = 'stone'
+    equipFromToolTier(v, 'stone')
+    const q = rollCraftQuality(mindOf(v).skills.craft, rng)
+    v.toolWear = q === 'masterwork' ? -TOOL_WEAR_MAX * 0.35 : q === 'fine' ? -8 : 0
+    if (q === 'masterwork') noteMasterworkCraft(state, v, 'lance de pierre')
     return false
   }
   if (task.kind === 'craftIronTool') {
-    if (countOf(v.inventory, 'iron') < IRON_TOOL_COST) return false
-    removeFromInventory(v.inventory, 'iron', IRON_TOOL_COST)
+    const homeVg = v.villageId !== null ? state.villages.find((vg) => vg.id === v.villageId) : undefined
+    const ironNeed = ironToolCostFor(v, IRON_TOOL_COST, homeVg?.knowledge)
+    const haveIron = countOf(v.inventory, 'iron')
+    const haveCharcoal = countOf(v.inventory, 'charcoal')
+    // Charbon connu / en stock : moins de fer consommé.
+    const cost = haveCharcoal > 0 ? Math.max(2, ironNeed - 1) : ironNeed
+    if (haveIron < cost) return false
+    const labor = accumulateLabor('craftIronTool')
+    if (labor === 'abort') return false
+    if (labor === 'continue') return true
+    removeFromInventory(v.inventory, 'iron', cost)
+    if (haveCharcoal > 0) removeFromInventory(v.inventory, 'charcoal', 1)
     v.toolTier = 'iron'
+    equipFromToolTier(v, 'iron')
+    const q = rollCraftQuality(mindOf(v).skills.craft, rng)
+    // Trempe connue → usure plus lente (knowsTemperIron était orphelin).
+    const temper = knowsTemperIron(v, homeVg)
+    v.toolWear = q === 'masterwork' ? -TOOL_WEAR_MAX * 0.4 : q === 'fine' ? -10 : temper ? -6 : 0
+    if (q === 'masterwork') noteMasterworkCraft(state, v, 'outil de fer')
+    else if (q === 'fine') onCognitiveEvent(v, 'craft_joy', 0.8)
+    return false
+  }
+  if (task.kind === 'craftGear') {
+    const cold = coldStress01(sampleTempC(state.climate, v.x, v.y))
+    const target = pickGearCraftTarget(v, {
+      season: state.season,
+      cold01: cold,
+      canCraft: (c) => canPracticeCraft(v, c),
+    })
+    if (!target) return false
+    const labor = accumulateLabor('craftGear')
+    if (labor === 'abort') return false
+    if (labor === 'continue') return true
+    if (!craftAndEquipGear(v, target)) return false
+    const q = rollCraftQuality(mindOf(v).skills.craft, rng)
+    if (q === 'masterwork') noteMasterworkCraft(state, v, GEAR_DEFS[target].labelFr)
+    else if (q === 'fine') onCognitiveEvent(v, 'craft_joy', 0.7)
     return false
   }
 
@@ -1183,15 +2341,60 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         task.targetY = other.y
       }
     }
-    const allowWater = task.kind === 'fish' && v.boatId !== null
-    const cartDrag = v.mounted && v.hasCart ? -1 : 0
-    const speed = VILLAGER_SPEED + surfaceSpeedBonus(grid, v.x, v.y) + (v.mounted ? HORSE_SPEED_BONUS + cartDrag : 0)
-    const wear = v.mounted ? 2 : 1
-    const moved = moveToward(v, task.targetX, task.targetY, Math.max(1, Math.round(speed)), grid, wear, allowWater)
+    // Too exhausted to keep marching toward non-survival goals — drop task and rethink.
+    if (v.stamina < 0.2 && task.kind !== 'flee' && task.kind !== 'rest' && task.kind !== 'takeFromChest') {
+      v.nextThinkTick = state.tick + 2
+      return false
+    }
+    const profile = pathProfileFor(state, v, task)
+    const speed = travelSpeedFor(state, v)
+    const wear = wearFor(v, task.kind)
+    let destX = task.targetX
+    let destY = task.targetY
+    if (profile.amphibious && boat && !v.embarked) {
+      const beside = chebyshev(v.x, v.y, boat.x, boat.y) <= 1
+      if (!beside) {
+        const dock = dockBesideBoat(grid, boat)
+        destX = dock.x
+        destY = dock.y
+      } else if (tryEmbarkBoat(state, v, boat)) {
+        task.stuckTicks = 0
+        return true
+      }
+    }
+    const fromX = v.x
+    const fromY = v.y
+    const moved = navigate(grid, state.tick, v, task, destX, destY, speed, profile, wear, (nx, ny, fx, fy) =>
+      onVillagerStep(state, v, nx, ny, fx, fy),
+    )
+    if (moved && (v.x !== fromX || v.y !== fromY)) {
+      const terr = getTerrain(grid, v.x, v.y)
+      const walkCost = staminaCostForStep({
+        embarked: v.embarked,
+        mounted: v.mounted,
+        hasCart: v.hasCart,
+        loadRatio: encumbranceRatio(v),
+        terrain: terr,
+        bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
+        onRoad: isWornRoad(terr),
+      })
+      spendStamina(v, walkCost)
+    }
     if (!moved) {
       task.stuckTicks += 1
-      moveRandom(v, rng, grid, 2)
-      if (task.stuckTicks >= STUCK_LIMIT) return false
+      // Mid-stuck: drop cached path so next navigate can replan around danger / obstacles.
+      if (task.stuckTicks === 4 || task.stuckTicks === 7) {
+        task.path = null
+        task.pathI = 0
+        task.pathTick = -999
+      }
+      if (!(profile.amphibious && boat && chebyshev(v.x, v.y, boat.x, boat.y) <= 1)) {
+        moveRandom(v, rng, grid, 2)
+      }
+      if (task.stuckTicks >= STUCK_LIMIT) {
+        v.nextThinkTick = state.tick + THINK_COOLDOWN + 4
+        return false
+      }
     } else {
       task.stuckTicks = 0
     }
@@ -1200,11 +2403,24 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
 
   switch (task.kind) {
     case 'fish': {
-      const onBoat = v.boatId !== null
+      const onBoat = v.embarked && getTerrain(grid, v.x, v.y) === WATER
       if (!onBoat && !isShore(grid, task.targetX, task.targetY)) return false
+      if (v.boatId !== null && !onBoat) return true
       if (onBoat && getTerrain(grid, task.targetX, task.targetY) !== WATER) return false
-      const catchChance = 0.32 + (v.profession === 'fisher' ? 0.25 : 0) + (onBoat ? 0.15 : 0)
-      if (rng() < catchChance) addToInventory(v.inventory, 'food', onBoat ? 3 : 2)
+      const catchChance =
+        (0.32 +
+          (v.profession === 'fisher' ? 0.25 : 0) +
+          (onBoat ? 0.15 : 0) +
+          fishingCurrentBonus(state.climate, task.targetX, task.targetY) * 0.22) *
+        skillYieldBonus(mindOf(v).skills, 'fish')
+      const freeze = sampleTempC(state.climate, task.targetX, task.targetY) < -1 ? 0.4 : 1
+      if (rng() < catchChance * freeze) {
+        const haul = onBoat ? 3 : 2
+        const bonus = skillYieldBonus(mindOf(v).skills, 'fish') > 1.25 && rng() < 0.35 ? 1 : 0
+        const primary = rng() < 0.82 ? 'fish' : 'food'
+        addToInventory(v.inventory, primary, haul + bonus)
+        grantGatherExtras(v, 'fish', rng, state)
+      }
       return edibleValue(v.inventory) < FOOD_TARGET && task.ageTicks < 70
     }
     case 'tameHorse': {
@@ -1216,14 +2432,18 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'feedHorse': {
       const horse = state.horses.find((h) => h.id === task.targetId && h.alive)
       if (!horse) return false
-      const grain = countOf(v.inventory, 'wheat')
-      if (grain <= 0) return false
-      removeFromInventory(v.inventory, 'wheat', 1)
+      const grainTypes: ResourceType[] = ['wheat', 'oats', 'barley', 'rye']
+      const grain = grainTypes.find((g) => countOf(v.inventory, g) > 0)
+      if (!grain) return false
+      removeFromInventory(v.inventory, grain, 1)
       horse.hunger = Math.min(HUNGER_MAX, horse.hunger + 2)
       return false
     }
     case 'buildCart': {
       if (countOf(v.inventory, 'wood') < CART_WOOD_COST || countOf(v.inventory, 'stone') < CART_STONE_COST) return false
+      const labor = accumulateLabor('buildCart')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
       removeFromInventory(v.inventory, 'wood', CART_WOOD_COST)
       removeFromInventory(v.inventory, 'stone', CART_STONE_COST)
       v.hasCart = true
@@ -1235,9 +2455,16 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const needWood = cargo ? BOAT_CARGO_WOOD_COST : BOAT_FISH_WOOD_COST
       const needStone = cargo ? BOAT_CARGO_STONE_COST : 0
       if (countOf(v.inventory, 'wood') < needWood || countOf(v.inventory, 'stone') < needStone) return false
+      const labor = accumulateLabor('buildBoat')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
       removeFromInventory(v.inventory, 'wood', needWood)
       if (needStone > 0) removeFromInventory(v.inventory, 'stone', needStone)
-      const boat = { id: state.nextId++, x: task.targetX, y: task.targetY, kind: cargo ? ('cargo' as const) : ('fishing' as const), ownerId: v.id, villageId: v.villageId, alive: true }
+      // Poix / corde : calfatage et gréement (bonus de solidité soft via cargo).
+      if (countOf(v.inventory, 'pitch') > 0) removeFromInventory(v.inventory, 'pitch', 1)
+      if (countOf(v.inventory, 'rope') > 0) removeFromInventory(v.inventory, 'rope', 1)
+      const water = adjacentWater(grid, task.targetX, task.targetY) ?? findNearbyTerrain(grid, task.targetX, task.targetY, 3, WATER) ?? { x: task.targetX, y: task.targetY }
+      const boat = { id: state.nextId++, x: water.x, y: water.y, kind: cargo ? ('cargo' as const) : ('fishing' as const), ownerId: v.id, villageId: v.villageId, alive: true }
       state.boats.push(boat)
       v.boatId = boat.id
       logEvent(state, `${v.name} a mis à l'eau ${cargo ? 'un chaland' : 'une barque'}`)
@@ -1246,14 +2473,18 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'buildPort': {
       const village = state.villages.find((vg) => vg.id === v.villageId)
       if (!village || village.hasPort) return false
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (countOf(v.inventory, 'wood') < PORT_WOOD_COST || countOf(v.inventory, 'stone') < PORT_STONE_COST) return false
-      setTerrain(grid, task.targetX, task.targetY, PORT)
+      stampPort(grid, task.targetX, task.targetY)
       removeFromInventory(v.inventory, 'wood', PORT_WOOD_COST)
       removeFromInventory(v.inventory, 'stone', PORT_STONE_COST)
       village.hasPort = true
       village.portX = task.targetX
       village.portY = task.targetY
+      stampPlaza(grid, village.centerX, village.centerY)
+      linkToHub(grid, village.centerX, village.centerY, task.targetX, task.targetY, 1)
       logEvent(state, `${v.name} a achevé le port du village`)
+      noteMilestone(state, 'firstPort', `Premier port achevé`)
       return false
     }
     case 'tradeRun': {
@@ -1261,70 +2492,230 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         const destVillage = state.villages.find((vg) => vg.id === task.targetId)
         const homeVillage = state.villages.find((vg) => vg.id === v.villageId)
         if (!destVillage || !homeVillage) return false
-        const deal = findTradeOpportunity(state, homeVillage, v.x, v.y)
+        const routeKey = homeVillage.id < destVillage.id ? `${homeVillage.id}-${destVillage.id}` : `${destVillage.id}-${homeVillage.id}`
+        const newRoute = !state.tradeRoutes.has(routeKey)
+        const deal = findTradeOpportunity(state, homeVillage, v.x, v.y, v)
         const resource = deal && deal.target.id === destVillage.id ? deal.resource : 'wood'
         const gain = deal && deal.target.id === destVillage.id ? deal.gain : 3
         conductTrade(state, v, destVillage, resource, gain)
+        if (newRoute) seedTradeCorridor(grid, homeVillage.centerX, homeVillage.centerY, destVillage.centerX, destVillage.centerY)
+        onPoliticalTradeWindfall(state, v)
         v.tradeCooldown = TRADE_COOLDOWN
         task.targetX = v.homeX
         task.targetY = v.homeY
         task.targetId = -1
+        task.path = null
+        task.pathI = 0
+        task.pathTick = -999
         return v.homeX !== -1
       }
       return false
     }
     case 'gatherFood': {
       if (getTerrain(grid, task.targetX, task.targetY) !== BUSH) return false
-      const i = task.targetY * grid.width + task.targetX
-      const potential = Math.min(berriesRipeIn(state.season) ? 2 : 1, grid.amount[i])
-      const leftover = addToInventory(v.inventory, 'food', potential)
-      const gained = potential - leftover
-      const remaining = Math.max(0, grid.amount[i] - gained)
-      setTerrain(grid, task.targetX, task.targetY, remaining <= 0 ? GRASS : BUSH, remaining)
+      const yieldAmt = berriesRipeIn(state.season) ? 2 : 1
+      const { gained, remaining } = takeFromTile(grid, task.targetX, task.targetY, v, 'food', yieldAmt, BUSH, GRASS, state)
+      if (gained <= 0 && remaining <= 0) return false
       if (gained <= 0) return false
+      grantGatherExtras(v, 'bush', rng, state)
       if (rng() < 0.08) {
         remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.6, emotion: 0.4 })
       }
       return edibleValue(v.inventory) < FOOD_TARGET
+    }
+    case 'clearLand': {
+      const tx = task.targetX
+      const ty = task.targetY
+      const t = getTerrain(grid, tx, ty)
+      if (t === TREE || isWoodPile(grid, tx, ty)) {
+        if (exhaustedAbort()) return false
+        spendStamina(v, STAMINA_LABOR)
+        if (rng() >= laborSuccessChance(v, 'clearLand')) return true
+        wearTool(v)
+        const keep = t === TREE ? TREE : DIRT
+        const beforeAmt = grid.amount[ty * grid.width + tx]
+        const { gained, remaining } = takeFromTile(grid, tx, ty, v, 'wood', chopYield(v), keep, DIRT, state)
+        if (remaining <= 0) {
+          packTrailIfConnected(grid, tx, ty)
+          return false
+        }
+        // Inventory full or overload: shove leftover logs beside the cell so plots/roads can open — never delete.
+        const left = relocateWoodPile(grid, tx, ty, remaining)
+        if (left <= 0) {
+          setTerrain(grid, tx, ty, DIRT, 0)
+          packTrailIfConnected(grid, tx, ty)
+          return false
+        }
+        // Could not relocate — keep the pile on this cell (physical wood, not vanished).
+        setTerrain(grid, tx, ty, DIRT, left)
+        if (gained <= 0 && left >= beforeAmt) {
+          v.nextThinkTick = state.tick + 6
+          return false
+        }
+        return true
+      }
+      if (t === BUSH) {
+        const yieldAmt = berriesRipeIn(state.season) ? 2 : 1
+        const { gained, remaining } = takeFromTile(grid, tx, ty, v, 'food', yieldAmt, BUSH, DIRT, state)
+        if (gained > 0) grantGatherExtras(v, 'bush', rng, state)
+        if (remaining > 0) return gained > 0
+        packTrailIfConnected(grid, tx, ty)
+        return false
+      }
+      return false
     }
     case 'gatherWood':
     case 'gatherStone':
     case 'gatherIron': {
       const wantTerrain = task.kind === 'gatherWood' ? TREE : task.kind === 'gatherIron' ? IRON : STONE
       const res = task.kind === 'gatherWood' ? 'wood' : task.kind === 'gatherIron' ? 'iron' : 'stone'
-      if (getTerrain(grid, task.targetX, task.targetY) !== wantTerrain) return false
-      const i = task.targetY * grid.width + task.targetX
-      const potential = Math.min(2, grid.amount[i])
-      const leftover = addToInventory(v.inventory, res, potential)
-      const gained = potential - leftover
-      const remaining = Math.max(0, grid.amount[i] - gained)
-      setTerrain(grid, task.targetX, task.targetY, remaining <= 0 ? GRASS : wantTerrain, remaining)
-      const cap = v.hasCart && v.mounted ? 20 : v.mounted ? 14 : 8
-      return gained > 0 && countOf(v.inventory, res) < cap
+      const t = getTerrain(grid, task.targetX, task.targetY)
+      if (exhaustedAbort()) return false
+      spendStamina(v, STAMINA_LABOR)
+      if (rng() >= laborSuccessChance(v, task.kind)) return true
+      wearTool(v)
+      if (task.kind === 'gatherWood') {
+        if (t !== TREE && !isWoodPile(grid, task.targetX, task.targetY)) return false
+        const keep = t === TREE ? TREE : DIRT
+        const { gained, remaining } = takeFromTile(grid, task.targetX, task.targetY, v, 'wood', chopYield(v), keep, DIRT, state)
+        if (gained > 0 && t === TREE) grantGatherExtras(v, 'tree', rng, state)
+        if (remaining <= 0 && t === TREE) packTrailIfConnected(grid, task.targetX, task.targetY)
+        if (gained > 0 && rng() < 0.12) {
+          remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.5, emotion: 0.3 })
+        }
+        return gained > 0 && remaining > 0 && countOf(v.inventory, 'wood') < woodCap(v)
+      }
+      if (t !== wantTerrain) return false
+      const { gained } = takeFromTile(grid, task.targetX, task.targetY, v, res, v.toolTier === 'iron' ? 2 : 1, wantTerrain, GRASS, state)
+      if (gained > 0 && task.kind === 'gatherStone') grantGatherExtras(v, 'stone', rng, state)
+      return gained > 0 && countOf(v.inventory, res) < woodCap(v)
     }
     case 'mineTunnel': {
-      if (getTerrain(grid, task.targetX, task.targetY) !== MOUNTAIN) return false
-      const i = task.targetY * grid.width + task.targetX
-      const potential = Math.min(MINE_STONE_YIELD, grid.amount[i])
-      const leftover = addToInventory(v.inventory, 'stone', potential)
-      const gained = potential - leftover
-      const remaining = Math.max(0, grid.amount[i] - gained)
-      if (gained > 0) {
-        // Digging exposes the actual geological deposit. Iron/gold are never placed on the surface.
-        const iron = Math.min(MINE_IRON_YIELD, grid.ironDeposit[i])
-        const gold = Math.min(MINE_GOLD_YIELD, grid.goldDeposit[i])
-        if (iron > 0) {
-          const leftIron = addToInventory(v.inventory, 'iron', iron)
-          grid.ironDeposit[i] = iron - (iron - leftIron)
-        }
-        if (gold > 0) {
-          const leftGold = addToInventory(v.inventory, 'gold', gold)
-          grid.goldDeposit[i] = gold - (gold - leftGold)
-        }
+      const village = v.villageId !== null ? state.villages.find((vg) => vg.id === v.villageId) : undefined
+      if (getTerrain(grid, task.targetX, task.targetY) !== MOUNTAIN) {
+        // Retarget to the next corridor tip if this cell already opened.
+        const tip = nextCorridorTip(grid, task.targetX, task.targetY) ?? pickDigTarget(grid, v.x, v.y, { maxRadius: 10, preferDeeper: true })
+        if (!tip) return false
+        task.targetX = tip.x
+        task.targetY = tip.y
+        task.path = null
+        return true
       }
-      setTerrain(grid, task.targetX, task.targetY, remaining <= 0 ? TUNNEL : MOUNTAIN, remaining)
+      if (exhaustedAbort()) return false
+      ensureMountainDigHp(grid, task.targetX, task.targetY)
+      spendStamina(v, digStaminaCost(v.toolTier))
+      if (rng() >= laborSuccessChance(v, 'mineTunnel')) return true
+      wearTool(v, v.toolTier === 'iron' ? 1.1 : 1.5)
+
+      const i = task.targetY * grid.width + task.targetX
+      const blast = knowsBlastMining(v, village)
+      const hit = digHpPerHit(v.toolTier) + (blast ? 2 : 0)
+      const stoneWant = digStoneYield(v.toolTier) + (blast ? 1 : 0)
+      let take = Math.min(stoneWant, Math.max(1, Math.min(hit, grid.amount[i])))
+      while (take > 0 && !canLift(v, 'stone', take, state)) take -= 1
+
+      let spoil = 0
+      let gained = 0
+      if (take > 0) {
+        const leftover = addToInventory(v.inventory, 'stone', take)
+        gained = take - leftover
+        spoil = leftover
+      } else if (grid.amount[i] > 0) {
+        // Inventory full of stone — still chip rock, dump spoil outside.
+        spoil = Math.min(stoneWant, grid.amount[i])
+        gained = spoil
+      }
+
+      if (gained <= 0 && spoil <= 0) {
+        v.nextThinkTick = state.tick + 6
+        return false
+      }
+
+      const remaining = Math.max(0, grid.amount[i] - Math.max(gained, spoil, hit))
+      const towardX = village ? village.centerX : v.homeX >= 0 ? v.homeX : v.x
+      const towardY = village ? village.centerY : v.homeY >= 0 ? v.homeY : v.y
+      if (spoil > 0) depositSpoil(grid, task.targetX, task.targetY, spoil, towardX, towardY)
+
+      // Ore to inventory — fix remaining deposit math (previous code wiped veins).
+      const ironWant = Math.min(digIronYield(v.toolTier), grid.ironDeposit[i])
+      if (ironWant > 0 && canLift(v, 'iron', ironWant, state)) {
+        const leftIron = addToInventory(v.inventory, 'iron', ironWant)
+        const ironGained = ironWant - leftIron
+        grid.ironDeposit[i] = Math.max(0, grid.ironDeposit[i] - ironGained)
+      }
+      const goldWant = Math.min(digGoldYield(v.toolTier), grid.goldDeposit[i])
+      if (goldWant > 0 && canLift(v, 'gold', goldWant, state)) {
+        const leftGold = addToInventory(v.inventory, 'gold', goldWant)
+        const goldGained = goldWant - leftGold
+        grid.goldDeposit[i] = Math.max(0, grid.goldDeposit[i] - goldGained)
+      }
+      const sideWant = v.toolTier === 'iron' ? 2 : 1
+      digSideOre(grid, i, v, state, 'copperDeposit', 'copper', sideWant)
+      digSideOre(grid, i, v, state, 'tinDeposit', 'tin', sideWant)
+      digSideOre(grid, i, v, state, 'leadDeposit', 'lead', sideWant)
+      digSideOre(grid, i, v, state, 'silverDeposit', 'silver', Math.min(1, sideWant))
+      digSideOre(grid, i, v, state, 'coalDeposit', 'coal', sideWant)
+
+      task.work += 1
+      let opened = false
+      if (remaining <= 0) {
+        const { isEntrance } = finalizeTunnelCell(grid, task.targetX, task.targetY, village, { placeAccess: true })
+        opened = true
+        if (isEntrance && village) {
+          linkToHub(grid, village.centerX, village.centerY, task.targetX, task.targetY, 0)
+        }
+        remember(v, {
+          kind: 'goodSpot',
+          subjectId: null,
+          x: task.targetX,
+          y: task.targetY,
+          tick: state.tick,
+          weight: isEntrance ? 0.75 : 0.55,
+          emotion: 0.35,
+        })
+        const mind = mindOf(v)
+        const existing = mind.semantic.find((s) => s.kind === 'mine_spot' && Math.abs(s.x - task.targetX) + Math.abs(s.y - task.targetY) < 10)
+        if (existing) {
+          existing.confidence = Math.min(1, existing.confidence + 0.15)
+          existing.tick = state.tick
+          existing.x = task.targetX
+          existing.y = task.targetY
+          existing.label = isEntrance ? 'entrée de mine' : 'galerie minière'
+        } else {
+          mind.semantic.push({
+            kind: 'mine_spot',
+            subjectId: null,
+            x: task.targetX,
+            y: task.targetY,
+            confidence: isEntrance ? 0.7 : 0.5,
+            tick: state.tick,
+            label: isEntrance ? 'entrée de mine' : 'galerie minière',
+          })
+          if (mind.semantic.length > 24) mind.semantic.shift()
+        }
+      } else {
+        setTerrain(grid, task.targetX, task.targetY, MOUNTAIN, remaining)
+      }
+
+      noteMiningInsight(state, v, rng)
+
+      // Session budget: stop before infinite caves; iron / miner get slightly longer digs.
+      const hitBudget = DIG_HITS_PER_SESSION + (v.toolTier === 'iron' ? 1 : 0) + (v.profession === 'miner' ? 1 : 0)
+      if (task.work >= hitBudget) return false
+
+      if (opened) {
+        // Cap corridor growth per session (not 1000-tile caves).
+        const opensSoFar = Math.ceil(task.work / 2)
+        if (opensSoFar >= DIG_TILES_PER_SESSION + (v.toolTier === 'iron' ? 1 : 0)) return false
+        const tip = nextCorridorTip(grid, task.targetX, task.targetY)
+        if (!tip) return false
+        task.targetX = tip.x
+        task.targetY = tip.y
+        task.path = null
+      }
+
       const cap2 = v.hasCart && v.mounted ? 20 : v.mounted ? 14 : 8
-      return gained > 0 && countOf(v.inventory, 'stone') < cap2
+      return countOf(v.inventory, 'stone') < cap2 && v.stamina > STAMINA_EXHAUSTED * 0.6
     }
     case 'weaveCloth': {
       const woolHave = countOf(v.inventory, 'wool')
@@ -1332,14 +2723,38 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const batches = Math.floor(woolHave / WOOL_PER_CLOTH)
       removeFromInventory(v.inventory, 'wool', batches * WOOL_PER_CLOTH)
       addToInventory(v.inventory, 'cloth', batches)
+      const q = rollCraftQuality(mindOf(v).skills.craft, rng)
+      if (q === 'masterwork') noteMasterworkCraft(state, v, 'toile')
+      else if (q === 'fine') onCognitiveEvent(v, 'craft_joy', 0.55)
       return false
     }
     case 'sewClothing': {
       const clothHave = countOf(v.inventory, 'cloth')
-      if (clothHave < CLOTH_PER_CLOTHING) return false
-      const batches = Math.floor(clothHave / CLOTH_PER_CLOTHING)
-      removeFromInventory(v.inventory, 'cloth', batches * CLOTH_PER_CLOTHING)
-      addToInventory(v.inventory, 'clothing', batches)
+      const leatherHave = countOf(v.inventory, 'leather')
+      if (clothHave >= CLOTH_PER_CLOTHING) {
+        const batches = Math.floor(clothHave / CLOTH_PER_CLOTHING)
+        removeFromInventory(v.inventory, 'cloth', batches * CLOTH_PER_CLOTHING)
+        addToInventory(v.inventory, 'clothing', batches)
+        tryEquipFromClothingCraft(v, 'cloth')
+        return false
+      }
+      // Chaîne cuir → vêtement (sans métier tisserand obligatoire).
+      if (leatherHave >= 1) {
+        removeFromInventory(v.inventory, 'leather', 1)
+        addToInventory(v.inventory, 'clothing', 1)
+        tryEquipFromClothingCraft(v, 'leather')
+        return false
+      }
+      return false
+    }
+    case 'makeCharcoal': {
+      if (countOf(v.inventory, 'wood') < 2) return false
+      const labor = accumulateLabor('makeCharcoal')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      removeFromInventory(v.inventory, 'wood', 2)
+      addToInventory(v.inventory, 'charcoal', 1)
+      onCognitiveEvent(v, 'craft_joy', 0.35)
       return false
     }
     case 'tanHide': {
@@ -1368,8 +2783,11 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'sowField': {
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (!isBuildableGround(grid, task.targetX, task.targetY)) return false
+      const cropId = pickCropId(rng)
       setTerrain(grid, task.targetX, task.targetY, WHEAT, 1)
+      grid.cropType[task.targetY * grid.width + task.targetX] = cropId
       v.hasField = true
       const next = fieldCells(grid, v.fieldX, v.fieldY, FIELD_RADIUS).find((c) => isBuildableGround(grid, c.x, c.y))
       if (!next) return false
@@ -1382,18 +2800,75 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (getTerrain(grid, task.targetX, task.targetY) !== WHEAT) return false
       const ripeness = grid.amount[i]
       if (ripeness < WHEAT_SPROUT) return false
-      addToInventory(v.inventory, 'wheat', ripeness >= WHEAT_RIPE ? 3 : 1)
+      let yieldN = ripeness >= WHEAT_RIPE ? 3 : 1
+      const fy = skillYieldBonus(mindOf(v).skills, 'harvestWheat')
+      if (fy > 1.2 && ripeness >= WHEAT_RIPE) yieldN += 1
+      if (fy > 1.35 && rng() < 0.4) yieldN += 1
+      const crop = cropDef(grid.cropType[i] ?? 0)
+      yieldN = Math.max(1, Math.round(yieldN * crop.yieldMul))
+      addToInventory(v.inventory, crop.resource, yieldN)
+      // Verger / vignoble : chance de fruits secondaires proches
+      if (crop.resource === 'apple' && rng() < 0.25) addToInventory(v.inventory, 'pear', 1)
+      if (crop.resource === 'grape' && rng() < 0.2) addToInventory(v.inventory, 'plum', 1)
       setTerrain(grid, task.targetX, task.targetY, DIRT)
+      grid.cropType[i] = 0
       return false
     }
     case 'grindFlour': {
       const village = state.villages.find((vg) => vg.id === v.villageId)
       if (!village?.hasMill) return false
       const wheat = countOf(v.inventory, 'wheat')
-      if (wheat < WHEAT_PER_FLOUR) return false
-      const batches = Math.floor(wheat / WHEAT_PER_FLOUR)
-      removeFromInventory(v.inventory, 'wheat', batches * WHEAT_PER_FLOUR)
-      addToInventory(v.inventory, 'flour', batches)
+      if (wheat >= WHEAT_PER_FLOUR) {
+        const batches = Math.floor(wheat / WHEAT_PER_FLOUR)
+        removeFromInventory(v.inventory, 'wheat', batches * WHEAT_PER_FLOUR)
+        addToInventory(v.inventory, 'flour', batches)
+        return false
+      }
+      for (const grain of MILL_GRAINS) {
+        const have = countOf(v.inventory, grain)
+        if (have < 2) continue
+        const batches = Math.floor(have / 2)
+        removeFromInventory(v.inventory, grain, batches * 2)
+        addToInventory(v.inventory, 'flour', batches)
+        return false
+      }
+      return false
+    }
+    case 'craftGoods': {
+      const recipeId = task.resource
+      const recipe = CRAFT_RECIPES.find((r) => r.output === recipeId || r.id === recipeId) ?? CRAFT_RECIPES.find((r) => recipeCraftable(r, (t) => countOf(v.inventory, t)))
+      if (!recipe) return false
+      if (recipe.station === 'workbench' && !v.hasWorkbench) return false
+      if (recipe.station === 'mill') {
+        const village = state.villages.find((vg) => vg.id === v.villageId)
+        if (!village?.hasMill) return false
+      }
+      if (!recipeCraftable(recipe, (t) => countOf(v.inventory, t))) return false
+      const labor = accumulateLabor('craftGoods')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      spendRecipeInputs(recipe, (t, n) => {
+        removeFromInventory(v.inventory, t, n)
+      })
+      addToInventory(v.inventory, recipe.output, recipe.outputCount)
+      onCognitiveEvent(v, 'craft_joy', 0.4)
+      return false
+    }
+    case 'useMedicine': {
+      const dose =
+        countOf(v.inventory, 'medicine') > 0
+          ? 'medicine'
+          : countOf(v.inventory, 'herbs') > 0
+            ? 'herbs'
+            : countOf(v.inventory, 'sage') > 0
+              ? 'sage'
+              : countOf(v.inventory, 'garlic') > 0
+                ? 'garlic'
+                : null
+      if (!dose) return false
+      removeFromInventory(v.inventory, dose, 1)
+      const heal = dose === 'medicine' ? 2 : 1
+      v.health = Math.min(VILLAGER_HEALTH_MAX, v.health + heal)
       return false
     }
     case 'bakeBread': {
@@ -1406,6 +2881,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'buildMill': {
       const village = state.villages.find((vg) => vg.id === v.villageId)
       if (!village || village.hasMill) return false
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (countOf(v.inventory, 'wood') < MILL_WOOD_COST || countOf(v.inventory, 'stone') < MILL_STONE_COST) return false
       setTerrain(grid, task.targetX, task.targetY, MILL)
       removeFromInventory(v.inventory, 'wood', MILL_WOOD_COST)
@@ -1413,21 +2889,28 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       village.hasMill = true
       village.millX = task.targetX
       village.millY = task.targetY
+      stampPlaza(grid, village.centerX, village.centerY)
+      linkToHub(grid, village.centerX, village.centerY, task.targetX, task.targetY, 1)
       logEvent(state, `${v.name} a achevé le moulin`)
+      noteMilestone(state, 'firstMill', `Premier moulin achevé`)
       return false
     }
     case 'buildHouse': {
       if (countOf(v.inventory, 'wood') < TILE_COST) return false
       const fp = homeFootprint(v)
       if (!fp) return false
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
+      if (exhaustedAbort()) return false
+      spendStamina(v, STAMINA_LABOR * 0.8)
+      if (rng() >= laborSuccessChance(v, 'buildHouse')) return true
       if (getTerrain(grid, task.targetX, task.targetY) !== HOUSE) {
         setTerrain(grid, task.targetX, task.targetY, HOUSE)
         removeFromInventory(v.inventory, 'wood', TILE_COST)
       }
       const nextGap = fp.walls.find((c) => getTerrain(grid, c.x, c.y) !== HOUSE)
       if (!nextGap) {
-        for (const c of fp.interior) if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, PLANK)
-        for (const c of fp.open) if (inBounds(grid, c.x, c.y)) setTerrain(grid, c.x, c.y, DIRT)
+        if (firstPlotVegetation(grid, fp)) return false
+        stampHouseFloors(grid, fp)
         v.hasHome = true
         v.homeOwnerId = v.id
         const joinRadius = VILLAGE_JOIN_RADIUS * (0.5 + v.personality.sociability)
@@ -1436,9 +2919,17 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         v.villageId = village.id
         if (v.house) reinforceStyle(village.style, v.house.shape)
         recalcVillageCentre(state, village)
+        stampPlaza(grid, village.centerX, village.centerY)
+        const door = fp.door
+        linkToHub(grid, door.x, door.y, village.centerX, village.centerY, village.memberIds.length >= 4 ? 1 : 0)
         village.perimeterTick = -PERIMETER_REFRESH
         if (v.profession === 'none') v.profession = assignProfession(state, v)
         logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']}`)
+        noteMilestone(state, 'firstHouse', `Première maison fondée`)
+        onCognitiveEvent(v, 'new_home', 1)
+        if (village.memberIds.length === 2) {
+          logEvent(state, `Un sentier relie les foyers au centre`)
+        }
         return false
       }
       if (countOf(v.inventory, 'wood') < TILE_COST) return false
@@ -1446,10 +2937,41 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       task.targetY = nextGap.y
       return true
     }
+    case 'buildProject': {
+      const projectId = task.targetId ?? v.activeProjectId
+      if (projectId === null) return false
+      const project = findProject(state, projectId)
+      if (!project || (project.phase as string) === 'done') {
+        v.activeProjectId = null
+        return false
+      }
+      if (exhaustedAbort()) return false
+      spendStamina(v, STAMINA_LABOR * 0.85)
+      if (rng() >= laborSuccessChance(v, 'buildProject')) return true
+      v.activeProjectId = project.id
+      const keepGoing = applyConstructionStep(state, v, project, task.targetX, task.targetY, (res, n) => {
+        if (countOf(v.inventory, res) < n) return false
+        removeFromInventory(v.inventory, res, n)
+        return true
+      })
+      if ((project.phase as string) === 'done') {
+        logEvent(state, `${v.name} a achevé ${project.label}`)
+        v.activeProjectId = null
+        return false
+      }
+      if (!keepGoing) return false
+      const next = nextWallTarget(grid, project)
+      if (!next) return false
+      task.targetX = next.x
+      task.targetY = next.y
+      task.targetId = project.id
+      return true
+    }
     case 'buildPen': {
       const haveWood = countOf(v.inventory, 'wood') >= TILE_COST
       const haveStone = countOf(v.inventory, 'stone') >= TILE_COST
       if (!haveWood && !haveStone) return false
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (getTerrain(grid, task.targetX, task.targetY) !== FENCE) {
         setTerrain(grid, task.targetX, task.targetY, FENCE)
         removeFromInventory(v.inventory, haveStone ? 'stone' : 'wood', TILE_COST)
@@ -1490,6 +3012,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'buildWorkbench': {
       if (countOf(v.inventory, 'wood') < WORKBENCH_COST) return false
+      const labor = accumulateLabor('buildWorkbench')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
       setTerrain(grid, task.targetX, task.targetY, WORKBENCH)
       removeFromInventory(v.inventory, 'wood', WORKBENCH_COST)
       v.hasWorkbench = true
@@ -1499,6 +3024,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'buildChest': {
       if (countOf(v.inventory, 'wood') < CHEST_COST) return false
+      const labor = accumulateLabor('buildChest')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
       setTerrain(grid, task.targetX, task.targetY, CHEST)
       removeFromInventory(v.inventory, 'wood', CHEST_COST)
       v.hasChest = true
@@ -1509,6 +3037,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'buildBed': {
       if (countOf(v.inventory, 'wood') < BED_COST) return false
+      const labor = accumulateLabor('buildBed')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
       setTerrain(grid, task.targetX, task.targetY, BED)
       removeFromInventory(v.inventory, 'wood', BED_COST)
       v.bedCount += 1
@@ -1521,6 +3052,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (wantCode === null) return false
       const res = wantCode === WALL_WOOD ? 'wood' : 'stone'
       if (countOf(v.inventory, res) < WALL_SEGMENT_COST) return false
+      if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (getTerrain(grid, task.targetX, task.targetY) !== wantCode) {
         setTerrain(grid, task.targetX, task.targetY, wantCode)
         removeFromInventory(v.inventory, res, WALL_SEGMENT_COST)
@@ -1559,24 +3091,38 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           v.hunger = HUNGER_MAX
           v.health = Math.min(VILLAGER_HEALTH_MAX, v.health + 1)
           addToInventory(v.inventory, 'hide', 1)
+          grantGatherExtras(v, 'hunt', rng, state)
         }
         return false
       }
-      const grain = countOf(v.inventory, 'wheat')
-      if (grain > 0) {
-        v.penFeed += removeFromInventory(v.inventory, 'wheat', grain)
+      const grainTypes: ResourceType[] = ['wheat', 'oats', 'barley', 'rye']
+      for (const g of grainTypes) {
+        const grain = countOf(v.inventory, g)
+        if (grain > 0) {
+          v.penFeed += removeFromInventory(v.inventory, g, grain)
+          return false
+        }
+      }
+      const spareFood = Math.max(0, countOf(v.inventory, 'food') - 1)
+      if (spareFood > 0) {
+        v.penFeed += removeFromInventory(v.inventory, 'food', spareFood)
         return false
       }
-      const spare = Math.max(0, countOf(v.inventory, 'food') - 1)
-      if (spare <= 0) return false
-      v.penFeed += removeFromInventory(v.inventory, 'food', spare)
+      const spareTurnip = countOf(v.inventory, 'turnip')
+      if (spareTurnip > 0) {
+        v.penFeed += removeFromInventory(v.inventory, 'turnip', spareTurnip)
+        return false
+      }
       return false
     }
     case 'storeChest': {
       if (!v.chestInventory) return false
-      for (const res of ['wood', 'stone', 'iron', 'gold', 'flour', 'wool', 'cloth', 'hide', 'leather', 'coin'] as ResourceType[]) transferAll(v.inventory, v.chestInventory, res)
+      for (const res of STOREABLE_RESOURCES) {
+        if (isEdible(res)) continue
+        transferAll(v.inventory, v.chestInventory, res)
+      }
       if (edibleValue(v.inventory) - FOOD_TARGET > 0) {
-        for (const res of ['wheat', 'food', 'bread'] as ResourceType[]) {
+        for (const res of EDIBLE_PRIORITY) {
           const have = countOf(v.inventory, res)
           if (have <= 1) continue
           const give = have - 1
@@ -1588,7 +3134,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'takeFromChest': {
       if (!v.chestInventory) return false
-      for (const res of ['bread', 'food', 'wheat'] as ResourceType[]) {
+      for (const res of EDIBLE_PRIORITY) {
         const have = countOf(v.chestInventory, res)
         if (have <= 0) continue
         const want = Math.min(4, have)
@@ -1602,7 +3148,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const resource = task.resource
       const seller = state.villagers.find((o) => o.id === task.targetId && o.alive)
       if (!resource || !seller || !seller.chestInventory) return false
-      const price = priceOf(resource)
+      const rel = v.relations.get(seller.id)
+      if (rel && rel.grudge > 0.5) return false
+      const price = Math.max(1, Math.round(priceOf(resource, state) * (rel && rel.debt > 0.5 ? 0.85 : 1)))
       const coinHave = countOf(v.inventory, 'coin')
       if (coinHave < price) return false
       const reserve = targetPerCapita(resource)
@@ -1616,10 +3164,96 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       addToInventory(seller.inventory, 'coin', batch * price)
       return false
     }
-    case 'rest':
-      return task.ageTicks < 40
-    case 'idle':
+    case 'rest': {
+      const sheltered = atHomeShelter(v)
+      const bedBonus = v.bedCount > 0 && sheltered ? STAMINA_REST_BED : sheltered ? STAMINA_REST_HOME : STAMINA_IDLE * 1.6
+      recoverStamina(v, bedBonus)
+      if (sheltered && v.hunger > 0.5) {
+        // Quiet recovery near the hearth — slight hunger cost of resting idle.
+        if (state.season === 'winter') recoverStamina(v, 0.02)
+      }
+      const need = isNight(state.tick) ? 30 : v.stamina < STAMINA_TIRED ? 50 : 40
+      return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.05
+    }
+    case 'socialise': {
+      if (task.targetId !== null) {
+        const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+        if (!other) return false
+        if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
+        doSocialise(state, v, other)
+        return false
+      }
+      let buddy: Villager | null = null
+      for (const o of state.villagers) {
+        if (!o.alive || o.id === v.id) continue
+        if (distance(v.x, v.y, o.x, o.y) > SOCIAL_RANGE) continue
+        buddy = o
+        break
+      }
+      if (buddy) doSocialise(state, v, buddy)
+      else recoverStamina(v, STAMINA_IDLE)
+      return task.ageTicks < 12
+    }
+    case 'experiment': {
+      if (!v.hasWorkbench) return false
+      if (distance(v.x, v.y, v.workbenchX, v.workbenchY) > 1.8) return true
+      const labor = accumulateLabor('experiment')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      const { continue: keep, insight } = applyExperiment(state, v, rng)
+      void insight
+      return keep && task.ageTicks < 28
+    }
+    case 'giveFood': {
+      const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+      if (!other) return false
+      if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
+      doGiveFood(state, v, other)
       return false
+    }
+    case 'entertain': {
+      let audience: Villager | null = null
+      if (task.targetId !== null) {
+        audience = state.villagers.find((o) => o.id === task.targetId && o.alive) ?? null
+        if (audience && distance(v.x, v.y, audience.x, audience.y) > SOCIAL_RANGE + 2) return true
+      }
+      doEntertain(state, v, audience)
+      return task.ageTicks < 14
+    }
+    case 'counsel': {
+      const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+      if (!other) return false
+      if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
+      doCounsel(state, v, other)
+      return false
+    }
+    case 'teachCraft': {
+      const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+      if (!other) return false
+      if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
+      doTeachCraft(state, v, other)
+      return false
+    }
+    case 'steal': {
+      const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+      if (!other) return false
+      doSteal(state, v, other)
+      return false
+    }
+    case 'confront': {
+      const other = state.villagers.find((o) => o.id === task.targetId && o.alive)
+      if (!other) return false
+      if (distance(v.x, v.y, other.x, other.y) > SOCIAL_RANGE) return true
+      doConfront(state, v, other, rng)
+      return false
+    }
+    case 'defend': {
+      recoverStamina(v, STAMINA_IDLE * 0.5)
+      return task.ageTicks < 8
+    }
+    case 'idle':
+      recoverStamina(v, STAMINA_IDLE)
+      return task.ageTicks < (isNight(state.tick) ? 6 : 10)
     default:
       return false
   }
@@ -1634,19 +3268,126 @@ const SHAPE_FR: Record<string, string> = {
   longhouse: 'longue',
 }
 
+export function checkRoadMilestones(state: SimState) {
+  if (state.milestones.firstPath && state.milestones.firstRoad) return
+  const grid = state.grid
+  const list = grid.walkedList
+  const n = list.length
+  if (n === 0) return
+  const start = Math.max(0, n - 400)
+  for (let i = start; i < n; i++) {
+    const t = grid.terrain[list[i]]
+    if (!state.milestones.firstPath && (t === PATH || t === ROAD)) {
+      noteMilestone(state, 'firstPath', `Les sentiers deviennent des chemins`)
+      // Pride wires into emotion → task bias (road_pride was defined but never fired).
+      const idx = list[i]
+      const rx = idx % grid.width
+      const ry = Math.floor(idx / grid.width)
+      for (const v of state.villagers) {
+        if (!v.alive) continue
+        if (chebyshev(v.x, v.y, rx, ry) <= 18) onCognitiveEvent(v, 'road_pride', 0.7)
+      }
+    }
+    if (!state.milestones.firstRoad && t === ROAD) {
+      noteMilestone(state, 'firstRoad', `Une vraie route apparaît`)
+      const idx = list[i]
+      const rx = idx % grid.width
+      const ry = Math.floor(idx / grid.width)
+      for (const v of state.villagers) {
+        if (!v.alive) continue
+        if (chebyshev(v.x, v.y, rx, ry) <= 22) onCognitiveEvent(v, 'road_pride', 0.95)
+      }
+      return
+    }
+  }
+}
+
 export function tickVillager(state: SimState, v: Villager, rng: () => number) {
   const grid = state.grid
   v.age++
   if (v.reproCooldown > 0) v.reproCooldown -= 1
   if (v.tradeCooldown > 0) v.tradeCooldown -= 1
-  if (tickNeeds(v, VILLAGER_HEALTH_MAX, state.season, warmthMultiplier(v))) {
+  if (tickNeeds(v, VILLAGER_HEALTH_MAX, villagerHungerDrain(state, v))) {
     v.alive = false
     state.deaths += 1
     logEvent(state, `${v.name} est mort de faim`)
     onDeath(state, v, null)
     return
   }
+  // Soft disease pressure (prédisposition × âge × famine) — jamais une mort certaine.
+  if ((state.tick + v.id * 13) % 53 === 0 && v.health > 0) {
+    const ageNorm = Math.min(1, v.age / (TICKS_PER_YEAR * 55))
+    const pressure = diseasePressure(v.phenotype, ageNorm, state.famine)
+    if (pressure > 0.5 && rng() < pressure * 0.035 * (v.hunger < 1.5 ? 1.4 : 1)) {
+      v.health -= 1
+      if (v.health <= 0) {
+        v.alive = false
+        state.deaths += 1
+        logEvent(state, `${v.name} succombe à la maladie`)
+        onDeath(state, v, null)
+        return
+      }
+    }
+  }
+  // Cold / heat / wet outdoors drain stamina; hearth recovers a little even without a rest task.
+  {
+    const air = sampleTempC(state.climate, v.x, v.y)
+    const cold = coldStress01(air)
+    const heat = heatStress01(air)
+    const rain = sampleRain(state.climate, v.x, v.y)
+    if (!atHomeShelter(v) && !v.embarked && (cold > 0.05 || heat > 0.05 || rain > 0.4)) {
+      spendStamina(v, cold * (isNight(state.tick) ? 0.022 : 0.01) + heat * 0.014 + rain * 0.008)
+    } else if (atHomeShelter(v) && !v.task) {
+      recoverStamina(v, 0.028)
+    } else if (!v.task && v.stamina < STAMINA_TIRED) {
+      recoverStamina(v, 0.01)
+    }
+  }
+  if (!Number.isFinite(v.hunger)) v.hunger = HUNGER_MAX * 0.5
+  if (!Number.isFinite(v.stamina)) v.stamina = STAMINA_MAX * 0.5
+  if (!Number.isFinite(v.health)) v.health = 1
   if (v.profession === 'none' && v.hasHome) v.profession = assignProfession(state, v)
+  else if (v.hasHome && (state.tick + v.id * 17) % PROFESSION_REVIEW === 0) {
+    const next = assignProfession(state, v)
+    if (next !== v.profession) {
+      const lock = professionLockInBonus(state, v, v.profession, next)
+      // Stick to craft when surplus + size deepen division of labor (social expectation).
+      // Curiosity + chômage soft abaissent le seuil (dérive de carrière).
+      const liveMix = (() => {
+        try {
+          return mindOf(v).livelihood?.unemployedStreak ?? 0
+        } catch {
+          return 0
+        }
+      })()
+      const threshold = 0.38 + v.personality.curiosity * 0.22 - Math.min(0.2, liveMix * 0.002)
+      if (lock < threshold) {
+        const prev = v.profession
+        v.profession = next
+        if (prev !== 'none' && next !== prev) {
+          logEvent(state, `${v.name} oriente son labeur vers un autre craft (${prev} → ${next})`)
+        }
+      }
+    }
+    // Soft abandon: chômage prolongé + pas de pratique → sans métier (stress SoL ailleurs).
+    try {
+      const live = mindOf(v).livelihood
+      if (live && live.unemployedStreak > 90 && live.titleFr === 'sans métier clair' && v.profession !== 'none') {
+        if (v.personality.curiosity > 0.35 || live.unemployedStreak > 140) {
+          logEvent(state, `${v.name} n’a plus de métier stable`)
+          v.profession = 'none'
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  // Métiers émergents — LOD stagger inside tickLivelihood.
+  {
+    const pol = politicsOf(v)
+    const g = circlesOf(state, v).find((c) => c.isGuild || (c.kind === 'craft' && c.isInstitution))
+    tickLivelihood(state, v, pol.beliefs.piety, g?.id ?? null)
+  }
   if ((state.tick + v.id) % SOCIAL_STAGGER === 0) tickSocialUpkeep(state, v)
 
   if (v.horseId !== null) {
@@ -1662,7 +3403,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     if (!horse) {
       v.horseId = null
       v.mounted = false
-    } else if (!v.mounted && distance(horse.x, horse.y, v.x, v.y) <= 2) {
+    } else if (!v.mounted && !v.embarked && distance(horse.x, horse.y, v.x, v.y) <= 2) {
       v.mounted = true
       horse.riderId = v.id
     }
@@ -1670,51 +3411,173 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.mounted = false
   }
 
+  if (v.boatId !== null && !boatOf(state, v)) {
+    v.boatId = null
+    v.embarked = false
+  }
+
   const desperate = v.hunger < 0.6
-  const effectiveFleeRadius = FLEE_RADIUS * (1.4 - v.personality.courage * 0.8) * (desperate ? 0.5 : 1)
-  const threat = nearestAlive(state.wolves, v.x, v.y, effectiveFleeRadius)
+  const exhausted = v.stamina < STAMINA_EXHAUSTED
+  const caution = cautionFactor(v)
+  const effectiveFleeRadius =
+    FLEE_RADIUS * (1.4 - v.personality.courage * 0.8) * caution * (desperate ? 0.55 : 1)
+  const threat = nearestTacticalThreat(state, v, effectiveFleeRadius)
   if (threat) {
-    if (v.toolTier !== 'none') {
-      setTask(v, 'fight', threat.x, threat.y, threat.id)
-      moveToward(v, threat.x, threat.y, VILLAGER_SPEED, grid, 1)
-    } else {
-      setTask(v, 'flee', threat.x, threat.y, threat.id)
-      const cartDrag = v.mounted && v.hasCart ? -1 : 0
-      const speed = FLEE_SPEED + (v.mounted ? HORSE_SPEED_BONUS + cartDrag : 0)
-      const fp = homeFootprint(v)
-      if (fp) moveToward(v, fp.door.x, fp.door.y, speed, grid, 1)
-      else moveToward(v, v.x + (v.x - threat.x) * 5, v.y + (v.y - threat.y) * 5, speed, grid, 1)
+    onCognitiveEvent(v, 'wolf', 0.85)
+    const mind = mindOf(v)
+    // Remember danger tiles (semantic map) — paths and tasks will avoid them.
+    if (!v.task || (v.task.kind !== 'flee' && v.task.kind !== 'fight') || (state.tick + v.id) % 7 === 0) {
+      noteWolfDanger(mind, threat, state.tick, 1)
+      remember(v, {
+        kind: 'dangerSpot',
+        subjectId: null,
+        x: threat.x,
+        y: threat.y,
+        tick: state.tick,
+        weight: 1.05,
+        emotion: -0.75,
+      })
     }
-    v.task = null
+
+    const engage = shouldEngageThreat(state, v, { exhausted, hunger: v.hunger })
+    const fleeProfile = pathProfileFor(state, v, {
+      kind: engage ? 'fight' : 'flee',
+      targetId: threat.id,
+    })
+
+    if (engage) {
+      stashInterruptedTask(v)
+      setTask(v, 'fight', threat.x, threat.y, threat.id)
+      noteChosenAction(v, 'fight', 'garde — engage le loup')
+      spendStamina(v, STAMINA_FIGHT * 0.4)
+      nudgeToward(
+        grid,
+        v,
+        threat.x,
+        threat.y,
+        Math.max(1, travelSpeedFor(state, v) - 1),
+        fleeProfile,
+        1,
+        (nx, ny, fx, fy) => onVillagerStep(state, v, nx, ny, fx, fy),
+      )
+    } else {
+      stashInterruptedTask(v)
+      const door = homeFootprint(v)?.door ?? null
+      const safety = pickSafetyTarget(state, v, threat, door)
+      setTask(v, 'flee', safety.x, safety.y, threat.id)
+      noteChosenAction(v, 'flee', `menace — vers ${safety.label}`)
+      const speed = Math.max(1, Math.min(FLEE_SPEED, travelSpeedFor(state, v) + (exhausted ? 0 : 1)))
+      spendStamina(
+        v,
+        staminaCostForStep({
+          embarked: false,
+          mounted: v.mounted,
+          hasCart: v.hasCart,
+          loadRatio: encumbranceRatio(v),
+          terrain: getTerrain(grid, v.x, v.y),
+          bodyMassKg: bodyMassKgFromPhenotype(v.phenotype),
+          onRoad: isWornRoad(getTerrain(grid, v.x, v.y)),
+        }) * 1.5,
+      )
+      nudgeToward(
+        grid,
+        v,
+        safety.x,
+        safety.y,
+        speed,
+        fleeProfile,
+        1,
+        (nx, ny, fx, fy) => onVillagerStep(state, v, nx, ny, fx, fy),
+      )
+    }
     return
+  }
+
+  // Threat cleared: restore interrupted job (repath with danger costs) or rethink.
+  if (v.task && (v.task.kind === 'flee' || v.task.kind === 'fight')) {
+    const wasKind = v.task.kind
+    v.task = null
+    onCognitiveEvent(v, 'wolf_survived', wasKind === 'fight' ? 0.9 : 0.7)
+    if (restoreInterruptedTask(v)) {
+      replanAfterFailure(mindOf(v), 'threat')
+      noteChosenAction(v, v.task!.kind, `reprise après ${wasKind}`)
+      v.nextThinkTick = state.tick + 1
+    } else {
+      replanAfterFailure(mindOf(v), 'threat')
+    }
+  }
+
+  // Survie : ne pas rester coincé sur un craft/build pendant que la faim tombe à 0
+  // (sinon mort de faim avec de la nourriture encore dans le sac).
+  if (
+    v.task &&
+    v.task.kind !== 'eat' &&
+    v.task.kind !== 'flee' &&
+    v.task.kind !== 'fight' &&
+    v.task.kind !== 'takeFromChest' &&
+    v.task.kind !== 'gatherFood' &&
+    v.task.kind !== 'fish' &&
+    v.task.kind !== 'harvestWheat'
+  ) {
+    if (v.hunger < 2.2 && bestEdible(v)) {
+      stashInterruptedTask(v)
+      setTask(v, 'eat', v.x, v.y)
+      noteChosenAction(v, 'eat', 'faim — interruption')
+    } else if (
+      v.hunger < 1.4 &&
+      v.hasChest &&
+      v.chestInventory &&
+      edibleValue(v.chestInventory) > 0
+    ) {
+      stashInterruptedTask(v)
+      setTask(v, 'takeFromChest', v.chestX, v.chestY)
+      noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
+    } else if (v.hunger < 0.75 || v.starveTimer > 12) {
+      // Forcer un replan vers cueillette / pêche avant le timer de mort.
+      stashInterruptedTask(v)
+      v.task = null
+      v.nextThinkTick = state.tick
+    }
   }
 
   if (!v.task) {
     if (state.tick < v.nextThinkTick) return
-    updateMind(state, v)
+    const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
+    tickCognition(state, v, rng, depth)
     chooseTask(state, v, rng)
     v.nextThinkTick = state.tick + THINK_COOLDOWN
   }
   const active = v.task
   const continued = executeTask(state, v, rng)
-  if (active) {
-    const m = mindOf(v)
-    m.lastKind = active.kind
-    if (continued) m.successes += 1
-    else if (active.ageTicks > 20) { m.failures += 1; m.commitment = Math.max(0, m.commitment - 3) }
-    else m.successes += 1
+  if (active && !continued) {
+    const stuck = active.stuckTicks >= STUCK_LIMIT
+    const failed =
+      stuck || active.ageTicks > (active.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE)
+    recordTaskOutcome(
+      v,
+      active.kind,
+      !failed && (active.ageTicks > 1 || active.work > 0 || active.kind === 'eat'),
+      stuck ? 'stuck' : 'generic',
+    )
+    if (!failed) noteActivityPractice(v, active.kind, 1)
   }
   if (!continued) v.task = null
 }
 
 export function tickFields(state: SimState) {
-  const rate = growthRate(state.season)
-  if (rate <= 0) return
+  const base = growthRate(state.season)
+  if (base <= 0 && state.season === 'winter') {
+    // Allow residual growth only where local T still supports crops.
+  }
   const grid = state.grid
   const r = FIELD_RADIUS
   const w = grid.width
   for (const v of state.villagers) {
     if (!v.alive || v.fieldX === -1) continue
+    const fieldT = sampleTempC(state.climate, v.fieldX, v.fieldY)
+    const rain = sampleRain(state.climate, v.fieldX, v.fieldY)
+    const rate = Math.max(0, base * cropTempFactor(fieldT) * (0.75 + rain * 0.55))
+    if (rate <= 0.02) continue
     const x0 = v.fieldX - r
     const y0 = v.fieldY - r
     const x1 = v.fieldX + r
@@ -1758,8 +3621,15 @@ export function tickFamine(state: SimState) {
     return
   }
   const was = state.famine
-  state.famine = hungry / alive > 0.4 || stores < alive
-  if (state.famine && !was) logEvent(state, `La famine s'installe`)
+  // Ne pas déclarer famine sur le stock global dès le tick 40 : un monde neuf
+  // part avec peu de garde-manger et ça déclenchait un cascade politique / stress.
+  const stockCrisis = state.tick >= TICKS_PER_DAY && stores < alive * 0.45
+  state.famine = hungry / alive > 0.5 || stockCrisis
+  if (state.famine && !was) {
+    logEvent(state, `La famine s'installe`)
+    noteMilestone(state, 'firstFamine', `Première famine`)
+    onPoliticalFamine(state)
+  }
   if (!state.famine && was) logEvent(state, `La famine est passée`)
 }
 
@@ -1768,18 +3638,37 @@ export function tickReproduction(state: SimState, rng: () => number) {
   if (state.famine || state.season === 'winter') return
   let alive = 0
   for (const v of state.villagers) if (v.alive) alive++
-  if (alive >= MAX_POPULATION) return
+  if (alive >= maxPopulationCap()) return
 
   const ready = (v: Villager) =>
-    v.alive && v.hasHome && v.reproCooldown <= 0 && v.hunger >= REPRO_HUNGER_THRESHOLD && edibleValue(v.inventory) >= REPRO_FOOD_STOCK
+    v.alive &&
+    v.hasHome &&
+    isMarriageAge(v) &&
+    v.reproCooldown <= 0 &&
+    v.hunger >= REPRO_HUNGER_THRESHOLD &&
+    edibleValue(v.inventory) >= REPRO_FOOD_STOCK
 
-  for (const a of state.villagers) {
-    if (!ready(a)) continue
-    for (const b of state.villagers) {
-      if (b.id === a.id || !ready(b)) continue
-      if (distance(a.x, a.y, b.x, b.y) > 2.5) continue
+  const lookup = pedigreeLookup(state)
+
+  const tryCouple = (a: Villager, b: Villager): boolean => {
+      if (!ready(a) || !ready(b) || a.id === b.id) return false
+      if (distance(a.x, a.y, b.x, b.y) > 2.5) return false
+      const bonded =
+        (a.spouseId === b.id && b.spouseId === a.id) || (a.spouseId === null && b.spouseId === null)
+      if (!bonded) return false
       const rel = a.relations.get(b.id)
-      if (rel && rel.affinity < 0.1) continue
+      if (a.spouseId !== b.id) {
+        if (rel && rel.affinity < 0.15) return false
+      } else if (rel && rel.affinity < -0.05) return false
+      const F = kinshipCoefficient(a.id, b.id, lookup)
+      if (F >= 0.2) return false
+      if (
+        a.parentIds.includes(b.id) ||
+        b.parentIds.includes(a.id) ||
+        (a.parentIds.length > 0 && b.parentIds.some((p) => a.parentIds.includes(p)))
+      ) {
+        return false
+      }
 
       const homeOwner = a.homeOwnerId !== null ? state.villagers.find((o) => o.id === a.homeOwnerId && o.alive) : undefined
       let residents = 0
@@ -1789,6 +3678,13 @@ export function tickReproduction(state: SimState, rng: () => number) {
       }
       const hasRoom = homeOwner ? residents < homeOwner.bedCount : false
 
+      // Soft gate fertilité génétique (prédisposition ≠ certitude)
+      const fertChance = (fertilityModifier(a.phenotype) + fertilityModifier(b.phenotype)) * 0.5
+      const bondBonus = a.spouseId === b.id ? 0.08 : 0
+      const homeVg = a.villageId !== null ? state.villages.find((vg) => vg.id === a.villageId) : undefined
+      const prosperMul = villageBirthBias(homeVg)
+      if (rng() > Math.min(0.98, fertChance * prosperMul + bondBonus)) return false
+
       for (const parent of [a, b]) {
         if (countOf(parent.inventory, 'bread') > 0) removeFromInventory(parent.inventory, 'bread', 1)
         else removeFromInventory(parent.inventory, 'food', 2)
@@ -1797,28 +3693,49 @@ export function tickReproduction(state: SimState, rng: () => number) {
       b.reproCooldown = REPRO_COOLDOWN
 
       const seed = Math.floor(rng() * 4294967296)
-      const personality = inheritPersonality(a.personality, b.personality, rng)
+      const { genome, phenotype, motherId, fatherId } = birthGenetics(a, b, rng)
+      const personality = applyGeneticPersonalityBias(
+        inheritPersonality(a.personality, b.personality, rng),
+        genome,
+        rng,
+      )
       const childInventory = createInventory(5)
       addToInventory(childInventory, 'coin', CHILD_STARTER_COINS)
       const child: Villager = {
         id: state.nextId++,
         seed,
         name: generateName(seed),
+        surname: '',
+        lineageId: null,
+        familyId: null,
+        spouseId: null,
+        marriageKind: null,
+        marriedTick: 0,
+        refusesMarriage: false,
+        adoptiveParentIds: [],
         personality,
         profession: 'none',
         ambition: pickAmbition(personality, rng),
         grudgeTarget: null,
-        parentIds: [a.id, b.id],
+        parentIds: [motherId, fatherId],
+        motherId,
+        fatherId,
+        genome,
+        phenotype,
         x: a.x,
         y: a.y,
         health: VILLAGER_HEALTH_MAX,
         hunger: HUNGER_MAX,
+        stamina: STAMINA_MAX,
         starveTimer: 0,
         healTimer: 0,
         inventory: childInventory,
         task: null,
+        savedTask: null,
         nextThinkTick: 0,
         toolTier: 'none',
+        toolWear: 0,
+        equipment: createEmptyEquipment(),
         memories: [],
         relations: new Map(),
         house: null,
@@ -1826,6 +3743,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
         mounted: false,
         hasCart: false,
         boatId: null,
+        embarked: false,
         tradeCooldown: 0,
         hasWorkbench: false,
         workbenchX: -1,
@@ -1847,19 +3765,61 @@ export function tickReproduction(state: SimState, rng: () => number) {
         chestY: -1,
         chestInventory: null,
         villageId: a.villageId,
-        hue: Math.floor((a.hue + b.hue) / 2),
+        hue: phenotype.hue,
         alive: true,
         age: 0,
         reproCooldown: REPRO_COOLDOWN,
+        activeProjectId: null,
+        knowledge: [],
       }
       relationWith(child, a.id).affinity = 0.8
       relationWith(child, b.id).affinity = 0.8
       relationWith(a, child.id).affinity = 0.8
       relationWith(b, child.id).affinity = 0.8
+      relationWith(child, a.id).kinship = 0.9
+      relationWith(child, b.id).kinship = 0.9
+      relationWith(a, child.id).kinship = 0.9
+      relationWith(b, child.id).kinship = 0.9
       state.villagers.push(child)
+      registerBirth(state, child, a, b, rng)
       state.births += 1
-      logEvent(state, `${child.name} est né de ${a.name} et ${b.name}`)
-      return
+      seedCultureFromParents(mindOf(child), mindOf(a), mindOf(b), rng)
+      mindOf(child).preferences = inheritLaborPreferences(
+        mindOf(a).preferences,
+        mindOf(b).preferences,
+        personality,
+        rng,
+      )
+      seedEthnosFromParents(state, child, a, b, mindOf(child).cultureTag, rng)
+      inheritKnowledge(child, a, b, state.tick, rng)
+      if (a.spouseId === b.id && rng() < 0.45) {
+        logCause(
+          state,
+          `foyer de ${fullNameOf(a)} et ${fullNameOf(b)}`,
+          `${fullNameOf(child)} naît de l'union`,
+        )
+      } else {
+        logEvent(state, `${fullNameOf(child)} est né de ${fullNameOf(a)} et ${fullNameOf(b)}`)
+      }
+      noteMilestone(state, 'firstBirth', `Première naissance`)
+      return true
+  }
+
+  // Pass 1: bonded couples preferred
+  for (const a of state.villagers) {
+    if (!ready(a) || a.spouseId === null) continue
+    const spouse = bondedPartner(state, a)
+    if (!spouse || spouse.id < a.id) continue
+    if (tryCouple(a, spouse)) return
+  }
+
+  // Pass 2: rare opportunistic among unmarried
+  if (rng() > 0.35) return
+  for (const a of state.villagers) {
+    if (!ready(a) || a.spouseId !== null) continue
+    for (const b of state.villagers) {
+      if (b.id <= a.id || !ready(b) || b.spouseId !== null) continue
+      if (tryCouple(a, b)) return
     }
   }
 }
@@ -1867,7 +3827,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
 export function tickSheep(state: SimState, s: Sheep, rng: () => number) {
   if (s.breedCooldown > 0) s.breedCooldown -= 1
   if (s.woolCooldown > 0) s.woolCooldown -= 1
-  if (tickNeeds(s, ANIMAL_HEALTH_MAX, state.season)) {
+  if (tickNeeds(s, ANIMAL_HEALTH_MAX, animalHungerDecay(state.season))) {
     s.alive = false
     return
   }
@@ -1940,6 +3900,7 @@ export function tickSheep(state: SimState, s: Sheep, rng: () => number) {
 
   if (owner && s.woolCooldown <= 0 && s.hunger >= 2.5) {
     addToInventory(owner.inventory, 'wool', 1)
+    if (rng() < 0.35) addToInventory(owner.inventory, 'milk', 1)
     s.woolCooldown = WOOL_YIELD_COOLDOWN
   }
 
@@ -1968,7 +3929,7 @@ export function tickSheep(state: SimState, s: Sheep, rng: () => number) {
 
 export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
   if (w.breedCooldown > 0) w.breedCooldown -= 1
-  if (tickNeeds(w, ANIMAL_HEALTH_MAX, state.season)) {
+  if (tickNeeds(w, ANIMAL_HEALTH_MAX, animalHungerDecay(state.season))) {
     w.alive = false
     return
   }
@@ -1987,7 +3948,7 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
   }
 
   if (!targetVillager && !targetSheep && !targetHorse) {
-    const huntRadius = state.season === 'winter' ? WOLF_HUNT_RADIUS * 1.4 : WOLF_HUNT_RADIUS
+    const huntRadius = state.season === 'winter' ? WOLF_HUNT_RADIUS * 1.65 : state.season === 'autumn' ? WOLF_HUNT_RADIUS * 1.2 : WOLF_HUNT_RADIUS
     const villagerCandidate = nearestAlive(state.villagers, w.x, w.y, huntRadius)
     const sheepCandidate = nearestAlive(state.sheep, w.x, w.y, huntRadius, (s) => !s.captured)
     const horseCandidate = nearestAlive(state.horses, w.x, w.y, huntRadius, (h) => h.riderId === null)
@@ -2014,7 +3975,7 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
     moveRandom(w, rng, state.grid, 2)
     return
   }
-  if (distance(w.x, w.y, target.x, target.y) > WOLF_GIVE_UP_RADIUS) {
+  if (distance(w.x, w.y, target.x, target.y) > (state.season === 'winter' ? WOLF_GIVE_UP_RADIUS * 1.25 : WOLF_GIVE_UP_RADIUS)) {
     w.targetId = null
     w.targetKind = null
     moveRandom(w, rng, state.grid, 2)
@@ -2046,12 +4007,13 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
     }
     targetVillager.health -= 1
     remember(targetVillager, { kind: 'dangerSpot', subjectId: null, x: w.x, y: w.y, tick: state.tick, weight: 1.2, emotion: -0.8 })
+    onPoliticalWolfAttack(state, targetVillager)
     if (targetVillager.health <= 0) {
       targetVillager.alive = false
       state.deaths += 1
       dropCarriedGold(state, targetVillager)
       logEvent(state, `${targetVillager.name} a été tué par un loup`)
-      onDeath(state, targetVillager, null)
+      onWolfKill(state, targetVillager)
       w.targetId = null
       w.targetKind = null
       w.hunger = HUNGER_MAX
@@ -2114,31 +4076,40 @@ export function tickWolfReproduction(state: SimState) {
 export function tickCombat(state: SimState, rng: () => number) {
   for (const w of state.wolves) {
     if (!w.alive) continue
+    const nearby = nearbyVillagers(state, w.x, w.y, Math.ceil(COMBAT_RADIUS) + 1, null, 24)
     let groupSize = 0
-    for (const v of state.villagers) {
-      if (v.alive && v.toolTier !== 'none' && distance(v.x, v.y, w.x, w.y) <= COMBAT_RADIUS) groupSize++
+    for (let i = 0; i < nearby.length; i++) {
+      if (nearby[i]!.toolTier !== 'none') groupSize++
     }
     if (groupSize === 0) continue
     const preyId = w.targetKind === 'villager' ? w.targetId : null
     const hitChance = Math.min(0.92, BASE_HIT_CHANCE + GROUP_BONUS * (groupSize - 1))
     const dmgChance = Math.max(0.04, BASE_DAMAGE_CHANCE - GROUP_BONUS * (groupSize - 1))
 
-    for (const attacker of state.villagers) {
+    for (let i = 0; i < nearby.length; i++) {
+      const attacker = nearby[i]!
       if (!w.alive) break
-      if (!attacker.alive || attacker.toolTier === 'none') continue
+      if (attacker.toolTier === 'none') continue
       if (distance(attacker.x, attacker.y, w.x, w.y) > COMBAT_RADIUS) continue
       const toolBonus = attacker.toolTier === 'iron' ? IRON_TOOL_BONUS : attacker.toolTier === 'stone' ? STONE_TOOL_BONUS : 0
+      const gear = equipmentEffectsOf(attacker)
       const courageBonus = (attacker.personality.courage - 0.5) * 0.12
       const guardBonus = attacker.profession === 'guard' ? 0.1 : 0
-      if (rng() < Math.min(0.95, hitChance + toolBonus + courageBonus + guardBonus)) {
+      const inventBonus = techCombatBonus(attacker)
+      if (rng() < Math.min(0.95, hitChance + toolBonus + courageBonus + guardBonus + inventBonus + gear.combat * 0.35)) {
         w.health -= 1
         if (w.health <= 0) {
           w.alive = false
-          const prey = preyId !== null ? state.villagers.find((o) => o.id === preyId && o.alive && o.id !== attacker.id) : undefined
+          addToInventory(attacker.inventory, 'fur', 1 + (rng() < 0.45 ? 1 : 0))
+          if (rng() < 0.55) addToInventory(attacker.inventory, 'hide', 1)
+          const prey =
+            preyId !== null
+              ? state.villagers.find((o) => o.id === preyId && o.alive && o.id !== attacker.id)
+              : undefined
           if (prey) creditRescue(state, prey, attacker)
         }
       }
-      if (rng() < Math.max(0.04, dmgChance - toolBonus - courageBonus - guardBonus)) {
+      if (rng() < Math.max(0.04, dmgChance - toolBonus - courageBonus - guardBonus - gear.protect * 0.45)) {
         attacker.health -= 1
         if (attacker.health <= 0) {
           attacker.alive = false
@@ -2176,23 +4147,46 @@ export function tickTrade(state: SimState) {
 }
 
 export function tickRegrowth(state: SimState, rng: () => number) {
-  if (state.season === 'winter') return
   const grid = state.grid
-  const vigour = state.season === 'summer' ? 4 : 3
+  // Cold hard stop only where local T is freezing — not a global season gate alone.
+  const vigourBase = state.season === 'summer' ? 4 : state.season === 'winter' ? 1 : 3
+  const rainBoost = state.climate.weather === 'rain' || state.climate.weather === 'storm' ? 1 : 0
+  const vigour = vigourBase + rainBoost
   for (let i = 0; i < vigour; i++) {
     const source = findRandomTile(grid, rng, TREE)
-    if (source && resourceDensity(grid, source.x, source.y, 'tree', 3) >= SPREAD_NEIGHBOURS_NEEDED) {
-      tryGrowAdjacent(grid, source.x, source.y, TREE, 12, rng)
+    if (source) {
+      const tC = sampleTempC(state.climate, source.x, source.y)
+      if (tC < -2) continue
+      const moist = sampleMoisture(state.climate, source.x, source.y) + sampleRain(state.climate, source.x, source.y) * 0.35
+      const suit = biomeSuitability(tC, moist)
+      if (suit.tree < 0.28) continue
+      if (resourceDensity(grid, source.x, source.y, 'tree', 3) >= SPREAD_NEIGHBOURS_NEEDED) {
+        tryGrowAdjacent(grid, source.x, source.y, TREE, 12, rng)
+      }
     }
     const bushSource = findRandomTile(grid, rng, BUSH)
-    if (bushSource && resourceDensity(grid, bushSource.x, bushSource.y, 'bush', 3) >= SPREAD_NEIGHBOURS_NEEDED) {
-      tryGrowAdjacent(grid, bushSource.x, bushSource.y, BUSH, 8, rng)
+    if (bushSource) {
+      const tC = sampleTempC(state.climate, bushSource.x, bushSource.y)
+      if (tC < 0) continue
+      const moist = sampleMoisture(state.climate, bushSource.x, bushSource.y) + sampleRain(state.climate, bushSource.x, bushSource.y) * 0.35
+      const suit = biomeSuitability(tC, moist)
+      if (suit.bush < 0.25) continue
+      if (resourceDensity(grid, bushSource.x, bushSource.y, 'bush', 3) >= SPREAD_NEIGHBOURS_NEEDED) {
+        tryGrowAdjacent(grid, bushSource.x, bushSource.y, BUSH, 8, rng)
+      }
     }
   }
   if (rng() < 0.7) {
     const dirt = findRandomTile(grid, rng, DIRT)
-    if (dirt && getClaim(grid, dirt.x, dirt.y) === CLAIM_NONE && grid.traffic[dirt.y * grid.width + dirt.x] < 20) {
-      setTerrain(grid, dirt.x, dirt.y, GRASS)
+    if (dirt && getClaim(grid, dirt.x, dirt.y) === CLAIM_NONE && grid.amount[dirt.y * grid.width + dirt.x] === 0 && grid.traffic[dirt.y * grid.width + dirt.x] < 20) {
+      const tC = sampleTempC(state.climate, dirt.x, dirt.y)
+      const moist = sampleMoisture(state.climate, dirt.x, dirt.y)
+      const suit = biomeSuitability(tC, moist)
+      if (suit.sand > 0.55 && suit.grass < 0.35) {
+        setTerrain(grid, dirt.x, dirt.y, SAND)
+      } else if (suit.grass > 0.25 && tC > 2) {
+        setTerrain(grid, dirt.x, dirt.y, GRASS)
+      }
     }
   }
 }
