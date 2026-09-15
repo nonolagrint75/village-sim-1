@@ -1527,6 +1527,13 @@ export function activeNormsFor(state: SimState, v: Villager): NormId[] {
 
 /** Multiplier applied in chooseTask scoring. */
 export function politicalTaskBias(state: SimState, v: Villager, kind: TaskKind, targetId: number | null): number {
+  // Hard gate: norms must not pull troubadours while hungry / under famine.
+  if (
+    (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') &&
+    (state.famine || v.hunger < 2.35)
+  ) {
+    return 0
+  }
   let mult = 1
   const pol = politicsOf(v)
   const norms = activeNormsFor(state, v)

@@ -546,6 +546,7 @@ export const EMPTY_STATS: SimStats = {
   naturalCover: 0,
   births: 0,
   deaths: 0,
+  deathsByWolf: 0,
   thefts: 0,
   brawls: 0,
   friendships: 0,

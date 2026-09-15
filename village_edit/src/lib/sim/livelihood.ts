@@ -594,10 +594,13 @@ export function serviceUrge(
   const live = ensureLivelihood(mind)
   // Spectacle only after real surplus — mild hunger used to count as "fed" and drowned farm/craft.
   const larder = edibleValue(v.inventory)
+  // Hard gate: zero surplus under famine or low hunger (no soft leak into entertain/counsel).
+  if (state.famine || v.hunger < 2.35) {
+    return { entertain: 0, counsel: 0, teach: 0 }
+  }
   const wellFed = v.hunger >= 2.6 && (larder >= 2.5 || live.patronage > 0.4)
-  let surplusTime = wellFed && v.stamina > 2.2 && !state.famine ? 1 : 0.08
-  if (v.hunger < 1.8 || mind.needs.hunger > 0.45) surplusTime *= 0.25
-  if (state.famine) surplusTime *= 0.15
+  let surplusTime = wellFed && v.stamina > 2.2 ? 1 : 0.08
+  if (v.hunger < 2.6 || mind.needs.hunger > 0.35) surplusTime *= 0.2
   const socialSkill = mind.skills.social
   const bored = mind.needs.boredom
   const pietyNeed = piety + mind.needs.piety

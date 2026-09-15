@@ -577,6 +577,8 @@ export interface SimStats {
   naturalCover: number
   births: number
   deaths: number
+  /** Villager deaths caused by wolves (hunt or fight). */
+  deathsByWolf: number
   thefts: number
   brawls: number
   friendships: number
@@ -628,6 +630,8 @@ export interface SimState {
   nextVillageId: number
   births: number
   deaths: number
+  /** Villager deaths caused by wolves (hunt or fight). */
+  deathsByWolf: number
   bridges: number
   thefts: number
   brawls: number

@@ -102,6 +102,14 @@ function ensureUtilScratch(n: number): Float32Array {
   return utilScratch
 }
 
+/** Talk / spectacle / counsel are surplus-only — hard zero under hunger or famine. */
+function leisureBlockedBySurvival(state: SimState, v: Villager, kind: TaskKind): boolean {
+  if (kind !== 'socialise' && kind !== 'entertain' && kind !== 'counsel' && kind !== 'teachCraft') {
+    return false
+  }
+  return state.famine || v.hunger < 2.35
+}
+
 /** Fill SCRATCH_* and return Π mults (no heap). */
 function fillFactorProduct(
   state: SimState,
@@ -115,6 +123,14 @@ function fillFactorProduct(
 ): number {
   const mind = mindOf(v)
   const mults = SCRATCH_MULTS
+  // Bypass the 0.02 floor — otherwise leisure still wins softmax on huge base scores.
+  if (leisureBlockedBySurvival(state, v, kind)) {
+    for (let i = 0; i < FACTOR_COUNT; i++) {
+      mults[i] = 0
+      SCRATCH_LOGS[i] = logSafe(1e-4)
+    }
+    return 0
+  }
   mults[0] = needsFactor(mind, kind)
   mults[1] = valuesPlanFactor(mind, kind, targetId)
   mults[2] = emotionsFactor(mind, kind)
@@ -224,10 +240,10 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'kin') * 0.55 +
       peWeight(pe, 'social') * 0.2 +
       peWeight(pe, 'belonging') * 0.15
-    // Spectacle yields hard under hunger; talk / food-share only soft-yield.
-    if (kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
-      if (n.hunger > 0.28) m *= 0.2
-      else if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
+    // Hard gate: socialise/spectacle/counsel wipe under hunger (giveFood still soft-yields).
+    if (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
+      if (n.hunger > 0.38) return 0
+      if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
       else if (n.purpose > 0.3) m *= 0.55
     } else if (n.hunger > 0.55) {
       m *= 0.55
@@ -238,7 +254,7 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
     }
   }
   if (kind === 'entertain') {
-    m *= n.hunger > 0.25 ? 0.2 : 1 + n.boredom * 0.45 + n.status * 0.2
+    m *= n.hunger > 0.25 ? 0 : 1 + n.boredom * 0.45 + n.status * 0.2
   }
   if (kind === 'counsel') m *= 1 + n.piety * 0.5
   if (kind === 'teachCraft') m *= 1 + n.purpose * 0.35 + n.status * 0.15

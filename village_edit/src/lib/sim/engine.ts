@@ -18,7 +18,7 @@ import {
 import { tickMarketPrices, tickUrbanNetwork } from './commerce'
 import { makeHorse } from './horses'
 import { createEmptyEquipment, seedStarterKit } from './equipment'
-import { addToInventory, countOf, createInventory } from './inventory'
+import { addToInventory, countOf, createInventory, STACK_SIZE } from './inventory'
 import { pickSex } from './appearance'
 import {
   applyGeneticPersonalityBias,
@@ -78,10 +78,16 @@ const GROUP_SPREAD = 14
 const HORSE_HERDS = 3
 /** A small starting purse so the coin economy (buying materials, minting, trade) isn't stuck at zero forever waiting for the first lucky gold find. */
 const STARTER_COINS = 4
-/** Rations de fondation — sans ça, BMR + cueillette race → morts de faim dès les premiers jours-sim. */
-const STARTER_FOOD = 5
+/**
+ * Rations de fondation — un stack plein (STACK_SIZE).
+ * Couvre la 1ʳᵉ semaine pendant que la cueillette / les champs s’installent ;
+ * pas un buff permanent (la faim BMR reste réelle).
+ */
+const STARTER_FOOD = STACK_SIZE
 /** Bois de départ — lance + premiers murs / établi sans bloquer sur la cueillette seule. */
-const STARTER_WOOD = 5
+const STARTER_WOOD = STACK_SIZE
+/** Grain de semence — meunerie / réserve ; les champs pioneer sont pré-semés à part. */
+const STARTER_WHEAT = 3
 /**
  * Âge tick des fondateurs : adultes (CHILD_AGE≈220, ELDER_AGE≈800).
  * age=0 les traitait comme enfants pendant ~3 jours-sim.
@@ -90,55 +96,87 @@ const FOUNDER_AGE_MIN = 280
 const FOUNDER_AGE_SPAN = 420
 
 function newVillagerInventory() {
-  // 8 slots: food/coin/wood + gather extras (resin, herbs…) without choking craft inputs.
+  // 8 slots: food/coin/wood/wheat + gather extras without choking craft inputs.
   const inv = createInventory(8)
   addToInventory(inv, 'coin', STARTER_COINS)
   addToInventory(inv, 'food', STARTER_FOOD)
   addToInventory(inv, 'wood', STARTER_WOOD)
+  addToInventory(inv, 'wheat', STARTER_WHEAT)
   return inv
 }
 
-const FOUNDING_SITE_CANDIDATES = 18
+const FOUNDING_SITE_CANDIDATES = 24
 const FOUNDING_SITE_RADIUS = 70
 
 /**
  * A founding village needs food and building material nearby to survive its first winters. On a
  * large map a purely random spot can land in a genuine desert far from any bush, tree or stone,
  * dooming that group before it starts — so instead of one random tile, sample a wide batch and
- * keep the one with the best combined resource density around it. This only runs once per
- * founding group at world creation, so a generous candidate count costs nothing at runtime.
+ * keep the one with the best combined resource density around it. Prefer hospitable (foundable)
+ * biomes hard; never let alpine/tundra density spikes beat temperate farmland.
  */
 function pickFoundingSite(
   grid: ReturnType<typeof createWorldGrid>,
   climate: NonNullable<SimState['climate']>,
   rng: () => number,
 ): { x: number; y: number } {
-  let best: { x: number; y: number } | null = null
-  let bestScore = -Infinity
-  let bestTemperate: { x: number; y: number } | null = null
-  let bestTemperateScore = -Infinity
-  // Extra samples so temperate farmland isn't lost to alpine/desert density spikes.
-  const attempts = FOUNDING_SITE_CANDIDATES * 3
+  let bestSoft: { x: number; y: number } | null = null
+  let bestSoftScore = -Infinity
+  let bestFoundable: { x: number; y: number } | null = null
+  let bestFoundableScore = -Infinity
+  const attempts = FOUNDING_SITE_CANDIDATES * 12
   for (let i = 0; i < attempts; i++) {
     const candidate = randomWalkableTile(grid, rng)
     const biome = sampleBiome(climate, candidate.x, candidate.y)
     if (biome === BiomeId.ocean) continue
     const biomeMul = biomeSettlementScore(biome)
-    const score =
-      (resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
-        resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
-        resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.5) *
-      biomeMul
-    if (score > bestScore) {
-      bestScore = score
-      best = candidate
+    const resources =
+      resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
+      resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
+      resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.5
+    const score = resources * biomeMul
+    if (biomeIsFoundable(biome) && score > bestFoundableScore) {
+      bestFoundableScore = score
+      bestFoundable = candidate
     }
-    if (biomeIsFoundable(biome) && score > bestTemperateScore) {
-      bestTemperateScore = score
-      bestTemperate = candidate
+    // Soft fallback still crushes hostile biomes so we don't settle alpine/tundra.
+    const soft = score * (biomeMul >= 0.75 ? 1 : 0.08)
+    if (soft > bestSoftScore) {
+      bestSoftScore = soft
+      bestSoft = candidate
     }
   }
-  return bestTemperate ?? best ?? randomWalkableTile(grid, rng)
+  if (bestFoundable) return bestFoundable
+  if (bestSoft && biomeSettlementScore(sampleBiome(climate, bestSoft.x, bestSoft.y)) >= 0.75) {
+    return bestSoft
+  }
+  // Last resort: rejection-sample any foundable tile on the map.
+  for (let i = 0; i < 400; i++) {
+    const candidate = randomWalkableTile(grid, rng)
+    if (biomeIsFoundable(sampleBiome(climate, candidate.x, candidate.y))) return candidate
+  }
+  return bestSoft ?? randomWalkableTile(grid, rng)
+}
+
+/** Keep founding members on hospitable tiles near the cluster center (avoid taïga/alpin bleed). */
+function pickFoundingMemberTile(
+  grid: ReturnType<typeof createWorldGrid>,
+  climate: NonNullable<SimState['climate']>,
+  rng: () => number,
+  baseX: number,
+  baseY: number,
+  spread: number,
+): { x: number; y: number } {
+  for (let attempt = 0; attempt < 64; attempt++) {
+    const spot = randomWalkableTileNear(grid, rng, baseX, baseY, spread)
+    if (biomeIsFoundable(sampleBiome(climate, spot.x, spot.y))) return spot
+  }
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const spot = randomWalkableTileNear(grid, rng, baseX, baseY, spread * 3)
+    if (biomeIsFoundable(sampleBiome(climate, spot.x, spot.y))) return spot
+  }
+  // Center itself should already be foundable from pickFoundingSite.
+  return { x: baseX, y: baseY }
 }
 
 /**
@@ -202,7 +240,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   const villagers: Villager[] = []
   for (let i = 0; i < cfg.initialVillagers; i++) {
     const base = groupCenters[i % foundingGroups]
-    const spot = randomWalkableTileNear(grid, rng, base.x, base.y, groupSpread)
+    const spot = pickFoundingMemberTile(grid, climate, rng, base.x, base.y, groupSpread)
     const personSeed = Math.floor(rng() * 4294967296)
     const genome = createFounderGenome(rng)
     const phenotype = expressPhenotype(genome, rng)
@@ -311,8 +349,14 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   }
 
   const sheep: Sheep[] = []
+  // Seed a share of flocks near founders so early wolves prefer livestock over people.
+  const nearFounderSheep = Math.min(cfg.sheepCount, Math.max(2, Math.floor(cfg.sheepCount * 0.4)))
   for (let i = 0; i < cfg.sheepCount; i++) {
-    const spot = pickFaunaSpawnTile(grid, climate, rng, 'sheep')
+    const base = groupCenters[i % foundingGroups]
+    const spot =
+      i < nearFounderSheep
+        ? pickFaunaNear(grid, climate, rng, 'sheep', base.x, base.y, Math.max(18, Math.round(groupSpread * 1.4)))
+        : pickFaunaSpawnTile(grid, climate, rng, 'sheep')
     sheep.push({
       id: nextId++,
       x: spot.x,
@@ -338,8 +382,22 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   }
 
   const wolves: Wolf[] = []
+  const founderSafeR = Math.max(48, Math.round(groupSpread * 3.2))
   for (let i = 0; i < cfg.wolfCount; i++) {
-    const spot = pickFaunaSpawnTile(grid, climate, rng, 'wolf')
+    let spot = pickFaunaSpawnTile(grid, climate, rng, 'wolf')
+    for (let attempt = 0; attempt < 80; attempt++) {
+      let tooClose = false
+      for (const c of groupCenters) {
+        const dx = spot.x - c.x
+        const dy = spot.y - c.y
+        if (dx * dx + dy * dy < founderSafeR * founderSafeR) {
+          tooClose = true
+          break
+        }
+      }
+      if (!tooClose) break
+      spot = pickFaunaSpawnTile(grid, climate, rng, 'wolf')
+    }
     wolves.push({
       id: nextId++,
       x: spot.x,
@@ -372,6 +430,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
     nextVillageId: 1,
     births: 0,
     deaths: 0,
+    deathsByWolf: 0,
     bridges: 0,
     thefts: 0,
     brawls: 0,
@@ -641,6 +700,7 @@ export function computeStats(state: SimState): SimStats {
     naturalCover,
     births: state.births,
     deaths: state.deaths,
+    deathsByWolf: state.deathsByWolf ?? 0,
     thefts: state.thefts,
     brawls: state.brawls,
     friendships: Math.round(friendships / 2),

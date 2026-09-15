@@ -241,6 +241,7 @@ export const SimPanel = memo(function SimPanel({
                 items={[
                   ['Naissances', stats.births],
                   ['Morts', stats.deaths],
+                  ['Morts (loups)', stats.deathsByWolf],
                   ['Loups', stats.wolves],
                   ['Moutons', stats.sheep],
                 ]}

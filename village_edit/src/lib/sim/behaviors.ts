@@ -456,6 +456,15 @@ function sowingSeason(season: Season, tempC = 12): boolean {
   if (cropTempFactor(tempC) < 0.35) return false
   return season === 'spring' || season === 'summer' || (season === 'autumn' && tempC > 14)
 }
+/** Fortnight 1 only — richer forage so Nouveau monde bags refill before first harvest. */
+function earlyFoundingWeeks(state: SimState): boolean {
+  return state.tick < TICKS_PER_DAY * 14
+}
+function forageYieldAmt(state: SimState): number {
+  const ripe = berriesRipeIn(state.season)
+  if (earlyFoundingWeeks(state)) return ripe ? 4 : 2
+  return ripe ? 2 : 1
+}
 function growthRate(season: Season): number {
   if (season === 'spring') return 1
   if (season === 'summer') return 1.4
@@ -1627,17 +1636,18 @@ function restTarget(v: Villager): { x: number; y: number } {
 /**
  * Hard survival when task is null — micro social/giveFood thrash used to clear the
  * task each tick so hunger/night interrupts (which require an active task) never fired.
+ * Thresholds match the active-task interrupt band so null agents are not softer.
  */
 function tryAssignSurvivalTask(state: SimState, v: Villager): boolean {
   const night = isNight(state.tick)
-  if (v.hunger < 1.85 && bestEdible(v)) {
+  if (v.hunger < 2.35 && bestEdible(v)) {
     const t = eatTarget(v)
     setTask(v, 'eat', t.x, t.y)
     noteChosenAction(v, 'eat', 'survie — manger')
     return true
   }
   if (
-    v.hunger < 1.55 &&
+    v.hunger < 1.45 &&
     !bestEdible(v) &&
     v.hasChest &&
     v.chestInventory &&
@@ -1790,6 +1800,14 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const memoryBias = (x: number, y: number): number =>
     spotMemoryBias(mind, v.memories, x, y, MEMORY_SPOT_RADIUS, MEMORY_SPOT_WEIGHT)
   const add = (kind: TaskKind, x: number, y: number, score: number, id: number | null = null, resource: ResourceType | null = null) => {
+    // Hard gate: talk/spectacle/counsel never compete while hungry or under famine.
+    // Soft dampers still let sociability dominate gather/farm under softmax.
+    if (
+      (kind === 'socialise' || kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') &&
+      (famine || v.hunger < 2.35)
+    ) {
+      return
+    }
     let s = score
     // Exhaustion: abandon hard outdoor labor; prioritize shelter/food/rest.
     if (exhausted && (kind === 'gatherWood' || kind === 'gatherStone' || kind === 'gatherIron' || kind === 'mineTunnel' || kind === 'mineGold' || kind === 'clearLand' || kind === 'buildWall' || kind === 'tradeRun')) {
@@ -1880,8 +1898,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const larder = edibleValue(v.inventory)
   const starving = (1 - v.hunger / HUNGER_MAX) * (1 - v.hunger / HUNGER_MAX)
   const village = state.villages.find((vg) => vg.id === v.villageId)
-  const stockTarget =
-    season === 'autumn'
+  // Early colony: keep gathering past the peacetime pantry so bags don't empty mid-week 2.
+  const stockTarget = earlyFoundingWeeks(state)
+    ? Math.max(FOOD_TARGET + 4, 8)
+    : season === 'autumn'
       ? WINTER_STOCK_TARGET + 4
       : season === 'winter'
         ? WINTER_STOCK_TARGET * 0.85
@@ -2515,9 +2535,12 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       else if (bare) {
         const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
         // Stronger spring sow urge — fields were claimed but never sown under rest/social lock.
+        // Fortnight 1: push remaining bare cells so pioneer plots finish sowing fast.
+        const earlySow = earlyFoundingWeeks(state) ? 1.85 : 1
         const sowUrge =
           (120 + (season === 'spring' ? 90 : 40) + p.ambition * 25 + (famine ? 50 : 0) + starving * 60) *
-          Math.max(0.5, tFac)
+          Math.max(0.5, tFac) *
+          earlySow
         add('sowField', bare.x, bare.y, sowUrge * reach(v, bare.x, bare.y))
       }
     }
@@ -3355,7 +3378,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'gatherFood': {
       if (getTerrain(grid, task.targetX, task.targetY) !== BUSH) return false
-      const yieldAmt = berriesRipeIn(state.season) ? 2 : 1
+      const yieldAmt = forageYieldAmt(state)
       const { gained, remaining } = takeFromTile(grid, task.targetX, task.targetY, v, 'food', yieldAmt, BUSH, GRASS, state)
       if (gained <= 0 && remaining <= 0) return false
       if (gained <= 0) return false
@@ -3363,7 +3386,8 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (rng() < 0.08) {
         remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.6, emotion: 0.4 })
       }
-      return edibleValue(v.inventory) < FOOD_TARGET
+      const gatherTarget = earlyFoundingWeeks(state) ? Math.max(FOOD_TARGET + 4, 8) : FOOD_TARGET
+      return edibleValue(v.inventory) < gatherTarget
     }
     case 'clearLand': {
       const tx = task.targetX
@@ -3397,7 +3421,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         return true
       }
       if (t === BUSH) {
-        const yieldAmt = berriesRipeIn(state.season) ? 2 : 1
+        const yieldAmt = forageYieldAmt(state)
         const { gained, remaining } = takeFromTile(grid, tx, ty, v, 'food', yieldAmt, BUSH, DIRT, state)
         if (gained > 0) grantGatherExtras(v, 'bush', rng, state)
         if (remaining > 0) return gained > 0
@@ -4654,7 +4678,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
     } else if (
       leisure &&
-      (v.hunger < 2.15 || state.famine || edibleValue(v.inventory) < 1)
+      (v.hunger < 2.35 || state.famine || edibleValue(v.inventory) < 1)
     ) {
       // Drop troubadour / plaza loops so gather/farm/craft can win the next think.
       stashInterruptedTask(v)
@@ -4830,28 +4854,48 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       active.kind === 'entertain' ||
       active.kind === 'counsel' ||
       active.kind === 'teachCraft'
+    const micro = active.ageTicks <= 2 && active.work <= 0
     v.task = null
     if (wasSurvivalBite && restoreInterruptedTask(v)) {
       noteChosenAction(v, v.task!.kind, 'reprise après repas')
       v.nextThinkTick = state.tick + 1
-    } else if (wasLeisure) {
-      v.nextThinkTick = state.tick + THINK_COOLDOWN + 5
-    } else {
-      const micro = active.ageTicks <= 2 && active.work <= 0
-      if (micro && forceBiologicalRhythm(state, v)) {
-        v.nextThinkTick = state.tick
-      } else if (micro && (active.kind.startsWith('craft') || active.kind.startsWith('build') || active.kind === 'experiment')) {
-        setTask(v, 'idle', v.x, v.y)
-        noteChosenAction(v, 'idle', 'pause après ' + active.kind)
-        v.nextThinkTick = state.tick + THINK_COOLDOWN
-      } else if (micro) {
-        v.nextThinkTick = state.tick + (v.hunger < 2.2 ? 0 : 1)
+    } else if (forceBiologicalRhythm(state, v)) {
+      // Never end the tick null — survival interrupts need an active task next tick.
+      v.nextThinkTick = state.tick
+    } else if (
+      micro &&
+      (active.kind.startsWith('craft') || active.kind.startsWith('build') || active.kind === 'experiment')
+    ) {
+      setTask(v, 'idle', v.x, v.y)
+      noteChosenAction(v, 'idle', 'pause après ' + active.kind)
+      v.nextThinkTick = state.tick + THINK_COOLDOWN
+    } else if (wasLeisure || micro) {
+      // Micro-fail / instant social used to leave null → hunger/night interrupts skipped.
+      if (v.stamina < STAMINA_TIRED || isNight(state.tick)) {
+        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+        noteChosenAction(v, 'rest', wasLeisure ? 'pause après loisir' : 'pause micro-échec')
       } else {
-        v.nextThinkTick = state.tick + THINK_COOLDOWN
+        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+        noteChosenAction(v, 'idle', wasLeisure ? 'pause après loisir' : 'pause micro-échec')
       }
+      v.nextThinkTick = state.tick + (wasLeisure ? THINK_COOLDOWN + 5 : v.hunger < 2.2 ? 0 : 1)
+    } else {
+      if (v.stamina < STAMINA_TIRED || (isNight(state.tick) && !v.hasHome)) {
+        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+      } else {
+        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+      }
+      v.nextThinkTick = state.tick + THINK_COOLDOWN
     }
   } else if (!continued) {
     v.task = null
+    if (!forceBiologicalRhythm(state, v)) {
+      if (v.stamina < STAMINA_TIRED || isNight(state.tick)) {
+        setTask(v, 'rest', Math.round(v.x), Math.round(v.y))
+      } else {
+        setTask(v, 'idle', Math.round(v.x), Math.round(v.y))
+      }
+    }
   }
 }
 
@@ -5238,6 +5282,10 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
     return
   }
 
+  // Week 1–2: founders have no spears/walls — livestock first, soft bites near people.
+  const earlyFounding = state.tick < TICKS_PER_DAY * 14
+  const softEarly = state.tick < TICKS_PER_DAY * 40
+
   let targetVillager: Villager | undefined
   let targetSheep: Sheep | undefined
   let targetHorse: Horse | undefined
@@ -5251,30 +5299,61 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
     }
   }
 
+  // Drop early human locks when livestock is available — stops founding wipes mid-chase.
+  if (targetVillager && (earlyFounding || softEarly)) {
+    const livestockRadius = WOLF_HUNT_RADIUS * (earlyFounding ? 2.6 : 1.8)
+    const sheepAlt = nearestAlive(state.sheep, w.x, w.y, livestockRadius, (s) => !s.captured)
+    const horseAlt = nearestAlive(state.horses, w.x, w.y, livestockRadius, (h) => h.riderId === null)
+    if (sheepAlt || horseAlt) {
+      targetVillager = undefined
+      w.targetId = null
+      w.targetKind = null
+      if (sheepAlt) {
+        targetSheep = sheepAlt
+        w.targetId = sheepAlt.id
+        w.targetKind = 'sheep'
+      } else if (horseAlt) {
+        targetHorse = horseAlt
+        w.targetId = horseAlt.id
+        w.targetKind = 'horse'
+      }
+    } else if (earlyFounding && w.hunger >= 0.55) {
+      targetVillager = undefined
+      w.targetId = null
+      w.targetKind = null
+    }
+  }
+
   if (!targetVillager && !targetSheep && !targetHorse) {
     const huntRadius = state.season === 'winter' ? WOLF_HUNT_RADIUS * 1.65 : state.season === 'autumn' ? WOLF_HUNT_RADIUS * 1.2 : WOLF_HUNT_RADIUS
-    const villagerCandidate = nearestAlive(state.villagers, w.x, w.y, huntRadius)
-    const sheepCandidate = nearestAlive(state.sheep, w.x, w.y, huntRadius, (s) => !s.captured)
-    const horseCandidate = nearestAlive(state.horses, w.x, w.y, huntRadius, (h) => h.riderId === null)
+    const livestockRadius = huntRadius * (earlyFounding ? 2.6 : softEarly ? 1.7 : 1)
+    const villagerRadius = earlyFounding ? huntRadius * 0.5 : huntRadius
+    const villagerCandidate = nearestAlive(state.villagers, w.x, w.y, villagerRadius)
+    const sheepCandidate = nearestAlive(state.sheep, w.x, w.y, livestockRadius, (s) => !s.captured)
+    const horseCandidate = nearestAlive(state.horses, w.x, w.y, livestockRadius, (h) => h.riderId === null)
     const dv = villagerCandidate ? distance(w.x, w.y, villagerCandidate.x, villagerCandidate.y) : Infinity
     const ds = sheepCandidate ? distance(w.x, w.y, sheepCandidate.x, sheepCandidate.y) : Infinity
     const dh = horseCandidate ? distance(w.x, w.y, horseCandidate.x, horseCandidate.y) : Infinity
     // Prefer livestock heavily — early human hunts wipe founding groups before spears/fields.
-    const earlyColony = state.tick < TICKS_PER_DAY * 40
     const hungryWolf = w.hunger < 1.8
-    if (sheepCandidate && (ds <= dv * 2.4 || earlyColony || !hungryWolf)) {
+    if (sheepCandidate && (ds <= dv * 2.4 || earlyFounding || softEarly || !hungryWolf)) {
       targetSheep = sheepCandidate
       w.targetId = sheepCandidate.id
       w.targetKind = 'sheep'
-    } else if (horseCandidate && (dh <= dv * 2.0 || earlyColony)) {
+    } else if (horseCandidate && (dh <= dv * 2.0 || earlyFounding || softEarly)) {
       targetHorse = horseCandidate
       w.targetId = horseCandidate.id
       w.targetKind = 'horse'
-    } else if (villagerCandidate && hungryWolf && !earlyColony) {
+    } else if (villagerCandidate && hungryWolf && !earlyFounding && !softEarly) {
       targetVillager = villagerCandidate
       w.targetId = villagerCandidate.id
       w.targetKind = 'villager'
-    } else if (villagerCandidate && w.hunger < 0.9) {
+    } else if (villagerCandidate && !earlyFounding && w.hunger < 0.9) {
+      targetVillager = villagerCandidate
+      w.targetId = villagerCandidate.id
+      w.targetKind = 'villager'
+    } else if (villagerCandidate && earlyFounding && w.hunger < 0.45 && !sheepCandidate && !horseCandidate) {
+      // Critical starvation only — still rare during founding weeks.
       targetVillager = villagerCandidate
       w.targetId = villagerCandidate.id
       w.targetKind = 'villager'
@@ -5316,12 +5395,15 @@ export function tickWolf(state: SimState, w: Wolf, rng: () => number) {
       }
       return
     }
-    targetVillager.health -= 1
     remember(targetVillager, { kind: 'dangerSpot', subjectId: null, x: w.x, y: w.y, tick: state.tick, weight: 1.2, emotion: -0.8 })
     onPoliticalWolfAttack(state, targetVillager)
+    // Week 1–2 near founders: mostly intimidate; bite rarely so colonies aren't wiped.
+    if (earlyFounding && rng() > 0.28) return
+    targetVillager.health -= 1
     if (targetVillager.health <= 0) {
       targetVillager.alive = false
       state.deaths += 1
+      state.deathsByWolf = (state.deathsByWolf ?? 0) + 1
       dropCarriedGold(state, targetVillager)
       logEvent(state, `${targetVillager.name} a été tué par un loup`)
       onWolfKill(state, targetVillager)
@@ -5421,10 +5503,13 @@ export function tickCombat(state: SimState, rng: () => number) {
         }
       }
       if (rng() < Math.max(0.04, dmgChance - toolBonus - courageBonus - guardBonus - gear.protect * 0.45)) {
+        // Founding weeks: wolves deal less retaliatory damage near green settlers.
+        if (state.tick < TICKS_PER_DAY * 14 && rng() > 0.4) continue
         attacker.health -= 1
         if (attacker.health <= 0) {
           attacker.alive = false
           state.deaths += 1
+          state.deathsByWolf = (state.deathsByWolf ?? 0) + 1
           dropCarriedGold(state, attacker)
           logEvent(state, `${attacker.name} est tombé face à un loup`)
           onDeath(state, attacker, null)
