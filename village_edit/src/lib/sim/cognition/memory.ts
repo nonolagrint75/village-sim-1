@@ -158,6 +158,7 @@ export function skillForTask(kind: string): ProceduralSkill | null {
     kind === 'craftIronTool' ||
     kind === 'craftGear' ||
     kind === 'craftGoods' ||
+    kind === 'craftLight' ||
     kind === 'weaveCloth' ||
     kind === 'sewClothing' ||
     kind === 'tanHide' ||
@@ -166,6 +167,9 @@ export function skillForTask(kind: string): ProceduralSkill | null {
     kind === 'makeCharcoal'
   ) {
     return 'craft'
+  }
+  if (kind === 'gatherFuel' || kind === 'tendHearth' || kind === 'lightTorch' || kind === 'placeCandle') {
+    return kind === 'gatherFuel' ? 'chop' : 'craft'
   }
   if (kind.startsWith('build')) return 'build'
   if (kind === 'fight' || kind === 'confront' || kind === 'defend') return 'fight'
