@@ -10,6 +10,7 @@
 
 import { addToInventory, countOf, edibleValue, removeFromInventory } from './inventory'
 import { equipmentEffectsOf, gearPrestige01 } from './equipment'
+import { cropTempFactor, sampleTempC } from './climate'
 import { villageAttractiveness, villagerSoL } from './commerce'
 import { villageCarryingPressure } from './ecology'
 import { onEthnosMigrateIn, onEthnosMigrateOut } from './ethnos'
@@ -1665,6 +1666,11 @@ export function professionLockInBonus(state: SimState, v: Villager, current: Pro
     if (live.unemployedStreak > 50) stick -= 0.25
   } catch {
     /* mind not ready */
+  }
+  // Sterile climate: do not lock farmers into endless tundra ploughing.
+  if (current === 'farmer' || current === 'miller') {
+    const t = sampleTempC(state.climate, v.x, v.y)
+    if (cropTempFactor(t) < 0.28) stick -= 0.35
   }
   return stick
 }

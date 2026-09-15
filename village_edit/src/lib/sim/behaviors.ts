@@ -143,6 +143,7 @@ import { chebyshev, LAND_PROFILE, landWalkable, findLaneBlocker, layCorridor, na
 import { bestCrossing, isWornRoad, markTraffic, nearestPaveable, stampPlaza, tryPave } from './roads'
 import { isShore, type ResourceKind } from './resourceIndex'
 import {
+  canMineRock,
   depositSpoil,
   digGoldYield,
   digHpPerHit,
@@ -154,6 +155,7 @@ import {
   ensureMountainDigHp,
   finalizeTunnelCell,
   findMineEntranceSite,
+  localOreRichness,
   nextCorridorTip,
   pickDigTarget,
 } from './mining'
@@ -1219,6 +1221,10 @@ function assignProfession(state: SimState, v: Villager): Profession {
   const berriesNear = resourceDensity(grid, ox, oy, 'bush', 14)
   const ironNear = resourceDensity(grid, ox, oy, 'iron', 14)
   const mountainNear = resourceDensity(grid, ox, oy, 'mountain', 28)
+  const oreRich = localOreRichness(grid, ox, oy, 26)
+  const localT = sampleTempC(state.climate, ox, oy)
+  const farmClimate = cropTempFactor(localT)
+  const coldPasture = localT < 7 || farmClimate < 0.3
   let wolvesNear = 0
   for (const w of state.wolves) if (w.alive && distance(w.x, w.y, ox, oy) < 40) wolvesNear++
   const water = findNearbyShore(grid, ox, oy, 16) !== null
@@ -1236,29 +1242,51 @@ function assignProfession(state: SimState, v: Villager): Profession {
   // Comparative advantage: boost the locally dominant resource specializations.
   const forestLead = woodNear >= Math.max(stoneNear, berriesNear, ironNear, mountainNear * 0.45) && woodNear > 6
   const shoreLead = water && woodNear < 28
-  const mountainLead = mountainNear > 10 && mountainNear >= woodNear * 0.7
-  const ironLead = ironNear > 4 && ironNear >= Math.max(woodNear * 0.25, stoneNear * 0.4)
+  const mountainLead = mountainNear > 10 && mountainNear >= woodNear * 0.7 && oreRich > 8
+  const ironLead = (ironNear > 4 || oreRich > 40) && ironNear + oreRich * 0.08 >= Math.max(woodNear * 0.25, stoneNear * 0.4)
 
   const scores: Record<Profession, number> = {
     none: 0,
-    forager: berriesNear * 1.4 + p.curiosity * 20 - countJob('forager') * 12,
-    farmer: (24 - Math.min(berriesNear, 24)) * 1.5 + p.ambition * 14 + fieldsInVillage * 8 - countJob('farmer') * 8,
-    fisher: (water ? 48 : -50) + p.curiosity * 12 - countJob('fisher') * 10 + (shoreLead ? 28 : 0),
-    miller: (village?.hasMill ? 42 : wheatStock >= 2 || fieldsInVillage > 0 ? 12 : -30) + p.ambition * 12 - countJob('miller') * 30,
-    lumberjack: woodNear * 1.35 + p.ambition * 18 - countJob('lumberjack') * 12 + (forestLead ? 26 : 0),
+    forager: berriesNear * 1.4 + p.curiosity * 20 - countJob('forager') * 12 + (coldPasture ? 18 : 0),
+    // No forever-farmers on tundra: climate multiplies plough jobs hard.
+    farmer:
+      ((24 - Math.min(berriesNear, 24)) * 1.5 + p.ambition * 14 + fieldsInVillage * 8 - countJob('farmer') * 8) *
+        (0.15 + farmClimate) -
+      (farmClimate < 0.25 ? 45 : 0),
+    fisher: (water ? 48 : -50) + p.curiosity * 12 - countJob('fisher') * 10 + (shoreLead ? 28 : 0) + (coldPasture && water ? 22 : 0),
+    miller:
+      (village?.hasMill ? 42 : wheatStock >= 2 || fieldsInVillage > 0 ? 12 : -30) * (0.35 + farmClimate * 0.65) +
+      p.ambition * 12 -
+      countJob('miller') * 30 -
+      (farmClimate < 0.25 && wheatStock < 4 ? 35 : 0),
+    lumberjack: woodNear * 1.35 + p.ambition * 18 - countJob('lumberjack') * 12 + (forestLead ? 26 : 0) + (coldPasture && woodNear > 8 ? 14 : 0),
     mason: stoneNear * 1.25 + p.ambition * 15 - countJob('mason') * 12 + (mountainLead && !ironLead ? 10 : 0),
     guard: wolvesNear * 14 + p.courage * 34 - countJob('guard') * 14,
     builder: p.ambition * 26 + p.sociability * 16 - countJob('builder') * 12,
-    herder: (pensInVillage > 0 ? 28 : 10) + (20 - Math.min(berriesNear, 20)) * 1.1 + p.generosity * 16 - countJob('herder') * 12,
+    herder:
+      (pensInVillage > 0 ? 28 : 10) +
+      (20 - Math.min(berriesNear, 20)) * 1.1 +
+      p.generosity * 16 -
+      countJob('herder') * 12 +
+      (coldPasture ? 24 : 0),
     trader:
       (village?.hasPort ? 22 : 0) +
       (village && village.attractiveness > 40 ? 12 : 0) +
       (1 - p.generosity) * 30 +
       p.sociability * 20 -
-      countJob('trader') * 14,
+      countJob('trader') * 14 +
+      (coldPasture ? 10 : 0),
     weaver: (pensInVillage > 0 ? 35 : 8) + p.sociability * 18 + p.curiosity * 10 - countJob('weaver') * 12,
-    blacksmith: ironNear * 1.45 + p.ambition * 20 - countJob('blacksmith') * 14 + (ironLead ? 22 : 0),
-    miner: mountainNear * 1.25 + p.ambition * 24 + p.courage * 12 - countJob('miner') * 16 + (mountainLead ? 28 : 0),
+    blacksmith: ironNear * 1.45 + oreRich * 0.12 + p.ambition * 20 - countJob('blacksmith') * 14 + (ironLead ? 22 : 0),
+    // Miners need real ore — bare rock without veins is quarry/mason work.
+    miner:
+      mountainNear * 0.55 +
+      oreRich * 0.35 +
+      p.ambition * 24 +
+      p.courage * 12 -
+      countJob('miner') * 16 +
+      (mountainLead ? 28 : 0) -
+      (oreRich < 6 ? 40 : 0),
   }
 
   // DF-like: skill + labor preference drift the profession over time (keeps resource scores).
@@ -1392,6 +1420,67 @@ function reach(v: Villager, tx: number, ty: number): number {
 
 function bestEdible(v: Villager): ResourceType | null {
   return bestEdibleIn(v.inventory)
+}
+
+/** Prefer table when housed — travel time is intentional (no teleport meals). */
+function eatTarget(v: Villager): { x: number; y: number } {
+  const table = eatSpot(v.furnitureQueue, v.homeLayout)
+  if (table && v.hasHome) return table
+  if (v.hasTable) return { x: v.tableX, y: v.tableY }
+  return { x: Math.round(v.x), y: Math.round(v.y) }
+}
+
+/** Prefer bed / chambre when housed. */
+function restTarget(v: Villager): { x: number; y: number } {
+  if (!v.hasHome) return { x: Math.round(v.x), y: Math.round(v.y) }
+  const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
+  return bed ?? { x: v.homeX, y: v.homeY }
+}
+
+/**
+ * Hard survival when task is null — micro social/giveFood thrash used to clear the
+ * task each tick so hunger/night interrupts (which require an active task) never fired.
+ */
+function tryAssignSurvivalTask(state: SimState, v: Villager): boolean {
+  const night = isNight(state.tick)
+  if (v.hunger < 1.85 && bestEdible(v)) {
+    const t = eatTarget(v)
+    setTask(v, 'eat', t.x, t.y)
+    noteChosenAction(v, 'eat', 'survie — manger')
+    return true
+  }
+  if (
+    v.hunger < 1.55 &&
+    !bestEdible(v) &&
+    v.hasChest &&
+    v.chestInventory &&
+    edibleValue(v.chestInventory) > 0
+  ) {
+    const store = storeSpot(v.furnitureQueue, v.homeLayout)
+    setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
+    noteChosenAction(v, 'takeFromChest', 'survie — garde-manger')
+    return true
+  }
+  if (night && v.hasHome && v.hunger >= 1.15) {
+    const t = restTarget(v)
+    setTask(v, 'rest', t.x, t.y)
+    noteChosenAction(v, 'rest', 'survie — nuit')
+    return true
+  }
+  if (v.stamina < STAMINA_EXHAUSTED && v.hasHome) {
+    const t = restTarget(v)
+    setTask(v, 'rest', t.x, t.y)
+    noteChosenAction(v, 'rest', 'survie — épuisement')
+    return true
+  }
+  const air = sampleTempC(state.climate, v.x, v.y)
+  if (v.hasHome && !atHomeShelter(v) && coldStress01(air) > 0.5) {
+    const t = restTarget(v)
+    setTask(v, 'rest', t.x, t.y)
+    noteChosenAction(v, 'rest', 'survie — froid')
+    return true
+  }
+  return false
 }
 
 function grantGatherExtras(v: Villager, source: 'bush' | 'tree' | 'stone' | 'fish' | 'sheep' | 'hunt', rng: () => number, state?: SimState) {
@@ -1589,39 +1678,37 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const s = senseResource(grid, v, mind, 'stone', senseOpts)
     return s ? { x: s.x, y: s.y } : null
   })()
-  const ironOre = v.hasWorkbench
+  const ironOre = (() => {
+    const s = senseResource(grid, v, mind, 'iron', senseOpts)
+    return s ? { x: s.x, y: s.y } : null
+  })()
+  // Digging rock needs stone/iron tools — not a workbench, not bare hands / wood spears.
+  const mountainOre = canMineRock(v.toolTier)
     ? (() => {
-        const s = senseResource(grid, v, mind, 'iron', senseOpts)
-        return s ? { x: s.x, y: s.y } : null
+        const preferDeeper = v.profession === 'miner' || v.toolTier === 'iron'
+        const anchor =
+          village?.hasMine
+            ? { x: village.mineX, y: village.mineY }
+            : mind.semantic.find((s) => s.kind === 'mine_spot' && s.confidence > 0.3)
+              ? (() => {
+                  const s = mind.semantic.find((f) => f.kind === 'mine_spot')!
+                  return { x: s.x, y: s.y }
+                })()
+              : null
+        const face = pickDigTarget(grid, v.x, v.y, {
+          maxRadius: Math.round(searchR * 0.9),
+          preferDeeper,
+          anchorX: anchor?.x,
+          anchorY: anchor?.y,
+          anchorBias: village?.hasMine ? 28 : 14,
+        })
+        if (face) return face
+        const s = senseResource(grid, v, mind, 'mountain', { ...senseOpts, shortR: Math.round(searchR * 0.85) })
+        if (!s) return null
+        // Sense may return buried rock — snap to a diggable face nearby.
+        return pickDigTarget(grid, s.x, s.y, { maxRadius: 8, preferDeeper, anchorX: s.x, anchorY: s.y }) ?? null
       })()
     : null
-  const mountainOre =
-    v.hasWorkbench && v.toolTier !== 'none'
-      ? (() => {
-          const preferDeeper = v.profession === 'miner' || v.toolTier === 'iron'
-          const anchor =
-            village?.hasMine
-              ? { x: village.mineX, y: village.mineY }
-              : mind.semantic.find((s) => s.kind === 'mine_spot' && s.confidence > 0.3)
-                ? (() => {
-                    const s = mind.semantic.find((f) => f.kind === 'mine_spot')!
-                    return { x: s.x, y: s.y }
-                  })()
-                : null
-          const face = pickDigTarget(grid, v.x, v.y, {
-            maxRadius: Math.round(searchR * 0.9),
-            preferDeeper,
-            anchorX: anchor?.x,
-            anchorY: anchor?.y,
-            anchorBias: village?.hasMine ? 28 : 14,
-          })
-          if (face) return face
-          const s = senseResource(grid, v, mind, 'mountain', { ...senseOpts, shortR: Math.round(searchR * 0.85) })
-          if (!s) return null
-          // Sense may return buried rock — snap to a diggable face nearby.
-          return pickDigTarget(grid, s.x, s.y, { maxRadius: 8, preferDeeper, anchorX: s.x, anchorY: s.y }) ?? null
-        })()
-      : null
   const goldSense = senseResource(grid, v, mind, 'gold', { ...senseOpts, shortR: Math.round(searchR * 0.7) })
   const goldTile = goldSense ? { x: goldSense.x, y: goldSense.y } : null
 
@@ -2025,9 +2112,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   if (mountainOre) {
     const minerBoost = v.profession === 'miner' ? 40 : v.profession === 'mason' || v.profession === 'blacksmith' ? 25 : 0
     const ironBoost = v.toolTier === 'iron' ? 18 : v.toolTier === 'stone' ? 8 : 0
-    const woodToolPenalty = v.toolTier === 'wood' ? 0.55 : 1
     const deeperBoost = village?.hasMine ? 12 : 0
-    const mineUrge = (20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost) * woodToolPenalty
+    const mineUrge = 20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost
     add('mineTunnel', mountainOre.x, mountainOre.y, mineUrge * reach(v, mountainOre.x, mountainOre.y))
   }
 
@@ -2035,10 +2121,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   if (
     village &&
     !village.hasMine &&
-    v.hasWorkbench &&
-    (v.profession === 'miner' || v.profession === 'mason' || v.toolTier === 'iron') &&
-    v.toolTier !== 'none' &&
-    v.toolTier !== 'wood'
+    canMineRock(v.toolTier) &&
+    (v.profession === 'miner' || v.profession === 'mason' || v.toolTier === 'iron')
   ) {
     const site = findMineEntranceSite(grid, village.centerX, village.centerY, 55)
     if (site) {
@@ -2058,7 +2142,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   if (v.hasHome && isOwner) {
-    if (v.fieldX === -1) {
+    const claimT = sampleTempC(state.climate, v.homeX >= 0 ? v.homeX : v.x, v.homeY >= 0 ? v.homeY : v.y)
+    const farmableHere = cropTempFactor(claimT) >= 0.22
+    if (v.fieldX === -1 && farmableHere) {
       const site = findBuildSite(grid, v.homeX - 9, v.homeY, FIELD_RADIUS, 25, 3)
       if (site) {
         v.fieldX = site.x
@@ -2522,6 +2608,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     return false
   }
   if (task.kind === 'craftStoneSpear') {
+    if (!v.hasWorkbench) return false
     if (countOf(v.inventory, 'stone') < STONE_SPEAR_COST) return false
     const labor = accumulateLabor('craftStoneSpear')
     if (labor === 'abort') return false
@@ -2535,6 +2622,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     return false
   }
   if (task.kind === 'craftIronTool') {
+    if (!v.hasWorkbench) return false
     const homeVg = v.villageId !== null ? state.villages.find((vg) => vg.id === v.villageId) : undefined
     const ironNeed = ironToolCostFor(v, IRON_TOOL_COST, homeVg?.knowledge)
     const haveIron = countOf(v.inventory, 'iron')
@@ -2558,6 +2646,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     return false
   }
   if (task.kind === 'craftGear') {
+    if (!v.hasWorkbench) return false
     const cold = coldStress01(sampleTempC(state.climate, v.x, v.y))
     const target = pickGearCraftTarget(v, {
       season: state.season,
@@ -2864,6 +2953,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     }
     case 'mineTunnel': {
       const village = v.villageId !== null ? state.villages.find((vg) => vg.id === v.villageId) : undefined
+      if (!canMineRock(v.toolTier)) return false
       if (getTerrain(grid, task.targetX, task.targetY) !== MOUNTAIN) {
         // Retarget to the next corridor tip if this cell already opened.
         const tip = nextCorridorTip(grid, task.targetX, task.targetY) ?? pickDigTarget(grid, v.x, v.y, { maxRadius: 10, preferDeeper: true })
@@ -2990,6 +3080,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return countOf(v.inventory, 'stone') < cap2 && v.stamina > STAMINA_EXHAUSTED * 0.6
     }
     case 'weaveCloth': {
+      if (!v.hasWorkbench) return false
       const woolHave = countOf(v.inventory, 'wool')
       if (woolHave < WOOL_PER_CLOTH) return false
       const batches = Math.floor(woolHave / WOOL_PER_CLOTH)
@@ -3001,6 +3092,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'sewClothing': {
+      if (!v.hasWorkbench) return false
       const clothHave = countOf(v.inventory, 'cloth')
       const leatherHave = countOf(v.inventory, 'leather')
       if (clothHave >= CLOTH_PER_CLOTHING) {
@@ -3020,6 +3112,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'makeCharcoal': {
+      if (!v.hasWorkbench) return false
       if (countOf(v.inventory, 'wood') < 2) return false
       const labor = accumulateLabor('makeCharcoal')
       if (labor === 'abort') return false
@@ -3030,6 +3123,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'tanHide': {
+      if (!v.hasWorkbench) return false
       const hideHave = countOf(v.inventory, 'hide')
       if (hideHave <= 0) return false
       removeFromInventory(v.inventory, 'hide', hideHave)
@@ -3047,6 +3141,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'mintCoins': {
+      if (!v.hasWorkbench) return false
       const nuggets = countOf(v.inventory, 'gold')
       if (nuggets < NUGGETS_PER_COIN) return false
       const batches = Math.floor(nuggets / NUGGETS_PER_COIN)
@@ -3057,6 +3152,8 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
     case 'sowField': {
       if (needsClearing(grid, task.targetX, task.targetY)) return false
       if (!isBuildableGround(grid, task.targetX, task.targetY)) return false
+      const sowT = sampleTempC(state.climate, task.targetX, task.targetY)
+      if (!sowingSeason(state.season, sowT)) return false
       const cropId = pickCropId(rng)
       setTerrain(grid, task.targetX, task.targetY, WHEAT, 1)
       grid.cropType[task.targetY * grid.width + task.targetX] = cropId
@@ -3144,6 +3241,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       return false
     }
     case 'bakeBread': {
+      if (!v.hasWorkbench) return false
       const flour = countOf(v.inventory, 'flour')
       if (flour <= 0) return false
       removeFromInventory(v.inventory, 'flour', flour)
