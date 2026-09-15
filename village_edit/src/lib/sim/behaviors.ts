@@ -329,14 +329,14 @@ import {
   type WorldGrid,
 } from './world'
 
-const HUNGER_MAX = 4
+const HUNGER_MAX = 6
 /** Aligné sur `HUNGER_DECAY_PLAY` (physicsScale) : ~3 jours-sim plein→vide. */
 const HUNGER_DECAY = 4 / (TICKS_PER_DAY * 3)
 /** ~2 sim-days after hunger hits 0 before death. */
 const STARVE_DEATH_TICKS = Math.round(TICKS_PER_DAY * 2)
 const HEAL_TICKS = 120
 const HEAL_HUNGER_THRESHOLD = 3
-const VILLAGER_HEALTH_MAX = 4
+const VILLAGER_HEALTH_MAX = 6
 const ANIMAL_HEALTH_MAX = 2
 const HUNGRY_THRESHOLD = 2
 const FOOD_TARGET = 4

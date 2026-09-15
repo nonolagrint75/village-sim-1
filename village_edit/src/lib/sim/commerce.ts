@@ -77,7 +77,7 @@ function clamp01(v: number): number {
 export function villagerSoL(state: SimState, v: Villager): number {
   const foodStock = edibleValue(v.inventory) + (v.chestInventory ? edibleValue(v.chestInventory) * 0.35 : 0)
   // In this sim, higher hunger value = better fed.
-  const satiation = clamp01(v.hunger / 4)
+  const satiation = clamp01(v.hunger / 6)
   const stock = clamp01(foodStock / 5)
   const foodNeed = clamp01(satiation * 0.55 + stock * 0.45)
   const clothes =

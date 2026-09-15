@@ -44,7 +44,7 @@ export function emptyNeeds(): NeedPressures {
 }
 
 const SOCIAL_SIGHT = 18
-const HUNGER_MAX = 4
+const HUNGER_MAX = 6
 
 export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures): void {
   const food = edibleValue(v.inventory)

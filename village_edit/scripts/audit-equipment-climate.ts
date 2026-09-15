@@ -225,9 +225,9 @@ console.log(fail.length === 0 ? '\nPASS' : '\nNEEDS ATTENTION')
     v.embarked = false
     v.task = null
     v.savedTask = null
-    v.hunger = 4
+    v.hunger = 6
     v.starveTimer = 0
-    v.health = 4
+    v.health = 6
     const eq = ensureEquipment(v)
     if (i % 2 === 0) {
       eq.head = null

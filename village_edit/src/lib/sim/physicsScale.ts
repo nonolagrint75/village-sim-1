@@ -80,7 +80,7 @@ export const ITEM_MASS_KG: Record<ResourceType, number> = RESOURCE_MASS_KG
 /** Énergie alimentaire restaurée (kcal soft) par unité. */
 export const ITEM_KCAL: Partial<Record<ResourceType, number>> = RESOURCE_KCAL
 
-/** kcal → points de faim jeu (HUNGER_MAX≈4). */
+/** kcal → points de faim jeu (HUNGER_MAX≈6). */
 export const KCAL_PER_HUNGER = 700
 
 /** BMR de référence (adulte moyen) pour normaliser le drain. */

@@ -5,7 +5,7 @@ import { DIRT, GRASS, type Horse, type SimState, type Villager } from './types'
 import { clamp, distance, getTerrain, isBlockingWall, setTerrain } from './world'
 
 const HORSE_HEALTH_MAX = 3
-const HUNGER_MAX = 4
+const HUNGER_MAX = 6
 const HORSE_HUNGER_DECAY = 1 / 260
 const HORSE_STARVE_TICKS = 300
 const HORSE_BREED_COOLDOWN = 700

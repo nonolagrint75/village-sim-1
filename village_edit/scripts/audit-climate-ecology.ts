@@ -121,7 +121,7 @@ function stripForColdTest(state: SimState) {
       v.equipment.feet = null
       v.equipment.legs = null
     }
-    v.hunger = 4
+    v.hunger = 6
     v.stamina = 4
     v.task = null
   }

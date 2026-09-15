@@ -738,8 +738,8 @@ const Portrait = memo(function Portrait({
       </p>
 
       <div className="sim-meters">
-        <Meter label="Santé" value={num(selected.health)} max={4} color="#e05650" />
-        <Meter label="Faim" value={num(selected.hunger)} max={4} color="#e0a045" />
+        <Meter label="Santé" value={num(selected.health)} max={6} color="#e05650" />
+        <Meter label="Faim" value={num(selected.hunger)} max={6} color="#e0a045" />
         <Meter label="Endurance" value={num(selected.stamina, staminaMax)} max={staminaMax} color="#7eb8a2" />
         <Meter label="Charge" value={loadMass} max={loadCap} color="#c4a574" decimals={1} />
       </div>
