@@ -3178,18 +3178,23 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (!nextGap) {
         if (firstPlotVegetation(grid, fp)) return false
         stampHouseFloors(grid, fp)
+        const wasNew = !v.hasHome
         v.hasHome = true
         v.homeOwnerId = v.id
         const layout = ensureHomeLayout(v)
+        if (layout) seedFurnitureQueue(v, layout)
+        if (!wasNew) {
+          if (layout) logEvent(state, `${v.name} referme les murs — ${describeLayoutFr(layout)}`)
+          return false
+        }
         if (layout) {
-          seedFurnitureQueue(v, layout)
           logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']} — ${describeLayoutFr(layout)}`)
         } else {
           logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']}`)
         }
         const joinRadius = VILLAGE_JOIN_RADIUS * (0.5 + v.personality.sociability)
         const village = findOrCreateVillage(state, v.homeX, v.homeY, joinRadius, rng)
-        village.memberIds.push(v.id)
+        if (!village.memberIds.includes(v.id)) village.memberIds.push(v.id)
         v.villageId = village.id
         if (v.house) reinforceStyle(village.style, v.house.shape)
         recalcVillageCentre(state, village)
@@ -4083,6 +4088,8 @@ export function tickReproduction(state: SimState, rng: () => number) {
         memories: [],
         relations: new Map(),
         house: null,
+        homeLayout: null,
+        furnitureQueue: [],
         horseId: null,
         mounted: false,
         hasCart: false,
@@ -4097,6 +4104,9 @@ export function tickReproduction(state: SimState, rng: () => number) {
         homeY: hasRoom && homeOwner ? homeOwner.homeY : -1,
         homeOwnerId: hasRoom && homeOwner ? homeOwner.id : null,
         bedCount: 0,
+        hasTable: false,
+        tableX: -1,
+        tableY: -1,
         hasPen: false,
         penX: -1,
         penY: -1,
