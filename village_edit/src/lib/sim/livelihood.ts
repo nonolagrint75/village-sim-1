@@ -394,7 +394,8 @@ export function noteActivityPractice(v: Villager, kind: TaskKind, intensity = 1)
   const share = intensity / buckets.length
   for (const k of ACTIVITY_KEYS) {
     const target = buckets.includes(k) ? share : 0
-    live.mix[k] = clamp01(live.mix[k] * (1 - EMA) + target * EMA + live.mix[k] * EMA * 0.15)
+    // Standard EMA toward practiced buckets; idle decay is handled by zero targets.
+    live.mix[k] = clamp01(live.mix[k] * (1 - EMA) + target * EMA)
   }
   // Renormalize lightly so mix stays a soft distribution.
   let sum = 0
@@ -452,15 +453,19 @@ export function canPracticeCraft(
     case 'iron':
       return (
         v.profession === 'blacksmith' ||
-        skill > 0.35 ||
-        craftMix > 0.22 ||
-        (hasKnowledge(v.knowledge, 'temper_iron', 0.25) && skill > 0.2)
+        skill > 0.28 ||
+        craftMix > 0.14 ||
+        mind.preferences.crafting > 0.5 ||
+        v.toolTier === 'stone' ||
+        (hasKnowledge(v.knowledge, 'temper_iron', 0.25) && skill > 0.18)
       )
     case 'charcoal':
       return (
         hasKnowledge(v.knowledge, 'charcoal_burn', 0.22) ||
-        hasKnowledge(v.knowledge, 'heat_wood', 0.35) ||
-        (craftMix > 0.2 && mind.skills.craft > 0.3)
+        hasKnowledge(v.knowledge, 'heat_wood', 0.28) ||
+        craftMix > 0.12 ||
+        mind.skills.craft > 0.22 ||
+        mind.preferences.crafting > 0.45
       )
     case 'wood':
       return (

@@ -13,10 +13,7 @@ import {
   type RoomKind,
   type RoomNeed,
 } from './rooms'
-import { BED, CHEST, WORKBENCH, type TerrainCode } from './types'
-
-/** Dining / social surface — new terrain code (28). */
-export const TABLE = 28 as TerrainCode
+import { BED, CHEST, TABLE, WORKBENCH, type TerrainCode } from './types'
 
 export type FurnitureKind =
   | 'bed'
@@ -313,3 +310,5 @@ export function craftSpot(queue: FurnitureJob[] | null | undefined, layout: Hous
   if (room) return { x: room.cx, y: room.cy }
   return null
 }
+
+export { TABLE }

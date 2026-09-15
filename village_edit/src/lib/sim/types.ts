@@ -4,9 +4,11 @@ import type { ClimateState } from './climate'
 import type { BuildProject } from './construction'
 import type { Family, GenealogyEntry, Lineage } from './family'
 import type { EquipmentLoadout } from './equipment'
+import type { FurnitureJob } from './furniture'
 import type { ResourceType, Slot } from './inventory'
 import type { ResourceIndex } from './resourceIndex'
 import type { Circle, Rumor } from './politics'
+import type { HouseLayout } from './rooms'
 import type { Ambition, Memory, Relation } from './social'
 import type { KnowledgeBit } from './technology'
 
@@ -68,6 +70,7 @@ export const PORT = 24
 export const IRON = 25
 export const MOUNTAIN = 26
 export const TUNNEL = 27
+export const TABLE = 28
 
 export type TerrainCode = number
 
@@ -129,6 +132,7 @@ export type TaskKind =
   | 'buildWorkbench'
   | 'buildChest'
   | 'buildBed'
+  | 'buildTable'
   | 'buildPen'
   | 'buildWall'
   | 'buildBridge'
@@ -315,6 +319,10 @@ export interface Villager {
   memories: Memory[]
   relations: Map<number, Relation>
   house: HouseDesign | null
+  /** Multi-room layout after walls; drives furniture placement & need pathing. */
+  homeLayout: HouseLayout | null
+  /** Pending / done furniture crafts for this household. */
+  furnitureQueue: FurnitureJob[]
   horseId: number | null
   mounted: boolean
   hasCart: boolean
@@ -329,6 +337,9 @@ export interface Villager {
   homeY: number
   homeOwnerId: number | null
   bedCount: number
+  hasTable: boolean
+  tableX: number
+  tableY: number
   hasPen: boolean
   penX: number
   penY: number
