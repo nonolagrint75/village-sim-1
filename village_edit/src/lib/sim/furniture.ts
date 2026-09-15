@@ -5,7 +5,7 @@
 
 import type { HouseLayout, RoomKind } from './rooms'
 import { pickCellInRoom, ROOM_FURNITURE, type RoomFurnitureKind } from './rooms'
-import { BED, CHEST, TABLE, WORKBENCH, type TaskKind } from './types'
+import { BED, CHEST, HEARTH, TABLE, WORKBENCH, type TaskKind } from './types'
 
 export type FurnitureKind =
   | 'workbench'
@@ -117,7 +117,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     buildTask: 'buildWorkbench',
     wood: 2,
     room: 'cuisine',
-    terrain: null,
+    terrain: HEARTH,
   },
   loom: {
     kind: 'loom',

@@ -4048,7 +4048,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
       b.reproCooldown = REPRO_COOLDOWN
 
       const seed = Math.floor(rng() * 4294967296)
-      const { genome, phenotype, motherId, fatherId } = birthGenetics(a, b, rng)
+      const { genome, phenotype, motherId, fatherId, sex } = birthGenetics(a, b, rng)
       const personality = applyGeneticPersonalityBias(
         inheritPersonality(a.personality, b.personality, rng),
         genome,
@@ -4059,6 +4059,7 @@ export function tickReproduction(state: SimState, rng: () => number) {
       const child: Villager = {
         id: state.nextId++,
         seed,
+        sex,
         name: generateName(seed),
         surname: '',
         lineageId: null,

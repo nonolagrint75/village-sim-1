@@ -1,19 +1,33 @@
 /**
  * Entity sprites for SimulationCanvas — DF Premium–leaning pixel figures.
- * Cloth / skin / fur texture at mid zoom; simple blobs when zoomed out.
- * Does not touch ground/tile painting.
+ * Base body preserved; worn gear layers over body (cloak/fur, tunic/armor,
+ * hat/helm, boots, weapon, shield, bag). Simple blobs when zoomed out.
  */
+import {
+  APPEARANCE_CHILD_AGE,
+  agedHairTone,
+  type BiologicalSex,
+  type HairStyle,
+} from './appearance'
+import { emptyWornGearVisual, type GearId, type WornGearVisual } from './equipment'
 import type { ToolTier } from './types'
+
+export type VillagerGearSprites = WornGearVisual
 
 export type VillagerSpriteOpts = {
   hue: number
-  /** Continuous melanin 0–1. */
   pigmentation: number
-  /** Continuous hair darkness 0–1. */
   hairTone: number
+  sex?: BiologicalSex
+  age?: number
+  hairStyle?: HairStyle
+  beard?: boolean
+  facialHair?: number
+  hairCurl?: number
   toolTier: ToolTier
-  /** Outerwear (cloak / mantle) present. */
   cloak: boolean
+  /** Worn equipment for layered gear sprites. */
+  gear?: WornGearVisual | null
   mounted: boolean
   hasCart: boolean
   grudge: boolean
@@ -24,7 +38,6 @@ function clamp01(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v
 }
 
-/** Warm skin from pigmentation; slight hue drift for variety. */
 export function skinRgb(pigmentation: number, hue: number): string {
   const p = clamp01(pigmentation)
   const warm = ((hue % 360) / 360 - 0.5) * 8
@@ -47,7 +60,6 @@ function clothRgb(hue: number, sat: number, lit: number): string {
   return `hsl(${hue % 360}, ${sat}%, ${lit}%)`
 }
 
-/** Soft weave dots on a filled rect (cloth / wool). */
 function weave(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -262,7 +274,209 @@ export function drawWolfSprite(
   }
 }
 
-function drawWeapon(
+function mailWeave(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  step: number,
+) {
+  if (step < 1.8 || w < 2 || h < 2) return
+  ctx.fillStyle = 'rgba(200, 210, 220, 0.35)'
+  const s = Math.max(2, Math.floor(step))
+  for (let py = y; py < y + h; py += s) {
+    for (let px = x + ((py / s) & 1) * (s / 2); px < x + w; px += s) {
+      ctx.fillRect(px, py, 1.1, 1.1)
+    }
+  }
+}
+
+function torsoColors(id: GearId | null | undefined, hue: number): { fill: string; deep: string; mail: boolean } {
+  switch (id) {
+    case 'iron_mail':
+      return { fill: '#6a737c', deep: '#3e464e', mail: true }
+    case 'leather_jerkin':
+      return { fill: '#6a4a30', deep: '#3e2a18', mail: false }
+    case 'wool_tunic':
+      return { fill: clothRgb((hue + 12) % 360, 42, 32), deep: clothRgb((hue + 12) % 360, 38, 22), mail: false }
+    case 'linen_tunic':
+      return { fill: clothRgb((hue + 40) % 360, 28, 52), deep: clothRgb((hue + 40) % 360, 22, 38), mail: false }
+    case 'cloth_tunic':
+      return { fill: clothRgb(hue, 36, 44), deep: clothRgb(hue, 32, 30), mail: false }
+    default:
+      return { fill: clothRgb(hue, 48, 36), deep: clothRgb(hue, 42, 26), mail: false }
+  }
+}
+
+function drawCloakLayer(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  bodyW: number,
+  bodyH: number,
+  size: number,
+  lift: number,
+  hue: number,
+  outer: GearId | null | undefined,
+  cloakFallback: boolean,
+) {
+  if (size < 6) return
+  const id = outer ?? (cloakFallback ? 'wool_cloak' : null)
+  if (!id) return
+  const fur = id === 'fur_mantle'
+  const col = fur ? '#5a3e28' : clothRgb((hue + 28) % 360, 36, 28)
+  const deep = fur ? '#3a2818' : clothRgb((hue + 28) % 360, 32, 22)
+  ctx.fillStyle = col
+  ctx.beginPath()
+  ctx.moveTo(sx - bodyW * 0.55, sy + size * 0.02 - lift)
+  ctx.lineTo(sx - bodyW * 0.88, sy + bodyH * 1.05 - lift)
+  ctx.lineTo(sx + bodyW * 0.2, sy + bodyH * 0.98 - lift)
+  ctx.lineTo(sx + bodyW * 0.48, sy + size * 0.05 - lift)
+  ctx.closePath()
+  ctx.fill()
+  if (fur) {
+    furDapple(ctx, sx - bodyW * 0.15, sy + bodyH * 0.45 - lift, bodyW * 0.55, bodyH * 0.5, deep, 1.4)
+    ctx.fillStyle = '#c8b090'
+    ctx.fillRect(sx - bodyW * 0.08, sy + size * 0.04 - lift, bodyW * 0.22, Math.max(1, size * 0.06))
+  } else {
+    weave(ctx, sx - bodyW * 0.7, sy + size * 0.08 - lift, bodyW * 0.95, bodyH * 0.75, deep, size * 0.22)
+  }
+}
+
+function drawBoots(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  bodyW: number,
+  bodyH: number,
+  size: number,
+  lift: number,
+  feet: GearId | null | undefined,
+) {
+  if (!feet || size < 5.5) return
+  const tall = feet === 'leather_boots'
+  const col = '#3a2818'
+  const cuff = '#5a4030'
+  const h = tall ? bodyH * 0.28 : bodyH * 0.16
+  const y0 = sy + bodyH * 0.88 - lift
+  ctx.fillStyle = col
+  ctx.fillRect(sx - bodyW * 0.42, y0, bodyW * 0.32, h)
+  ctx.fillRect(sx + bodyW * 0.08, y0, bodyW * 0.32, h)
+  if (tall && size >= 7) {
+    ctx.fillStyle = cuff
+    ctx.fillRect(sx - bodyW * 0.42, y0, bodyW * 0.32, Math.max(1, size * 0.05))
+    ctx.fillRect(sx + bodyW * 0.08, y0, bodyW * 0.32, Math.max(1, size * 0.05))
+  }
+}
+
+function drawShield(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  lift: number,
+  offHand: GearId | null | undefined,
+) {
+  if (offHand !== 'wooden_shield' || size < 6) return
+  const x = sx - size * 0.52
+  const y = sy + size * 0.08 - lift
+  ctx.fillStyle = '#6a4828'
+  ctx.beginPath()
+  ctx.ellipse(x, y, size * 0.22, size * 0.28, -0.15, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#8a6840'
+  ctx.beginPath()
+  ctx.ellipse(x, y, size * 0.14, size * 0.18, -0.15, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#c0a060'
+  ctx.beginPath()
+  ctx.arc(x, y, size * 0.05, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+function drawBag(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  lift: number,
+  belt: GearId | null | undefined,
+  offHand: GearId | null | undefined,
+) {
+  if (size < 6) return
+  if (belt === 'leather_satchel' || belt === 'coin_purse') {
+    const x = sx - size * 0.48
+    const y = sy + size * 0.28 - lift
+    ctx.fillStyle = belt === 'leather_satchel' ? '#5a3c24' : '#4a3420'
+    ctx.fillRect(x, y, size * 0.28, size * 0.22)
+    ctx.fillStyle = '#3a2818'
+    ctx.fillRect(x + size * 0.04, y - size * 0.04, size * 0.2, Math.max(1, size * 0.05))
+    if (belt === 'leather_satchel' && size >= 7) {
+      ctx.fillStyle = '#8a6848'
+      ctx.fillRect(x + size * 0.08, y + size * 0.06, size * 0.12, size * 0.08)
+    }
+  }
+  if (offHand === 'wicker_basket') {
+    const x = sx - size * 0.58
+    const y = sy + size * 0.18 - lift
+    ctx.fillStyle = '#c4a060'
+    ctx.fillRect(x, y, size * 0.26, size * 0.22)
+    ctx.fillStyle = '#8a6840'
+    ctx.fillRect(x + size * 0.02, y + size * 0.04, size * 0.22, Math.max(1, size * 0.04))
+    ctx.fillRect(x + size * 0.02, y + size * 0.12, size * 0.22, Math.max(1, size * 0.04))
+  }
+}
+
+function drawHeadgear(
+  ctx: CanvasRenderingContext2D,
+  hx: number,
+  hy: number,
+  hr: number,
+  size: number,
+  head: GearId | null | undefined,
+  hue: number,
+) {
+  if (!head || size < 6) return
+  if (head === 'iron_helm') {
+    ctx.fillStyle = '#7a848c'
+    ctx.beginPath()
+    ctx.ellipse(hx, hy - hr * 0.15, hr * 1.05, hr * 0.85, 0, Math.PI, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#9aa4ac'
+    ctx.fillRect(hx - hr * 0.95, hy - hr * 0.05, hr * 1.9, hr * 0.35)
+    ctx.fillStyle = '#2a3038'
+    ctx.fillRect(hx - hr * 0.55, hy + hr * 0.05, hr * 1.1, Math.max(1, size * 0.05))
+    return
+  }
+  if (head === 'leather_cap') {
+    ctx.fillStyle = '#5a3c24'
+    ctx.beginPath()
+    ctx.ellipse(hx, hy - hr * 0.25, hr * 0.98, hr * 0.65, 0, Math.PI, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#3e2a18'
+    ctx.fillRect(hx - hr * 0.9, hy - hr * 0.05, hr * 1.8, hr * 0.22)
+    return
+  }
+  if (head === 'wool_hood') {
+    const col = clothRgb((hue + 18) % 360, 34, 30)
+    ctx.fillStyle = col
+    ctx.beginPath()
+    ctx.moveTo(hx - hr * 1.15, hy + hr * 0.35)
+    ctx.quadraticCurveTo(hx - hr * 1.2, hy - hr * 1.1, hx, hy - hr * 1.25)
+    ctx.quadraticCurveTo(hx + hr * 1.2, hy - hr * 1.1, hx + hr * 1.15, hy + hr * 0.35)
+    ctx.lineTo(hx + hr * 0.55, hy + hr * 0.55)
+    ctx.quadraticCurveTo(hx, hy + hr * 0.15, hx - hr * 0.55, hy + hr * 0.55)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = clothRgb((hue + 18) % 360, 30, 22)
+    ctx.beginPath()
+    ctx.ellipse(hx, hy + hr * 0.05, hr * 0.72, hr * 0.55, 0, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+function drawWeaponTier(
   ctx: CanvasRenderingContext2D,
   sx: number,
   sy: number,
@@ -300,6 +514,87 @@ function drawWeapon(
   }
 }
 
+function drawGearWeapon(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  size: number,
+  lift: number,
+  mainHand: GearId | null | undefined,
+  toolTier: ToolTier,
+) {
+  if (size < 6) return
+  const x0 = sx + size * 0.38
+  const y0 = sy - size * 0.05 - lift
+  const id = mainHand
+  if (!id && toolTier === 'none') return
+
+  if (id === 'iron_sword' || id === 'iron_dagger') {
+    const short = id === 'iron_dagger'
+    ctx.strokeStyle = '#8a9098'
+    ctx.lineWidth = Math.max(1, size * (short ? 0.07 : 0.09))
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(x0, y0 + size * 0.2)
+    ctx.lineTo(x0 + size * 0.06, y0 - size * (short ? 0.22 : 0.42))
+    ctx.stroke()
+    ctx.fillStyle = '#c8d0d8'
+    ctx.beginPath()
+    ctx.moveTo(x0 + size * 0.04, y0 - size * (short ? 0.18 : 0.38))
+    ctx.lineTo(x0 + size * 0.16, y0 - size * (short ? 0.08 : 0.22))
+    ctx.lineTo(x0 - size * 0.02, y0 - size * (short ? 0.02 : 0.12))
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#5a4030'
+    ctx.fillRect(x0 - size * 0.04, y0 + size * 0.08, size * 0.14, Math.max(1, size * 0.06))
+    return
+  }
+  if (id === 'wood_axe') {
+    ctx.strokeStyle = '#6a5238'
+    ctx.lineWidth = Math.max(1, size * 0.09)
+    ctx.beginPath()
+    ctx.moveTo(x0, y0 + size * 0.35)
+    ctx.lineTo(x0 + size * 0.05, y0 - size * 0.28)
+    ctx.stroke()
+    ctx.fillStyle = '#8a9098'
+    ctx.beginPath()
+    ctx.moveTo(x0 + size * 0.02, y0 - size * 0.22)
+    ctx.lineTo(x0 + size * 0.32, y0 - size * 0.18)
+    ctx.lineTo(x0 + size * 0.28, y0 - size * 0.02)
+    ctx.lineTo(x0, y0 - size * 0.08)
+    ctx.closePath()
+    ctx.fill()
+    return
+  }
+  if (id === 'wooden_staff') {
+    ctx.strokeStyle = '#6a5238'
+    ctx.lineWidth = Math.max(1.2, size * 0.1)
+    ctx.beginPath()
+    ctx.moveTo(x0, y0 + size * 0.48)
+    ctx.lineTo(x0 + size * 0.04, y0 - size * 0.48)
+    ctx.stroke()
+    return
+  }
+  if (id === 'wooden_spear' || id === 'stone_spear') {
+    const tip = id === 'stone_spear' ? '#d8d4c8' : '#8a6840'
+    ctx.strokeStyle = '#6a5238'
+    ctx.lineWidth = Math.max(1, size * 0.07)
+    ctx.beginPath()
+    ctx.moveTo(x0, y0 + size * 0.45)
+    ctx.lineTo(x0 + size * 0.08, y0 - size * 0.48)
+    ctx.stroke()
+    ctx.fillStyle = tip
+    ctx.beginPath()
+    ctx.moveTo(x0 + size * 0.06, y0 - size * 0.5)
+    ctx.lineTo(x0 + size * 0.18, y0 - size * 0.32)
+    ctx.lineTo(x0 - size * 0.02, y0 - size * 0.28)
+    ctx.closePath()
+    ctx.fill()
+    return
+  }
+  drawWeaponTier(ctx, sx, sy, size, lift, toolTier)
+}
+
 export function drawVillagerSprite(
   ctx: CanvasRenderingContext2D,
   sx: number,
@@ -309,11 +604,34 @@ export function drawVillagerSprite(
   simple: boolean,
   shadows: boolean,
 ) {
-  const { hue, pigmentation, hairTone, toolTier, cloak, mounted, hasCart, grudge, selected } = opts
+  const {
+    hue,
+    pigmentation,
+    hairTone,
+    toolTier,
+    cloak,
+    mounted,
+    hasCart,
+    grudge,
+    selected,
+    sex,
+    age = 400,
+    hairStyle = 'short',
+    beard = false,
+    facialHair = 0.4,
+  } = opts
+  const gear = opts.gear ?? emptyWornGearVisual()
+  const child = age < APPEARANCE_CHILD_AGE
+  const female = sex === 'female'
 
   if (simple) {
-    ctx.fillStyle = clothRgb(hue, 46, 42)
+    const tc = torsoColors(gear.torso, hue)
+    ctx.fillStyle = gear.outer ? (gear.outer === 'fur_mantle' ? '#5a3e28' : tc.fill) : tc.fill
     ctx.fillRect(sx - 1, sy - 2, 3, 4)
+    if (gear.head === 'iron_helm') {
+      ctx.fillStyle = '#8a9098'
+      ctx.fillRect(sx - 1, sy - 3, 3, 1)
+    }
     return
   }
 
@@ -341,82 +659,134 @@ export function drawVillagerSprite(
     ctx.fillRect(sx + size * 0.48, sy - size * 0.28, size * 0.16, size * 0.42)
   }
 
-  const bodyW = size * 0.62
-  const bodyH = size * 0.48
+  const scale = child ? 0.7 : 1
+  const s = size * scale
+  // Sex silhouette: broader male shoulders; female narrower shoulders / wider hips.
+  const shoulderW = s * (female ? 0.52 : 0.68)
+  const hipW = s * (female ? 0.64 : 0.54)
+  const bodyW = Math.max(shoulderW, hipW)
+  const bodyH = s * (female ? 0.46 : 0.5)
   const lift = mounted ? size * 0.28 : 0
-  const tunic = clothRgb(hue, 48, 36)
-  const tunicDeep = clothRgb(hue, 42, 26)
+  const torsoTop = sy - s * 0.02 - lift
+  const tc = torsoColors(gear.torso, hue)
   const legs = clothRgb(hue, 38, 22)
   const skin = skinRgb(pigmentation, hue)
-  const hair = hairRgb(hairTone, hue)
+  const tone = agedHairTone(hairTone, age)
+  const hair = hairRgb(tone, hue)
+  const hairDeep = hairRgb(clamp01(tone + 0.18), hue)
+  const curl = opts.hairCurl ?? 0.45
 
-  if (cloak && size >= 6) {
-    const cloakCol = clothRgb((hue + 28) % 360, 36, 28)
-    ctx.fillStyle = cloakCol
-    ctx.beginPath()
-    ctx.moveTo(sx - bodyW * 0.55, sy + size * 0.02 - lift)
-    ctx.lineTo(sx - bodyW * 0.85, sy + bodyH * 0.95 - lift)
-    ctx.lineTo(sx + bodyW * 0.15, sy + bodyH * 0.88 - lift)
-    ctx.lineTo(sx + bodyW * 0.45, sy + size * 0.05 - lift)
-    ctx.closePath()
-    ctx.fill()
-    weave(
-      ctx,
-      sx - bodyW * 0.7,
-      sy + size * 0.08 - lift,
-      bodyW * 0.9,
-      bodyH * 0.7,
-      clothRgb((hue + 28) % 360, 32, 22),
-      size * 0.22,
-    )
-  }
+  drawCloakLayer(ctx, sx, sy, bodyW, bodyH, s, lift, hue, gear.outer, cloak)
 
+  const legW = s * (female ? 0.16 : 0.18)
   ctx.fillStyle = legs
-  ctx.fillRect(sx - bodyW * 0.42, sy + bodyH * 0.55 - lift, bodyW * 0.32, bodyH * 0.42)
-  ctx.fillRect(sx + bodyW * 0.08, sy + bodyH * 0.55 - lift, bodyW * 0.32, bodyH * 0.42)
+  ctx.fillRect(sx - hipW * 0.42, torsoTop + bodyH * 0.58, legW, bodyH * 0.48)
+  ctx.fillRect(sx + hipW * 0.18, torsoTop + bodyH * 0.58, legW, bodyH * 0.48)
+  drawBoots(ctx, sx, sy, hipW, bodyH, s, lift, gear.feet)
 
-  ctx.fillStyle = tunic
-  ctx.fillRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
-  weave(ctx, sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH, tunicDeep, size * 0.2)
-  if (size >= 7) {
-    ctx.fillStyle = '#4a3828'
-    ctx.fillRect(sx - bodyW * 0.48, sy + bodyH * 0.42 - lift, bodyW * 0.96, Math.max(1, size * 0.06))
+  ctx.fillStyle = tc.fill
+  ctx.beginPath()
+  ctx.moveTo(sx - shoulderW / 2, torsoTop)
+  ctx.lineTo(sx + shoulderW / 2, torsoTop)
+  ctx.lineTo(sx + hipW / 2, torsoTop + bodyH)
+  ctx.lineTo(sx - hipW / 2, torsoTop + bodyH)
+  ctx.closePath()
+  ctx.fill()
+  if (tc.mail) mailWeave(ctx, sx - bodyW / 2, torsoTop, bodyW, bodyH, s * 0.16)
+  else weave(ctx, sx - bodyW / 2, torsoTop, bodyW, bodyH, tc.deep, s * 0.2)
+  if (s >= 7) {
+    ctx.fillStyle = gear.torso === 'iron_mail' ? '#4a5058' : '#4a3828'
+    ctx.fillRect(sx - hipW * 0.48, torsoTop + bodyH * 0.42, hipW * 0.96, Math.max(1, s * 0.06))
   }
 
-  ctx.fillStyle = tunicDeep
-  ctx.fillRect(sx - bodyW * 0.72, sy + size * 0.02 - lift, bodyW * 0.22, bodyH * 0.55)
-  ctx.fillRect(sx + bodyW * 0.5, sy + size * 0.02 - lift, bodyW * 0.22, bodyH * 0.55)
+  const armW = s * 0.12
+  ctx.fillStyle = tc.deep
+  ctx.fillRect(sx - shoulderW * 0.72, torsoTop + s * 0.04, armW, bodyH * 0.55)
+  ctx.fillRect(sx + shoulderW * 0.52, torsoTop + s * 0.04, armW, bodyH * 0.55)
   ctx.fillStyle = skin
-  ctx.fillRect(sx - bodyW * 0.7, sy + bodyH * 0.5 - lift, bodyW * 0.16, size * 0.1)
-  ctx.fillRect(sx + bodyW * 0.54, sy + bodyH * 0.5 - lift, bodyW * 0.16, size * 0.1)
+  ctx.fillRect(sx - shoulderW * 0.7, torsoTop + bodyH * 0.52, armW * 0.85, s * 0.1)
+  ctx.fillRect(sx + shoulderW * 0.54, torsoTop + bodyH * 0.52, armW * 0.85, s * 0.1)
 
-  drawWeapon(ctx, sx, sy, size, lift, toolTier)
+  drawShield(ctx, sx, sy, s, lift, gear.offHand)
+  drawBag(ctx, sx, sy, s, lift, gear.belt, gear.offHand)
+  drawGearWeapon(ctx, sx, sy, s, lift, gear.mainHand, toolTier)
 
   const hx = sx
-  const hy = sy - size * 0.26 - lift
-  const hr = size * 0.24
+  const hy = sy - s * 0.28 - lift
+  const hr = s * (female ? 0.22 : 0.24)
   ctx.fillStyle = skin
   ctx.beginPath()
   ctx.arc(hx, hy, hr, 0, Math.PI * 2)
   ctx.fill()
-  if (size >= 6) {
+
+  if (s >= 5) {
+    const style = hairStyle ?? (female ? 'shoulder' : 'short')
+    // Long hair behind, then face plate, then fringe / short styles.
+    if (style === 'long' || style === 'shoulder') {
+      ctx.fillStyle = hairDeep
+      const len = style === 'long' ? hr * 1.55 : hr * 1.1
+      ctx.fillRect(hx - hr * 1.2, hy - hr * 0.05, hr * 0.45, len)
+      ctx.fillRect(hx + hr * 0.75, hy - hr * 0.05, hr * 0.45, len)
+      ctx.fillStyle = hair
+      ctx.fillRect(hx - hr * 1.12, hy + hr * 0.55, hr * 0.38, len * 0.65)
+      ctx.fillRect(hx + hr * 0.74, hy + hr * 0.55, hr * 0.38, len * 0.65)
+      ctx.fillStyle = skin
+      ctx.beginPath()
+      ctx.arc(hx, hy, hr * 0.92, 0, Math.PI * 2)
+      ctx.fill()
+    }
     ctx.fillStyle = hair
-    ctx.beginPath()
-    ctx.ellipse(hx, hy - hr * 0.35, hr * 0.95, hr * 0.7, 0, Math.PI, Math.PI * 2)
-    ctx.fill()
-    ctx.fillRect(hx - hr * 0.95, hy - hr * 0.15, hr * 1.9, hr * 0.35)
+    if (style === 'cropped') {
+      ctx.beginPath()
+      ctx.ellipse(hx, hy - hr * 0.42, hr * 0.88, hr * 0.48, 0, Math.PI, Math.PI * 2)
+      ctx.fill()
+      ctx.fillRect(hx - hr * 0.72, hy - hr * 0.2, hr * 1.44, hr * 0.28)
+    } else {
+      const fringe = 0.55 + clamp01(curl) * 0.25
+      ctx.beginPath()
+      ctx.ellipse(hx, hy - hr * 0.32, hr * 0.98, hr * (style === 'short' ? 0.68 : 0.78), 0, Math.PI, Math.PI * 2)
+      ctx.fill()
+      ctx.fillRect(hx - hr * 0.98, hy - hr * 0.12, hr * 1.96, hr * 0.38 * fringe)
+      if (style === 'short') {
+        ctx.fillStyle = hairDeep
+        ctx.fillRect(hx - hr * 1.02, hy - hr * 0.05, hr * 0.26, hr * 0.5)
+        ctx.fillRect(hx + hr * 0.76, hy - hr * 0.05, hr * 0.26, hr * 0.5)
+      }
+    }
+    if (beard && !child) {
+      const fullness = clamp01(facialHair)
+      ctx.fillStyle = hair
+      ctx.beginPath()
+      ctx.ellipse(hx, hy + hr * 0.55, hr * (0.55 + fullness * 0.35), hr * (0.42 + fullness * 0.35), 0, 0, Math.PI)
+      ctx.fill()
+      if (fullness > 0.45) {
+        ctx.fillStyle = hairDeep
+        ctx.fillRect(hx - hr * 0.72, hy + hr * 0.15, hr * 0.28, hr * 0.55)
+        ctx.fillRect(hx + hr * 0.44, hy + hr * 0.15, hr * 0.28, hr * 0.55)
+      }
+      if (fullness > 0.68 && s >= 7) {
+        ctx.fillStyle = hair
+        ctx.fillRect(hx - hr * 0.35, hy + hr * 0.85, hr * 0.7, hr * 0.45)
+      }
+      if (fullness > 0.38 && s >= 7) {
+        ctx.fillStyle = hairDeep
+        ctx.fillRect(hx - hr * 0.42, hy + hr * 0.22, hr * 0.84, Math.max(1, hr * 0.18))
+      }
+    }
   }
 
-  if (toolTier !== 'none' && size < 6) {
-    ctx.strokeStyle = toolTier === 'iron' ? '#c87840' : toolTier === 'stone' ? '#d8d4c8' : '#2a2118'
-    ctx.lineWidth = Math.max(0.7, size * 0.09)
-    ctx.strokeRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
+  drawHeadgear(ctx, hx, hy, hr, s, gear.head, hue)
+
+  if ((gear.mainHand || toolTier !== 'none') && s < 6) {
+    ctx.strokeStyle = gear.torso === 'iron_mail' ? '#a0a8b0' : toolTier === 'iron' ? '#c87840' : '#2a2118'
+    ctx.lineWidth = Math.max(0.7, s * 0.09)
+    ctx.strokeRect(sx - shoulderW / 2, torsoTop, shoulderW, bodyH)
   }
 
   if (grudge) {
     ctx.fillStyle = '#c43834'
     ctx.beginPath()
-    ctx.arc(sx + size * 0.38, sy - size * 0.5 - lift, size * 0.13, 0, Math.PI * 2)
+    ctx.arc(sx + s * 0.38, sy - s * 0.5 - lift, s * 0.13, 0, Math.PI * 2)
     ctx.fill()
   }
   if (selected) {
@@ -433,7 +803,19 @@ export function drawEmbarkedVillagerSprite(
   bx: number,
   by: number,
   bs: number,
-  opts: Pick<VillagerSpriteOpts, 'hue' | 'pigmentation' | 'hairTone' | 'selected'>,
+  opts: Pick<
+    VillagerSpriteOpts,
+    | 'hue'
+    | 'pigmentation'
+    | 'hairTone'
+    | 'sex'
+    | 'age'
+    | 'hairStyle'
+    | 'beard'
+    | 'facialHair'
+    | 'hairCurl'
+    | 'selected'
+  >,
   simple: boolean,
 ) {
   if (simple) {
@@ -441,19 +823,46 @@ export function drawEmbarkedVillagerSprite(
     ctx.fillRect(bx - 1, by - bs * 0.35, 2, 2)
     return
   }
+  const female = opts.sex === 'female'
+  const age = opts.age ?? 400
   const skin = skinRgb(opts.pigmentation, opts.hue)
-  const hair = hairRgb(opts.hairTone, opts.hue)
+  const tone = agedHairTone(opts.hairTone, age)
+  const hair = hairRgb(tone, opts.hue)
+  const hairDeep = hairRgb(clamp01(tone + 0.18), opts.hue)
+  const bw = bs * (female ? 0.2 : 0.24)
   ctx.fillStyle = clothRgb(opts.hue, 48, 40)
-  ctx.fillRect(bx - bs * 0.12, by - bs * 0.42, bs * 0.24, bs * 0.28)
+  ctx.fillRect(bx - bw / 2, by - bs * 0.42, bw, bs * 0.28)
   ctx.fillStyle = skin
+  const hr = bs * (female ? 0.12 : 0.14)
+  const hx = bx
+  const hy = by - bs * 0.5
   ctx.beginPath()
-  ctx.arc(bx, by - bs * 0.5, bs * 0.14, 0, Math.PI * 2)
+  ctx.arc(hx, hy, hr, 0, Math.PI * 2)
   ctx.fill()
   if (bs >= 5) {
+    const style = opts.hairStyle ?? (female ? 'shoulder' : 'short')
     ctx.fillStyle = hair
-    ctx.beginPath()
-    ctx.ellipse(bx, by - bs * 0.56, bs * 0.13, bs * 0.08, 0, Math.PI, Math.PI * 2)
-    ctx.fill()
+    if (style === 'cropped') {
+      ctx.beginPath()
+      ctx.ellipse(hx, hy - hr * 0.4, hr * 0.9, hr * 0.45, 0, Math.PI, Math.PI * 2)
+      ctx.fill()
+    } else {
+      ctx.beginPath()
+      ctx.ellipse(hx, hy - hr * 0.35, hr * 0.95, hr * 0.65, 0, Math.PI, Math.PI * 2)
+      ctx.fill()
+      if (style === 'shoulder' || style === 'long') {
+        ctx.fillStyle = hairDeep
+        ctx.fillRect(hx - hr * 1.05, hy, hr * 0.35, hr * (style === 'long' ? 1.0 : 0.7))
+        ctx.fillRect(hx + hr * 0.7, hy, hr * 0.35, hr * (style === 'long' ? 1.0 : 0.7))
+      }
+    }
+    if (opts.beard) {
+      const fullness = clamp01(opts.facialHair ?? 0.5)
+      ctx.fillStyle = hair
+      ctx.beginPath()
+      ctx.ellipse(hx, hy + hr * 0.5, hr * (0.5 + fullness * 0.3), hr * 0.4, 0, 0, Math.PI)
+      ctx.fill()
+    }
   }
   if (opts.selected) {
     ctx.strokeStyle = '#e8d078'

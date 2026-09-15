@@ -4,6 +4,11 @@ import { SimPanel } from '@/components/SimPanel'
 import { StartMenu } from '@/components/StartMenu'
 import { SimToolbar } from '@/components/SimToolbar'
 import { dayNightVisual } from '@/lib/sim/calendar'
+import {
+  collectTerrainHearths,
+  drawLocalLightGlows,
+  type ActorLight,
+} from '@/lib/sim/lighting'
 import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
 import {
   drawEmbarkedVillagerSprite,
@@ -79,6 +84,7 @@ export function SimulationCanvas() {
     wolves: [],
     villages: [],
     tradeLinks: [],
+    lights: [],
     ticksPerSec: 0,
   })
   const workerRef = useRef<Worker | null>(null)
@@ -517,8 +523,15 @@ export function SimulationCanvas() {
           hue: v.hue,
           pigmentation: v.pigmentation,
           hairTone: v.hairTone,
+          sex: v.sex,
+          age: v.age,
+          hairStyle: v.hairStyle,
+          beard: v.beard,
+          facialHair: v.facialHair,
+          hairCurl: v.hairCurl,
           toolTier: v.toolTier,
           cloak: v.cloak,
+          gear: v.gear,
           mounted: v.mounted,
           hasCart: v.hasCart,
           grudge: v.grudgeTarget !== null,
@@ -569,16 +582,47 @@ export function SimulationCanvas() {
           DISPLAY_SIZE * 0.52,
           DISPLAY_SIZE * 0.82,
         )
-        g.addColorStop(0, `rgba(52, 60, 74, ${(0.05 + night * 0.12).toFixed(3)})`)
-        g.addColorStop(0.5, `rgba(30, 36, 48, ${(0.12 + night * 0.26).toFixed(3)})`)
-        g.addColorStop(1, `rgba(14, 18, 28, ${(0.26 + night * 0.36).toFixed(3)})`)
+        g.addColorStop(0, `rgba(52, 60, 74, ${(0.06 + night * 0.14).toFixed(3)})`)
+        g.addColorStop(0.5, `rgba(28, 34, 46, ${(0.16 + night * 0.32).toFixed(3)})`)
+        g.addColorStop(1, `rgba(10, 14, 24, ${(0.32 + night * 0.42).toFixed(3)})`)
         ctx.fillStyle = g
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
         ctx.globalCompositeOperation = 'source-over'
         // Thin cool lift so sprites stay readable under multiply.
-        ctx.fillStyle = `rgba(78, 96, 122, ${(night * 0.05).toFixed(3)})`
+        ctx.fillStyle = `rgba(78, 96, 122, ${(night * 0.045).toFixed(3)})`
         ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
         ctx.globalCompositeOperation = prev
+
+        // Local fire / carried lights — warm pools over the dark overlay.
+        const nightLights: ActorLight[] = []
+        const packed = viewRef.current.lights
+        if (packed) {
+          for (let i = 0; i < packed.length; i++) nightLights.push(packed[i])
+        }
+        if (terrain) {
+          collectTerrainHearths(
+            terrain,
+            worldSizeRef.current,
+            camX,
+            camY,
+            visible,
+            TILE_PX,
+            nightLights,
+          )
+        }
+        for (const v of villagers) {
+          if (!v.alive || !v.holdingLight) continue
+          nightLights.push({ x: v.x, y: v.y, kind: v.holdingLight })
+        }
+        drawLocalLightGlows(
+          ctx,
+          nightLights,
+          night,
+          (wx, wy) => ({ sx: tx(wx), sy: ty(wy) }),
+          tileS,
+          performance.now(),
+          DISPLAY_SIZE,
+        )
       }
     }
   }, [clampCamera])

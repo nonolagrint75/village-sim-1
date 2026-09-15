@@ -22,6 +22,8 @@ export type ResourceTag =
   | 'herb'
   | 'store'
   | 'currency'
+  /** Portable light source (visual glow + fuel). */
+  | 'light'
 
 export interface ResourceDef {
   id: string
@@ -150,7 +152,8 @@ export const RESOURCE_DEFS = [
   def('eggs', 'Œufs', 'œufs', 1.2, { kcal: 700, nutrition: 0.9, basePrice: 1.8, targetPerCapita: 0.8, tradeable: true, tags: ['edible', 'animal'] }),
   def('tallow', 'Suif', 'suif', 2.5, { basePrice: 2, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'store'] }),
   def('soap', 'Savon', 'savon', 1.5, { basePrice: 3, targetPerCapita: 0.35, tradeable: true, storeable: true, tags: ['craft', 'store'] }),
-  def('candle', 'Chandelle', 'chandelle', 0.8, { basePrice: 2.5, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'store'] }),
+  def('candle', 'Chandelle', 'chandelle', 0.8, { basePrice: 2.5, targetPerCapita: 0.5, tradeable: true, storeable: true, tags: ['craft', 'fuel', 'light', 'store'] }),
+  def('torch', 'Torche', 'torche', 1.8, { basePrice: 3, targetPerCapita: 0.6, tradeable: true, storeable: true, tags: ['fuel', 'craft', 'light', 'store'] }),
 
   // ── Céréales & cultures ─────────────────────────────────────────────────
   def('rye', 'Seigle', 'seigle', 3.4, { kcal: 420, nutrition: 0.5, basePrice: 1.4, targetPerCapita: 2, tradeable: true, tags: ['edible', 'grain'] }),
@@ -595,6 +598,24 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputCount: 1,
     station: 'workbench',
     urge: 20,
+  },
+  {
+    id: 'torch_resin',
+    labelFr: 'torche',
+    inputs: { wood: 1, resin: 1 },
+    output: 'torch',
+    outputCount: 2,
+    station: 'workbench',
+    urge: 26,
+  },
+  {
+    id: 'torch_pitch',
+    labelFr: 'torche',
+    inputs: { wood: 1, pitch: 1 },
+    output: 'torch',
+    outputCount: 2,
+    station: 'workbench',
+    urge: 26,
   },
   {
     id: 'basket_reed',
