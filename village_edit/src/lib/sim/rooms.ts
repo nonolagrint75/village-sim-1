@@ -53,15 +53,17 @@ export type RoomFurnitureKind =
   | 'cradle'
   | 'stool'
   | 'tub'
+  | 'sconce'
+  | 'chandelier'
 
 /** Preferred furniture per room — contract for furniture agents. */
 export const ROOM_FURNITURE: Record<RoomKind, RoomFurnitureKind[]> = {
-  chambre: ['bed', 'cradle', 'stool'],
-  salle_a_manger: ['table', 'bench', 'stool'],
+  chambre: ['bed', 'cradle', 'stool', 'sconce'],
+  salle_a_manger: ['table', 'bench', 'stool', 'sconce'],
   cuisine: ['hearth', 'shelf', 'tub'],
   reserve: ['chest', 'cupboard', 'shelf'],
   atelier: ['workbench', 'loom', 'shelf'],
-  hall: ['bench', 'stool'],
+  hall: ['bench', 'stool', 'sconce', 'chandelier'],
   latrines: ['tub'],
 }
 

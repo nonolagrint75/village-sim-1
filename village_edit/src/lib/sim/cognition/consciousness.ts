@@ -64,6 +64,12 @@ export function attentionKindWeight(v: Villager, kind: WorkingConcernKind): numb
     case 'need_rest':
       w *= 0.95 + (1 - p.ambition) * 0.15
       break
+    case 'need_light':
+      w *= 1.05 + (1 - p.courage) * 0.35
+      break
+    case 'need_warmth':
+      w *= 1.0 + (1 - p.courage) * 0.2 + p.ambition * 0.05
+      break
     case 'need_shelter':
     case 'build':
       w *= 0.85 + p.ambition * 0.25 + p.curiosity * 0.2

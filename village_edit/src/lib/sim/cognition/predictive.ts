@@ -18,6 +18,8 @@ const NEED_TO_PE: { need: keyof NeedPressures; kind: PredictionErrorKind; label:
   { need: 'social', kind: 'social', label: 'erreur lien social' },
   { need: 'belonging', kind: 'belonging', label: 'erreur appartenance' },
   { need: 'status', kind: 'status', label: 'erreur statut' },
+  { need: 'light', kind: 'darkness', label: 'erreur obscurité' },
+  { need: 'warmth', kind: 'cold_comfort', label: 'erreur froid / feu' },
 ]
 
 /**

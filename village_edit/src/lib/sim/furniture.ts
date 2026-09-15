@@ -20,6 +20,8 @@ export type FurnitureKind =
   | 'loom'
   | 'cradle'
   | 'tub'
+  | 'sconce'
+  | 'chandelier'
 
 export type FurnitureJob = {
   kind: FurnitureKind
@@ -114,7 +116,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   hearth: {
     kind: 'hearth',
     labelFr: 'âtre',
-    buildTask: 'buildWorkbench',
+    buildTask: 'buildHearth',
     wood: 2,
     room: 'cuisine',
     terrain: null,
@@ -143,9 +145,25 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     room: 'latrines',
     terrain: null,
   },
+  sconce: {
+    kind: 'sconce',
+    labelFr: 'applique',
+    buildTask: 'buildWorkbench',
+    wood: 1,
+    room: 'hall',
+    terrain: null,
+  },
+  chandelier: {
+    kind: 'chandelier',
+    labelFr: 'lustre',
+    buildTask: 'buildWorkbench',
+    wood: 4,
+    room: 'hall',
+    terrain: null,
+  },
 }
 
-const PLACEABLE_NOW: FurnitureKind[] = ['workbench', 'chest', 'bed', 'table']
+const PLACEABLE_NOW: FurnitureKind[] = ['workbench', 'chest', 'bed', 'table', 'hearth']
 
 export function furnitureLabelFr(kind: FurnitureKind): string {
   return FURNITURE_DEFS[kind].labelFr
@@ -199,6 +217,11 @@ export function planFurnitureJobs(
     push('table', 'center')
   }
 
+  // Âtre — chaleur / lumière du foyer (cuisine ou hall).
+  if (layout.rooms.some((r) => r.kind === 'cuisine' || r.kind === 'hall') || opts.household >= 1) {
+    push('hearth', 'center')
+  }
+
   return jobs
 }
 
@@ -236,6 +259,10 @@ function spotFromQueue(
 
 export function sleepSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {
   return spotFromQueue(queue, layout, 'bed', 'chambre')
+}
+
+export function hearthSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {
+  return spotFromQueue(queue, layout, 'hearth', 'cuisine')
 }
 
 export function eatSpot(queue: FurnitureJob[], layout: HouseLayout | null): { x: number; y: number } | null {

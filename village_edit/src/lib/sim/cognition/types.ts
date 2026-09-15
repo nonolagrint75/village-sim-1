@@ -26,6 +26,10 @@ export interface NeedPressures {
   boredom: number
   piety: number
   creative: number
+  /** Darkness at night outdoors / unlit rooms — seek torch, candle, hearth. */
+  light: number
+  /** Cold without fire / cloak / hearth — seek warmth. */
+  warmth: number
 }
 
 export interface EmotionState {
@@ -80,6 +84,8 @@ export type PredictionErrorKind =
   | 'social'
   | 'belonging'
   | 'status'
+  | 'darkness'
+  | 'cold_comfort'
 
 export interface PredictionError {
   kind: PredictionErrorKind
@@ -108,6 +114,8 @@ export type WorkingConcernKind =
   | 'need_food'
   | 'need_rest'
   | 'need_shelter'
+  | 'need_light'
+  | 'need_warmth'
   | 'threat'
   | 'debt'
   | 'grudge'

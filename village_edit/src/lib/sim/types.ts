@@ -194,6 +194,16 @@ export type TaskKind =
   | 'craftGoods'
   /** Appliquer un remède (guérit un peu). */
   | 'useMedicine'
+  /** Allumer une torche portée — nuit dehors. */
+  | 'lightTorch'
+  /** Poser / allumer une chandelle au foyer. */
+  | 'placeCandle'
+  /** Nourrir l’âtre (fagots / bois / tourbe). */
+  | 'tendHearth'
+  /** Ramasser du combustible (bois / tourbe). */
+  | 'gatherFuel'
+  /** Fabriquer torche / chandelle / lampe. */
+  | 'craftLight'
 
 export interface Task {
   kind: TaskKind
@@ -372,6 +382,12 @@ export interface Villager {
   homeFurniture: FurniturePlacement[]
   /** Armoire stores — textiles / tools overflow beside the chest. */
   cupboardInventory: Slot[] | null
+  /** Carried torch remains lit until this tick (0 = out). */
+  torchLitUntil: number
+  /** Indoor candle / lamp light until this tick (shared via home keeper). */
+  homeLightUntil: number
+  /** Hearth fire remains warm/lit until this tick. */
+  hearthLitUntil: number
   villageId: number | null
   hue: number
   alive: boolean

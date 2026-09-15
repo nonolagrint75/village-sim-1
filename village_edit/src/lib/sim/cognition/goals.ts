@@ -38,11 +38,11 @@ export function planForGoal(id: CognitiveGoalId): PlanStub | null {
   const chains: Partial<Record<CognitiveGoalId, TaskKind[]>> = {
     home: ['gatherWood', 'clearLand', 'buildHouse', 'buildBed', 'buildTable', 'buildChest'],
     survive: ['gatherFood', 'eat', 'buildChest'],
-    rest: ['rest'],
+    rest: ['tendHearth', 'placeCandle', 'rest'],
     wealth: ['mineGold', 'mintCoins', 'tradeRun'],
-    security: ['gatherWood', 'clearLand', 'buildProject'],
-    craft: ['gatherWood', 'buildWorkbench', 'craftIronTool'],
-    family: ['gatherFood', 'giveFood', 'buildBed'],
+    security: ['lightTorch', 'gatherFuel', 'gatherWood', 'clearLand', 'buildProject'],
+    craft: ['gatherWood', 'buildWorkbench', 'craftLight', 'craftIronTool'],
+    family: ['gatherFood', 'giveFood', 'tendHearth', 'buildBed'],
     mate: ['socialise', 'giveFood', 'buildBed'],
     community: ['gatherWood', 'clearLand', 'buildProject'],
     revenge: ['confront'],
@@ -78,7 +78,8 @@ export function scoreGoals(
       score:
         (needs.fatigue * 2.4 +
           (v.stamina < 1.2 ? 1.5 : 0) +
-          (v.hasHome ? needs.shelter * 1.5 : 0)) *
+          (v.hasHome ? needs.shelter * 1.5 : 0) +
+          needs.warmth * 1.1) *
         noise(),
       commitment: 0,
       targetId: null,
@@ -96,7 +97,7 @@ export function scoreGoals(
     },
     {
       id: 'security',
-      score: (needs.safety * 2.6 + values.security * 0.9) * noise(),
+      score: (needs.safety * 2.6 + needs.light * 1.8 + needs.warmth * 0.9 + values.security * 0.9) * noise(),
       commitment: 0,
       targetId: null,
       targetX: v.x,
@@ -221,25 +222,70 @@ const PLAN_INTERRUPTS: ReadonlySet<TaskKind> = new Set([
   'defend',
   'rest',
   'takeFromChest',
+  'lightTorch',
+  'tendHearth',
+  'placeCandle',
 ])
 
 /** Task multipliers from active goal + values — plan steps gate strongly (not cosmetic). */
 export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId: number | null): number {
   let mult = 1
   const table: Record<CognitiveGoalId, Partial<Record<TaskKind, number>>> = {
-    survive: { eat: 3.2, gatherFood: 2.4, fish: 1.8, harvestWheat: 1.7, takeFromChest: 2.2, rest: 1.3, buildChest: 1.6 },
-    rest: { rest: 3.0, takeFromChest: 1.2, eat: 1.4, socialise: 0.55 },
-    home: { buildHouse: 3.0, gatherWood: 1.5, clearLand: 2.4, buildBed: 1.4, buildChest: 1.2, buildTable: 1.3, rest: 1.8 },
+    survive: {
+      eat: 3.2,
+      gatherFood: 2.4,
+      fish: 1.8,
+      harvestWheat: 1.7,
+      takeFromChest: 2.2,
+      rest: 1.3,
+      buildChest: 1.6,
+      lightTorch: 1.5,
+      tendHearth: 1.4,
+      gatherFuel: 1.35,
+    },
+    rest: { rest: 3.0, tendHearth: 2.2, placeCandle: 1.8, takeFromChest: 1.2, eat: 1.4, socialise: 0.55 },
+    home: { buildHouse: 3.0, gatherWood: 1.5, clearLand: 2.4, buildBed: 1.4, buildChest: 1.2, buildTable: 1.3, buildHearth: 1.6, rest: 1.8 },
     wealth: { tradeRun: 2.2, mineGold: 2.0, mintCoins: 1.8, buyMaterial: 1.4, buildCart: 1.4, buildPort: 1.3, mineTunnel: 1.35 },
-    family: { buildHouse: 1.8, buildBed: 2.0, buildTable: 1.35, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4 },
+    family: { buildHouse: 1.8, buildBed: 2.0, buildTable: 1.35, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4, tendHearth: 1.5, placeCandle: 1.3 },
     mate: { socialise: 2.4, giveFood: 1.6, buildBed: 1.3, buildHouse: 1.2, buildTable: 1.15 },
     status: { buildHouse: 1.5, buildProject: 1.9, buildWall: 1.5, buildPort: 1.35, buildMill: 1.3, craftIronTool: 1.5, gatherWood: 1.35, clearLand: 1.4, buildTable: 1.2 },
     community: { socialise: 2.0, giveFood: 1.8, defend: 1.8, buildWall: 1.6, buildProject: 1.55, buildMill: 1.35, buildBridge: 1.3, clearLand: 1.35, gatherWood: 1.3 },
-    explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2 },
-    security: { flee: 2.5, fight: 1.8, defend: 2.1, buildWall: 2.0, buildProject: 1.7, craftSpear: 1.5, craftStoneSpear: 1.6, craftIronTool: 1.7, rest: 1.1, gatherWood: 1.4, clearLand: 1.45 },
-    craft: { buildWorkbench: 2, buildTable: 1.25, craftSpear: 1.5, craftStoneSpear: 1.6, craftIronTool: 1.8, craftGear: 1.85, weaveCloth: 1.7, sewClothing: 1.5, tanHide: 1.5, grindFlour: 1.4, bakeBread: 1.4, mineTunnel: 1.4 },
+    explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2, lightTorch: 1.35 },
+    security: {
+      flee: 2.5,
+      fight: 1.8,
+      defend: 2.1,
+      buildWall: 2.0,
+      buildProject: 1.7,
+      craftSpear: 1.5,
+      craftStoneSpear: 1.6,
+      craftIronTool: 1.7,
+      rest: 1.1,
+      gatherWood: 1.4,
+      clearLand: 1.45,
+      lightTorch: 2.4,
+      placeCandle: 2.0,
+      tendHearth: 2.1,
+      gatherFuel: 1.9,
+      craftLight: 1.85,
+    },
+    craft: {
+      buildWorkbench: 2,
+      buildTable: 1.25,
+      craftSpear: 1.5,
+      craftStoneSpear: 1.6,
+      craftIronTool: 1.8,
+      craftGear: 1.85,
+      craftLight: 2.1,
+      weaveCloth: 1.7,
+      sewClothing: 1.5,
+      tanHide: 1.5,
+      grindFlour: 1.4,
+      bakeBread: 1.4,
+      mineTunnel: 1.4,
+    },
     revenge: { confront: 3.0, steal: 1.3, fight: 1.4, socialise: 0.75 },
-    migrate: { idle: 2.2, tradeRun: 1.8, tameHorse: 1.5, buildHouse: 1.6, gatherWood: 1.4, clearLand: 1.35, buildProject: 1.45 },
+    migrate: { idle: 2.2, tradeRun: 1.8, tameHorse: 1.5, buildHouse: 1.6, gatherWood: 1.4, clearLand: 1.35, buildProject: 1.45, lightTorch: 1.4 },
   }
   const g = table[mind.goal.id][kind]
   if (g) mult *= g

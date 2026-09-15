@@ -63,6 +63,8 @@ export type EmotionEvent =
   | 'belonging_warm'
   | 'piety_calm'
   | 'rest_ease'
+  | 'hearth_warm'
+  | 'dark_fear'
   | 'labor_liked'
   | 'labor_forced'
   | 'masterwork'
@@ -153,6 +155,15 @@ export function applyEmotionEvent(e: EmotionState, event: EmotionEvent, intensit
     case 'rest_ease':
       e.stress = clamp01(e.stress - 0.11 * k)
       break
+    case 'hearth_warm':
+      e.stress = clamp01(e.stress - 0.14 * k)
+      e.fear = clamp01(e.fear - 0.1 * k)
+      e.affection = clamp01(e.affection + 0.06 * k)
+      break
+    case 'dark_fear':
+      e.fear = clamp01(e.fear + 0.16 * k)
+      e.stress = clamp01(e.stress + 0.1 * k)
+      break
     case 'labor_liked':
       e.pride = clamp01(e.pride + 0.12 * k)
       e.stress = clamp01(e.stress - 0.08 * k)
@@ -181,6 +192,10 @@ export function emotionTaskBias(e: EmotionState, kind: string): number {
     m *= 1 + e.affection * 0.55 - e.anger * 0.25 + Math.max(0, e.approachAvoid) * 0.2
   }
   if (kind === 'rest') m *= 1 + e.stress * 0.4 + Math.max(0, -e.valence) * 0.15
+  if (kind === 'lightTorch' || kind === 'placeCandle' || kind === 'tendHearth') {
+    m *= 1 + e.fear * 0.45 + e.stress * 0.25
+  }
+  if (kind === 'gatherFuel' || kind === 'craftLight') m *= 1 + e.fear * 0.2 + e.stress * 0.15
   if (kind === 'eat') m *= 1 + Math.max(0, -e.valence) * 0.1
   if (kind === 'entertain') m *= 1 + e.affection * 0.25 + e.pride * 0.15 - e.stress * 0.2
   if (kind === 'buildHouse' || kind === 'tradeRun' || kind === 'craftIronTool') m *= 1 + e.pride * 0.25

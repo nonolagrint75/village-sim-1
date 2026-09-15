@@ -129,6 +129,8 @@ function fillWorking(state: SimState, v: Villager, mind: CognitiveState): void {
   if (mind.needs.hunger > 0.35) pushConcern(mind.working, 'need_food', 'besoin de manger', mind.needs.hunger, tick, null, v.x, v.y)
   if (mind.needs.fatigue > 0.4) pushConcern(mind.working, 'need_rest', 'besoin de repos', mind.needs.fatigue, tick)
   if (mind.needs.shelter > 0.4) pushConcern(mind.working, 'need_shelter', 'besoin d’un abri', mind.needs.shelter, tick)
+  if (mind.needs.light > 0.35) pushConcern(mind.working, 'need_light', 'besoin de lumière', mind.needs.light, tick, null, v.x, v.y)
+  if (mind.needs.warmth > 0.35) pushConcern(mind.working, 'need_warmth', 'besoin de chaleur', mind.needs.warmth, tick, null, v.x, v.y)
   if (mind.needs.safety > 0.35) pushConcern(mind.working, 'threat', 'menace ressentie', mind.needs.safety, tick, null, v.x, v.y)
   if (v.grudgeTarget !== null) pushConcern(mind.working, 'grudge', 'compte à régler', 0.7 + mind.emotions.anger * 0.3, tick, v.grudgeTarget)
   if (mind.needs.social > 0.45 || mind.needs.belonging > 0.5) {

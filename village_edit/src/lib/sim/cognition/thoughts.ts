@@ -48,6 +48,8 @@ const NEED_THOUGHT: Partial<Record<keyof NeedPressures, { bad: string; valence: 
   creative: { bad: 'mains sans ouvrage', valence: -0.2, stress: 0.02 },
   piety: { bad: 'loin du sacré', valence: -0.2, stress: 0.025 },
   boredom: { bad: 'l’ennui ronge', valence: -0.22, stress: 0.03 },
+  light: { bad: 'trop sombre pour voir', valence: -0.4, stress: 0.07 },
+  warmth: { bad: 'les membres gèlent', valence: -0.45, stress: 0.08 },
 }
 
 /** Unmet needs → negative thoughts (LOD: only above threshold). */
@@ -80,6 +82,8 @@ const EVENT_THOUGHT: Partial<Record<EmotionEvent, { text: string; valence: numbe
   wolf_survived: { text: 'échappé au loup', valence: 0.5, stress: -0.07 },
   belonging_warm: { text: 'parmi les miens', valence: 0.45, stress: -0.06 },
   rest_ease: { text: 'le repos apaise', valence: 0.3, stress: -0.09 },
+  hearth_warm: { text: 'l’âtre réchauffe', valence: 0.45, stress: -0.1 },
+  dark_fear: { text: 'la nuit trop noire', valence: -0.5, stress: 0.09 },
   labor_liked: { text: 'travail qui plaît', valence: 0.4, stress: -0.04 },
   labor_forced: { text: 'corvée subie', valence: -0.35, stress: 0.05 },
   masterwork: { text: 'chef-d’œuvre accompli', valence: 0.75, stress: -0.08 },
@@ -107,6 +111,8 @@ export function thoughtStressBias(mind: CognitiveState): number {
   if (mind.needs.safety > 0.5) s += 0.1
   if (mind.needs.fatigue > 0.55) s += 0.05
   if (mind.needs.belonging > 0.55) s += 0.04
+  if (mind.needs.light > 0.5) s += 0.07
+  if (mind.needs.warmth > 0.5) s += 0.06
   if (mind.thoughts) {
     for (const t of mind.thoughts) {
       if (t.valence < -0.2) s += Math.abs(t.stressDelta) * 0.5

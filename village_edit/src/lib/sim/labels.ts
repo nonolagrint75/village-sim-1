@@ -27,6 +27,14 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   buildChest: 'Fabrique un coffre',
   buildBed: 'Fabrique un lit',
   buildTable: 'Dresse une table',
+  buildHearth: 'Maçonne un âtre',
+  buildBench: 'Fabrique un banc',
+  buildStool: 'Fabrique un tabouret',
+  buildShelf: 'Pose une étagère',
+  buildCupboard: 'Monte une armoire',
+  buildCradle: 'Fabrique un berceau',
+  buildLoom: 'Installe un métier à tisser',
+  buildWashingTub: 'Pose une cuve de lessive',
   buildPen: 'Monte un enclos',
   buildWall: "Élève l'enceinte",
   buildBridge: 'Construit un pont',
@@ -63,6 +71,11 @@ export const TASK_LABELS: Record<TaskKind, string> = {
   craftGear: 'Fabrique une pièce d’équipement',
   craftGoods: 'Travaille une matière',
   useMedicine: 'Applique un remède',
+  lightTorch: 'Allume une torche',
+  placeCandle: 'Pose une chandelle',
+  tendHearth: 'Attise le foyer',
+  gatherFuel: 'Ramasse du combustible',
+  craftLight: 'Fabrique une source de lumière',
 }
 
 export const PROFESSION_LABELS: Record<Profession, string> = {
