@@ -343,9 +343,9 @@ const FOOD_TARGET = 4
 const WINTER_STOCK_TARGET = 10
 /** Single hunger/eat ladder — merge duplicate parallel-agent thresholds here. */
 const EAT_WITH_FOOD = 1.85
-const EAT_IN_PLACE = 1.35
+const EAT_IN_PLACE = 2.35
 const EAT_INTERRUPT = 2.35
-const CHEST_PULL = 1.55
+const CHEST_PULL = 2.35
 const REST_SNACK = 1.8
 const LEISURE_CUT = 2.15
 const SURVIVAL_TIGHT_HUNGER = 2.5
@@ -1628,15 +1628,14 @@ function bestEdible(v: Villager): ResourceType | null {
 
 /** Prefer table when housed — travel time is intentional (no teleport meals). */
 function eatTarget(v: Villager): { x: number; y: number } {
-  // Critical hunger: eat where you stand — table walks were mid-run starve deaths.
-  if (v.hunger < EAT_IN_PLACE) return { x: Math.round(v.x), y: Math.round(v.y) }
+  // Hungry / starving: eat where you stand — distant table walks caused bag-full starve deaths.
+  if (v.hunger < EAT_IN_PLACE || v.starveTimer > 0) return { x: Math.round(v.x), y: Math.round(v.y) }
   const table = eatSpot(v.furnitureQueue, v.homeLayout)
-  if (table && v.hasHome) return table
-  if (v.hasTable) return { x: v.tableX, y: v.tableY }
+  if (table && v.hasHome && distance(v.x, v.y, table.x, table.y) <= 10) return table
+  if (v.hasTable && distance(v.x, v.y, v.tableX, v.tableY) <= 10) return { x: v.tableX, y: v.tableY }
   return { x: Math.round(v.x), y: Math.round(v.y) }
 }
 
-/** Prefer bed / chambre when housed. */
 function restTarget(v: Villager): { x: number; y: number } {
   if (!v.hasHome) return { x: Math.round(v.x), y: Math.round(v.y) }
   const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
@@ -1986,11 +1985,22 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       add('eat', eatX, eatY, eatUrge * (table || v.hasTable ? reach(v, eatX, eatY) : 1))
     }
   }
-  if (v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0 && v.hunger < 2.0) {
+  if (
+    !bestEdible(v) &&
+    v.hasChest &&
+    v.chestInventory &&
+    edibleValue(v.chestInventory) > 0 &&
+    v.hunger < CHEST_PULL
+  ) {
     const store = storeSpot(v.furnitureQueue, v.homeLayout)
     const cx = store?.x ?? v.chestX
     const cy = store?.y ?? v.chestY
-    add('takeFromChest', cx, cy, starving * 180 * reach(v, cx, cy))
+    // Match eat urgency — empty bag + larder food must beat forage thrash.
+    const chestUrge =
+      v.hunger < 1.6
+        ? Math.max(starving * 280, 90 + (1.6 - v.hunger) * 130)
+        : starving * 160 + (CHEST_PULL - v.hunger) * 50
+    add('takeFromChest', cx, cy, chestUrge * reach(v, cx, cy))
   }
   if (overloaded && v.hasChest && v.chestInventory) {
     const store = storeSpot(v.furnitureQueue, v.homeLayout)
@@ -2258,7 +2268,10 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   // Lonely / family-driven: seek spouse & kin beyond immediate sight.
-  if (loneSelf > 0.4 || mindSelf.needs.social > 0.5 || mindSelf.values.family > 0.55 || v.ambition === 'family') {
+  if (
+    !survivalTight &&
+    (loneSelf > 0.4 || mindSelf.needs.social > 0.5 || mindSelf.values.family > 0.55 || v.ambition === 'family')
+  ) {
     let kinTarget: Villager | null = null
     let kinScore = 0
     if (v.spouseId !== null) {
@@ -3050,8 +3063,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
           : distance(v.x, v.y, task.targetX, task.targetY) <= 1.5
 
   if (task.kind === 'eat') {
-    // Walk to table unless critically hungry — then eat in place immediately.
-    const canEatNow = arrived || v.hunger < EAT_IN_PLACE
+    // Never walk-to-starve: hungry / starveTimer / 2 ticks of walking → eat now.
+    const canEatNow =
+      arrived || v.hunger < EAT_IN_PLACE || v.starveTimer > 0 || task.ageTicks >= 2
     if (!canEatNow) {
       /* fall through to movement */
     } else {
@@ -3705,7 +3719,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (getTerrain(grid, task.targetX, task.targetY) !== WHEAT) return false
       const ripeness = grid.amount[i]
       if (ripeness < WHEAT_SPROUT) return false
-      let yieldN = ripeness >= WHEAT_RIPE ? 3 : 1
+      let yieldN = ripeness >= WHEAT_RIPE ? 4 : 2
       const fy = skillYieldBonus(mindOf(v).skills, 'harvestWheat')
       if (fy > 1.2 && ripeness >= WHEAT_RIPE) yieldN += 1
       if (fy > 1.35 && rng() < 0.4) yieldN += 1
@@ -3717,6 +3731,14 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (crop.resource === 'grape' && rng() < 0.2) addToInventory(v.inventory, 'plum', 1)
       setTerrain(grid, task.targetX, task.targetY, DIRT)
       grid.cropType[i] = 0
+      // Mid-run fallow killed food loops — re-sow immediately while season allows.
+      const sowT = sampleTempC(state.climate, task.targetX, task.targetY)
+      if (sowingSeason(state.season, sowT) && isBuildableGround(grid, task.targetX, task.targetY)) {
+        const cropId = pickCropId(rng, sampleBiome(state.climate, task.targetX, task.targetY))
+        setTerrain(grid, task.targetX, task.targetY, WHEAT, 1)
+        grid.cropType[i] = cropId
+        v.hasField = true
+      }
       return false
     }
     case 'grindFlour': {
@@ -4243,7 +4265,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       const fireBonus = hearthSleepBonus(state, v)
       recoverStamina(v, (baseBonus + furnitureBonus) * (inChambre ? 1.15 : 1) * (nearHearth ? 1.08 : 1) + fireBonus)
       // Nibble while resting if genuinely hungry — avoids rest→starve with food in the bag.
-      if (v.hunger < 1.8) {
+      if (v.hunger < REST_SNACK) {
         const snack = bestEdible(v)
         if (snack) {
           removeFromInventory(v.inventory, snack, 1)
@@ -4675,13 +4697,14 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       v.task.kind === 'harvestWheat' ||
       v.task.kind === 'sowField' ||
       v.task.kind === 'clearLand'
-    if (v.hunger < 2.35 && bestEdible(v)) {
+    if (v.hunger < EAT_INTERRUPT && bestEdible(v)) {
       stashInterruptedTask(v)
       const t = eatTarget(v)
       setTask(v, 'eat', t.x, t.y)
       noteChosenAction(v, 'eat', 'faim — interruption')
     } else if (
-      v.hunger < 1.45 &&
+      v.hunger < CHEST_PULL &&
+      !bestEdible(v) &&
       v.hasChest &&
       v.chestInventory &&
       edibleValue(v.chestInventory) > 0
@@ -4692,7 +4715,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
     } else if (
       leisure &&
-      (v.hunger < 2.15 || state.famine || edibleValue(v.inventory) < 1)
+      (v.hunger < LEISURE_CUT || state.famine || edibleValue(v.inventory) < 1)
     ) {
       // Drop troubadour / plaza loops so gather/farm/craft can win the next think.
       stashInterruptedTask(v)
@@ -4862,7 +4885,6 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     if (!failed) noteActivityPractice(v, active.kind, 1)
     else if (active.work > 0 || active.ageTicks > 12) noteActivityPractice(v, active.kind, 0.35)
 
-    const wasSurvivalBite = active.kind === 'eat' || active.kind === 'takeFromChest'
     const wasLeisure =
       active.kind === 'socialise' ||
       active.kind === 'giveFood' ||
@@ -4871,8 +4893,18 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       active.kind === 'teachCraft'
     const micro = active.ageTicks <= 2 && active.work <= 0
     v.task = null
-    if (wasSurvivalBite && restoreInterruptedTask(v)) {
+    // takeFromChest is not a meal — eat before resuming work. Restoring gatherFood/fish
+    // here skipped the hunger interrupt (those kinds are excluded) and left bread unused.
+    if (active.kind === 'takeFromChest' && !failed && bestEdible(v) && v.hunger < CHEST_PULL) {
+      const t = eatTarget(v)
+      setTask(v, 'eat', t.x, t.y)
+      noteChosenAction(v, 'eat', 'après garde-manger')
+      v.nextThinkTick = state.tick
+    } else if (active.kind === 'eat' && restoreInterruptedTask(v)) {
       noteChosenAction(v, v.task!.kind, 'reprise après repas')
+      v.nextThinkTick = state.tick + 1
+    } else if (active.kind === 'takeFromChest' && restoreInterruptedTask(v)) {
+      noteChosenAction(v, v.task!.kind, 'reprise après garde-manger')
       v.nextThinkTick = state.tick + 1
     } else if (forceBiologicalRhythm(state, v)) {
       // Never end the tick null — survival interrupts need an active task next tick.

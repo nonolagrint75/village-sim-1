@@ -392,11 +392,11 @@ export function ageYearsFromTicks(ageTicks: number): number {
 }
 
 /**
- * Ancre jouabilité : estomac plein → vide en ~3.75 jours-sim (voir behaviors HUNGER_DECAY).
+ * Ancre jouabilité : estomac plein → vide en ~4.5 jours-sim (échelle 4 ; voir behaviors HUNGER_DECAY).
  * Le BMR / MET / thermique *modulent* autour de cette base — ils ne la multiplient
  * pas en pile (sinon labour + chaleur ≈ vide en ~1 jour → wipe de départ).
  */
-export const HUNGER_DECAY_PLAY = 4 / (TICKS_PER_DAY * 3.75)
+export const HUNGER_DECAY_PLAY = 4 / (TICKS_PER_DAY * 4.5)
 
 /**
  * MET déjà « cuit » dans HUNGER_DECAY_PLAY (journée moyenne : marche / tâches légères).
@@ -441,9 +441,10 @@ export function hungerRestoreFromFood(type: ResourceType): number {
 
 /** clo vestimentaire soft (sac + équipement porté). */
 export function clothingClo(hasLeather: boolean, hasClothing: boolean, equipmentClo = 0): number {
-  const bag = hasLeather ? 1.2 : hasClothing ? 0.8 : 0.3
-  if (equipmentClo > 0.35) return Math.max(bag, Math.min(2.4, equipmentClo))
-  return Math.max(bag, equipmentClo)
+  // Skin floor + bag bonus + worn gear (linen must beat naked — max(bag, gear) made light tunics no-ops).
+  const skin = 0.3
+  const bagBonus = hasLeather ? 0.9 : hasClothing ? 0.5 : 0
+  return Math.min(2.4, skin + bagBonus + Math.max(0, equipmentClo))
 }
 
 /**
