@@ -995,7 +995,12 @@ function maybeInstitutionalize(state: SimState, c: Circle) {
   c.originStory = story
   // Craft / trade circles with enough practitioners harden into guilds.
   if ((c.kind === 'craft' || c.kind === 'trade') && members >= GUILD_MIN_PRACTITIONERS) {
-    promoteToGuild(state, c)
+    const practitioners = livingMembers(state, c).filter((m) => hasCraftIdentityFor(state, m, c)).length
+    if (practitioners >= GUILD_MIN_PRACTITIONERS) {
+      promoteToGuild(state, c)
+    } else {
+      logCause(state, story, `${c.name} devient une institution (application des normes)`)
+    }
   } else {
     logCause(state, story, `${c.name} devient une institution (application des normes)`)
   }
@@ -1088,6 +1093,17 @@ function tickGuildLife(state: SimState, c: Circle) {
       }
     }
   }
+  // No hive mind: drop guild members without craft identity.
+  if (c.isGuild) {
+    for (const m of members) {
+      if (m.id === c.leaderId) continue
+      if (hasCraftIdentityFor(state, m, c)) continue
+      c.memberIds = c.memberIds.filter((id) => id !== m.id)
+      rememberCircle(c, `${m.name} quitte (hors metier)`)
+      break
+    }
+  }
+
 }
 
 function spawnRumorSoft(state: SimState, kind: RumorKind, about: Villager, text: string) {
@@ -1156,6 +1172,39 @@ function joinWillingness(state: SimState, v: Villager, c: Circle): number {
   return score
 }
 
+function circleCraftProfession(state: SimState, c: Circle): Profession | null {
+  const counts = new Map<Profession, number>()
+  for (const m of livingMembers(state, c)) {
+    if (m.profession === 'none') continue
+    counts.set(m.profession, (counts.get(m.profession) ?? 0) + 1)
+  }
+  let best: Profession | null = null
+  let bestN = 0
+  for (const [p, n] of counts) {
+    if (n > bestN) {
+      bestN = n
+      best = p
+    }
+  }
+  return best
+}
+
+function hasCraftIdentityFor(state: SimState, v: Villager, c: Circle): boolean {
+  if (!(c.isGuild || c.kind === 'craft' || c.kind === 'trade')) return true
+  if (v.profession === 'none') {
+    if (c.isGuild) return false
+    try {
+      return mindOf(v).skills.craft > 0.35
+    } catch {
+      return false
+    }
+  }
+  if (c.kind === 'trade') return v.profession === 'trader'
+  const dominant = circleCraftProfession(state, c)
+  if (!dominant) return true
+  return v.profession === dominant
+}
+
 function maybeRecruit(state: SimState, c: Circle) {
   if (c.memberIds.length >= MAX_CIRCLE_MEMBERS) return
   const members = livingMembers(state, c)
@@ -1165,6 +1214,7 @@ function maybeRecruit(state: SimState, c: Circle) {
     if (!o.alive || c.memberIds.includes(o.id)) continue
     if (c.villageId !== null && o.villageId !== c.villageId && c.kind !== 'trade') continue
     if (distance(o.x, o.y, anchor.x, anchor.y) > 28) continue
+    if (!hasCraftIdentityFor(state, o, c)) continue
     if (joinWillingness(state, o, c) > 0.55) {
       c.memberIds.push(o.id)
       c.lastActiveTick = state.tick

@@ -195,6 +195,9 @@ export function doSocialise(state: SimState, a: Villager, b: Villager) {
     logEvent(state, `${a.name} et ${b.name} sont devenus proches`)
     recordRelHistory(a, b.id, 'met', state.tick)
     recordRelHistory(b, a.id, 'met', state.tick)
+  } else if (relA.affinity < 0.28 && (state.tick + a.id + b.id) % 70 === 0) {
+    logEvent(state, `${a.name} discute avec ${b.name}`)
+    recordRelHistory(a, b.id, 'met', state.tick)
   }
 
   // Romance pathway (affinity/trust gates live in tryRomanceBond).
@@ -320,6 +323,19 @@ export function doGiveFood(state: SimState, giver: Villager, receiver: Villager)
   onCognitiveEvent(giver, 'gift', 0.4)
   broadcastWitness(state, giver, 'helped', 1, 0.6, 8, receiver.id)
   onPoliticalGenerosity(state, giver, receiver)
+  const kinShare =
+    (relationWith(receiver, giver.id).kinship || 0) > 0.4 ||
+    giver.spouseId === receiver.id ||
+    giver.parentIds.includes(receiver.id) ||
+    receiver.parentIds.includes(giver.id)
+  if ((kinShare && (state.tick + giver.id) % 45 === 0) || (!kinShare && (state.tick + giver.id * 5 + receiver.id) % 55 === 0)) {
+    logEvent(
+      state,
+      kinShare
+        ? `${giver.name} partage sa nourriture avec ${receiver.name} (famille)`
+        : `${giver.name} offre a manger a ${receiver.name}`,
+    )
+  }
   return true
 }
 
@@ -536,6 +552,9 @@ export function onDeath(state: SimState, victim: Villager, killer: Villager | nu
     })
     onCognitiveEvent(w, kin || closeness > 0.6 ? 'death_kin' : 'death_seen', closeness)
     if (rel) recordRelHistory(w, victim.id, 'grief', state.tick)
+    if (kin || closeness > 0.7) {
+      logEvent(state, `${w.name} est en deuil de ${victim.name}`)
+    }
 
     if (killer && killer.alive) {
       const sawIt = distance(w.x, w.y, victim.x, victim.y) <= WITNESS_RADIUS

@@ -1778,6 +1778,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   }
 
   const socialNear = nearbyVillagers(state, v.x, v.y, SOCIAL_SIGHT, v.id, 32)
+  const mindSelf = mindOf(v)
+  const loneSelf = lonelinessPressure(v, state.tick)
   for (let si = 0; si < socialNear.length; si++) {
     const other = socialNear[si]
 
@@ -1787,38 +1789,53 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const respect = rel?.respect ?? 0
     const kinship = rel?.kinship ?? 0
     const isSpouse = v.spouseId === other.id
+    const isParentChild =
+      v.parentIds.includes(other.id) ||
+      other.parentIds.includes(v.id) ||
+      v.adoptiveParentIds.includes(other.id) ||
+      other.adoptiveParentIds.includes(v.id)
     const friendPull = affinity > 0.35 ? 22 : 0
-    const kinPull = kinship > 0.4 || isSpouse ? 28 : 0
+    const kinPull = kinship > 0.4 || isSpouse || isParentChild ? 36 : 0
     const admirePull = respect * 35
-    const mind = mindOf(v)
+    const meetPull = !rel || affinity < 0.12 ? 10 + p.sociability * 14 : 0
+    const closeMul = distance(v.x, v.y, other.x, other.y) < 5 ? 1.4 : 1
+    const mind = mindSelf
     const om = mindOf(other)
     ensureCultureState(mind, v, () => 0.5)
     ensureCultureState(om, other, () => 0.5)
     const cultSim = cultureSimilarity(mind.cultureFeatures, om.cultureFeatures)
     const homo = homophilyBias(cultSim, 'socialise')
     const ethBias = ethnosSocialBias(state, v, other, mind.rivalId)
-    const lone = lonelinessPressure(v, state.tick)
+    const lone = loneSelf
     const chatNeed = mind.needs.social * 48 + mind.needs.belonging * 28 + lone * 40 + mind.needs.boredom * 18
-    // After dark, chat less unless very lonely / kin / spouse (sleep wins).
-    const nightChat = night ? (isSpouse || kinship > 0.4 || mind.needs.social > 0.7 ? 0.55 : 0.22) : 1
+    const nightChat = night ? (isSpouse || kinship > 0.4 || isParentChild || mind.needs.social > 0.7 ? 0.55 : 0.22) : 1
+    const survivalChat =
+      isSpouse || kinship > 0.4 || isParentChild
+        ? 1
+        : v.hunger >= 1.6
+          ? 1
+          : v.hunger >= 1.0
+            ? 0.55
+            : 0.25
     add(
       'socialise',
       other.x,
       other.y,
-      (12 + p.sociability * 42 + affinity * 35 + friendPull + kinPull + admirePull + chatNeed) *
+      (14 + p.sociability * 42 + affinity * 35 + friendPull + kinPull + admirePull + meetPull + chatNeed) *
         homo *
         ethBias *
         nightChat *
+        survivalChat *
+        closeMul *
         reach(v, other.x, other.y),
       other.id,
     )
-    if (other.hunger < HUNGRY_THRESHOLD && larder > 1) {
+    if (other.hunger < HUNGRY_THRESHOLD && larder > 1.5 && (v.hunger >= 1.8 || kinship > 0.4 || isSpouse || isParentChild)) {
       const norms = activeNormsFor(state, v)
-      let share = p.generosity * 55 + affinity * 45 + respect * 40 + kinship * 25 + (isSpouse ? 30 : 0)
+      let share = p.generosity * 55 + affinity * 45 + respect * 40 + kinship * 35 + (isSpouse || isParentChild ? 40 : 0)
       share *= homophilyBias(cultSim, 'giveFood')
       if (norms.includes('share_famine') && famine) share *= 1.8
       if (other.villageId === v.villageId) share *= 1.15
-      // Reciprocity: repay debts first (Mauss).
       const myDebt = rel?.debt ?? 0
       if (myDebt > 0.35) share *= 1.4 + Math.min(1, myDebt) * 0.5
       if (norms.includes('reciprocate') && myDebt > 0.2) share *= 1.25
@@ -1845,6 +1862,40 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       let score = need + greed + (famine ? 45 : 0) + p.courage * 25 - restraint
       score += (rel?.debt ?? 0) * 12
       if (score > 0) add('steal', other.chestX, other.chestY, score * reach(v, other.chestX, other.chestY), other.id)
+    }
+  }
+
+  // Lonely / family-driven: seek spouse & kin beyond immediate sight.
+  if (loneSelf > 0.4 || mindSelf.needs.social > 0.5 || mindSelf.values.family > 0.55 || v.ambition === 'family') {
+    let kinTarget: Villager | null = null
+    let kinScore = 0
+    if (v.spouseId !== null) {
+      const sp = state.villagers.find((o) => o.id === v.spouseId && o.alive)
+      if (sp && distance(v.x, v.y, sp.x, sp.y) > 3) {
+        kinTarget = sp
+        kinScore = 90
+      }
+    }
+    for (const o of state.villagers) {
+      if (!o.alive || o.id === v.id) continue
+      const r = v.relations.get(o.id)
+      const kin =
+        (r?.kinship ?? 0) > 0.45 ||
+        v.parentIds.includes(o.id) ||
+        o.parentIds.includes(v.id) ||
+        v.adoptiveParentIds.includes(o.id) ||
+        o.adoptiveParentIds.includes(v.id)
+      if (!kin) continue
+      const d = distance(v.x, v.y, o.x, o.y)
+      if (d < 3 || d > 55) continue
+      const s = 55 + (r?.kinship ?? 0.5) * 40 + mindSelf.values.family * 30 - d * 0.6
+      if (s > kinScore) {
+        kinScore = s
+        kinTarget = o
+      }
+    }
+    if (kinTarget) {
+      add('socialise', kinTarget.x, kinTarget.y, kinScore * reach(v, kinTarget.x, kinTarget.y), kinTarget.id)
     }
   }
 
@@ -3840,8 +3891,14 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       stashInterruptedTask(v)
       setTask(v, 'takeFromChest', v.chestX, v.chestY)
       noteChosenAction(v, 'takeFromChest', 'faim — garde-manger')
+    } else if (
+      (v.task.kind === 'entertain' || v.task.kind === 'counsel' || v.task.kind === 'teachCraft') &&
+      (v.hunger < 2.0 || state.famine)
+    ) {
+      stashInterruptedTask(v)
+      v.task = null
+      v.nextThinkTick = state.tick
     } else if (v.hunger < 0.55 || v.starveTimer > 12) {
-      // Forcer un replan vers cueillette / pêche avant le timer de mort.
       stashInterruptedTask(v)
       v.task = null
       v.nextThinkTick = state.tick
@@ -3860,9 +3917,16 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
   ) {
     const mindNight = mindOf(v)
     const starvingNow = v.hunger < 1.6
+    const tgtId = v.task.targetId
+    const kinNight =
+      tgtId !== null &&
+      (v.spouseId === tgtId ||
+        (v.relations.get(tgtId)?.kinship ?? 0) > 0.4 ||
+        v.parentIds.includes(tgtId) ||
+        v.adoptiveParentIds.includes(tgtId))
     const verySocial =
-      mindNight.needs.social > 0.78 &&
-      (v.task.kind === 'socialise' || v.task.kind === 'giveFood' || v.task.kind === 'entertain')
+      (v.task.kind === 'socialise' || v.task.kind === 'giveFood') &&
+      (kinNight || mindNight.needs.social > 0.78)
     if (!starvingNow && !verySocial) {
       if (v.hasHome) {
         stashInterruptedTask(v)
@@ -4013,7 +4077,8 @@ export function tickReproduction(state: SimState, rng: () => number) {
       if (!bonded) return false
       const rel = a.relations.get(b.id)
       if (a.spouseId !== b.id) {
-        if (rel && rel.affinity < 0.15) return false
+        if (!rel || rel.affinity < 0.4 || rel.trust < 0.35) return false
+        if ((rel.lastTick || 0) <= 0) return false
       } else if (rel && rel.affinity < -0.05) return false
       const F = kinshipCoefficient(a.id, b.id, lookup)
       if (F >= 0.2) return false
