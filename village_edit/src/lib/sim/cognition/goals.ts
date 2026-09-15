@@ -36,7 +36,7 @@ export function defaultGoal(v: Villager): CognitiveGoal {
 /** Map goal → short chain of existing tasks (HTN stub, 2–3 steps). */
 export function planForGoal(id: CognitiveGoalId): PlanStub | null {
   const chains: Partial<Record<CognitiveGoalId, TaskKind[]>> = {
-    home: ['gatherWood', 'clearLand', 'buildHouse'],
+    home: ['gatherWood', 'clearLand', 'buildHouse', 'buildBed', 'buildTable', 'buildChest'],
     survive: ['gatherFood', 'eat', 'buildChest'],
     rest: ['rest'],
     wealth: ['mineGold', 'mintCoins', 'tradeRun'],

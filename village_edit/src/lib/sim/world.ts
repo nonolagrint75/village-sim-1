@@ -26,6 +26,7 @@ import {
   ROAD,
   SAND,
   STONE,
+  TABLE,
   TRAIL,
   TREE,
   TUNNEL,
@@ -897,5 +898,6 @@ export {
   MILL,
   TRAIL,
   ROAD,
+  TABLE,
 }
 export type { WorldGrid }

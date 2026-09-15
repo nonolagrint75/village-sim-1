@@ -102,6 +102,9 @@ export const SHAPE_LABELS: Record<HouseShape, string> = {
   longhouse: 'longue',
 }
 
+export { ROOM_LABEL_FR, ROOM_LABELS_FR } from '@/lib/sim/rooms'
+export type { RoomKind } from '@/lib/sim/rooms'
+
 export const MEMORY_LABELS: Record<MemoryKind, string> = {
   helped: 'm’a aidé',
   harmed: 'm’a frappé',

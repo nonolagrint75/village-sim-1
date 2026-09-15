@@ -19,6 +19,8 @@ const TASK_TO_GOAL: Partial<Record<string, CognitiveGoalId>> = {
   rest: 'rest',
   buildHouse: 'home',
   buildBed: 'home',
+  buildTable: 'home',
+  buildChest: 'home',
   clearLand: 'home',
   tradeRun: 'wealth',
   mintCoins: 'wealth',

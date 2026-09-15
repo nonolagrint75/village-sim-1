@@ -16,6 +16,7 @@ import {
   MEMORY_LABELS,
   PROFESSION_LABELS,
   RESOURCE_LABELS_FR,
+  ROOM_LABEL_FR,
   SEASON_COLORS,
   SEASON_LABELS,
   SHAPE_LABELS,
@@ -941,6 +942,9 @@ const Portrait = memo(function Portrait({
           {selected.house
             ? `Maison ${SHAPE_LABELS[selected.house.shape] ?? selected.house.shape} ${num(selected.house.rx) * 2 + 1}×${num(selected.house.ry) * 2 + 1}`
             : 'Pas encore de maison'}
+          {selected.house?.roomKinds && selected.house.roomKinds.length > 0
+            ? ` · ${selected.house.roomKinds.map((k) => ROOM_LABEL_FR[k] ?? k).join(', ')}`
+            : ''}
           {' · outils '}
           {TOOL_LABELS[selected.toolTier] ?? selected.toolTier ?? 'aucun'}
           {selected.horseId !== null && selected.horseId !== undefined ? ' · cheval' : ''}

@@ -744,7 +744,7 @@ export function drawCloseupTerrain(
         continue
       }
 
-      if (t === WORKBENCH || t === CHEST || t === BED) {
+      if (t === WORKBENCH || t === CHEST || t === BED || t === TABLE) {
         const art = tileArtFor(t)
         ctx.fillStyle = art.base
         ctx.fillRect(px + tileS * 0.2, py + tileS * 0.3, tileS * 0.6, tileS * 0.45)
