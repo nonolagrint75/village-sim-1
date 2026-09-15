@@ -1,5 +1,6 @@
 import { countOf, edibleValue } from '../inventory'
 import { politicsOf } from '../politics'
+import { findRoomAt, applyRoomNeedRelief } from '../rooms'
 import { lonelinessPressure } from '../social'
 import type { SimState, Villager } from '../types'
 import { distance, isNight } from '../world'
@@ -114,6 +115,11 @@ export function updateNeeds(state: SimState, v: Villager, needs: NeedPressures):
 
   const idleLife = v.profession === 'none' && v.hasHome ? 0.25 : 0
   needs.purpose = clamp01(idleLife + v.personality.ambition * 0.2 + (v.ambition === 'explorer' ? 0.15 : 0))
+
+  // Soft need relief when occupying a named room (chambre → fatigue, atelier → créativité, …).
+  if (v.hasHome && v.homeLayout) {
+    applyRoomNeedRelief(needs, findRoomAt(v.homeLayout, v.x, v.y))
+  }
 }
 
 export function topNeeds(needs: NeedPressures, n = 4): { key: keyof NeedPressures; value: number }[] {
