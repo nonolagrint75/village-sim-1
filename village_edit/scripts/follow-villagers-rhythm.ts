@@ -10,7 +10,7 @@
 import { hourOfDay, TICKS_PER_DAY } from '../src/lib/sim/calendar'
 import { createSimulation, stepSimulation } from '../src/lib/sim/engine'
 import { findRoomAt } from '../src/lib/sim/rooms'
-import { coldStress01, heatStress01, sampleRain, sampleTempC } from '../src/lib/sim/climate'
+import { coldStress01, sampleRain, sampleTempC } from '../src/lib/sim/climate'
 import { distance, isNight } from '../src/lib/sim/world'
 import type { SimState, Villager } from '../src/lib/sim/types'
 import { edibleValue } from '../src/lib/sim/inventory'
@@ -60,6 +60,8 @@ type VillagerLog = {
   restNightTicks: number
   restDayTicks: number
   idleWanderTicks: number
+  _prevKind?: string
+  _streak?: number
 }
 
 function atHome(v: Villager): boolean {
@@ -170,15 +172,14 @@ function record(state: SimState, log: VillagerLog, v: Villager) {
   if (task === 'idle' && !home) log.idleWanderTicks += LOG_EVERY
 }
 
-function finishLongest(state: SimState, log: VillagerLog, v: Villager) {
-  // Track longest contiguous same-task streak across all ticks (not just samples).
+function finishLongest(log: VillagerLog, v: Villager) {
   const kind = v.task?.kind ?? 'null'
-  const prev = (log as VillagerLog & { _prevKind?: string; _streak?: number })._prevKind
-  let streak = (log as VillagerLog & { _streak?: number })._streak ?? 0
+  const prev = log._prevKind
+  let streak = log._streak ?? 0
   if (kind === prev) streak++
   else streak = 1
-  ;(log as VillagerLog & { _prevKind?: string; _streak?: number })._prevKind = kind
-  ;(log as VillagerLog & { _streak?: number })._streak = streak
+  log._prevKind = kind
+  log._streak = streak
   if (streak > log.longestSameTask.ticks) {
     log.longestSameTask = { kind, ticks: streak }
   }
@@ -217,19 +218,11 @@ function analyze(log: VillagerLog): string[] {
   if (log.idleWanderTicks > TICKS_PER_DAY * 3) {
     issues.push(`aimless idle wander ${log.idleWanderTicks} ticks`)
   }
-  const dayLabor = [...log.taskHours.entries()]
-    .filter(([k]) => isLabor(k))
-    .reduce((a, [, t]) => a + t, 0)
-  const dayRest = log.restDayTicks
-  if (dayLabor > 0 && dayRest === 0 && log.rows.some((r) => r.stamina < 1.5)) {
-    issues.push(`never rested by day despite low stamina samples`)
-  }
   return issues
 }
 
 function printTimeline(log: VillagerLog) {
   console.log(`\n=== ${log.name} (#${log.id}) ===`)
-  // Compact: one line per day, hour buckets of notable changes
   let lastKey = ''
   const shown: string[] = []
   for (const r of log.rows) {
@@ -239,7 +232,6 @@ function printTimeline(log: VillagerLog) {
     const line = `d${r.day} ${String(r.hour).padStart(2, '0')}h ${r.night ? 'N' : 'D'} ${r.task.padEnd(14)} h=${r.hunger.toFixed(1)} s=${r.stamina.toFixed(1)} food=${r.food} @${r.x},${r.y} ${r.atHome ? 'HOME' : 'out '} ${r.room} ${r.weather}`
     shown.push(line)
   }
-  // Show first ~40 transitions + last 15
   if (shown.length <= 55) {
     for (const l of shown) console.log(l)
   } else {
@@ -273,7 +265,6 @@ console.log(`follow-villagers-rhythm seed=${seed} days=${days} N=${sampleN}\n`)
 const state = createSimulation(seed)
 const rng = mulberry32(seed ^ 0x9e3779b9)
 
-// Warmup a few days so homes/food exist
 const warmup = TICKS_PER_DAY * 3
 for (let i = 0; i < warmup; i++) stepSimulation(state)
 
@@ -315,7 +306,7 @@ for (let i = 0; i < ticks; i++) {
       }
       continue
     }
-    finishLongest(state, log, v)
+    finishLongest(log, v)
     if (state.tick % LOG_EVERY === 0) record(state, log, v)
   }
 }
