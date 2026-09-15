@@ -36,6 +36,25 @@ export const ADOPT_MAX_AGE = 200
 /** Affinité typique pour une romance. */
 const ROMANCE_AFFINITY = 0.55
 const ROMANCE_TRUST = 0.4
+const BOND_MIN_AFFINITY = 0.28
+const BOND_MIN_TRUST = 0.32
+export function acquaintedEnough(
+  a: Villager,
+  b: Villager,
+  minAff = BOND_MIN_AFFINITY,
+  minTrust = BOND_MIN_TRUST,
+): boolean {
+  const ra = a.relations.get(b.id)
+  const rb = b.relations.get(a.id)
+  if (!ra || !rb) return false
+  if ((ra.lastTick || 0) <= 0 && (rb.lastTick || 0) <= 0) return false
+  return (
+    ra.affinity >= minAff &&
+    ra.trust >= minTrust &&
+    rb.affinity >= minAff * 0.75 &&
+    rb.trust >= minTrust * 0.75
+  )
+}
 /** Consanguinité : bloquer proches (≈ demi-frère / oncle-nièce). */
 const CONSANGUINITY_BLOCK = 0.2
 /** Pénalité forte dès cousins proches. */
@@ -242,6 +261,25 @@ export function scoreMate(
     return { ...empty, love, kinPenalty, blocked: true }
   }
 
+  const known = acquaintedEnough(a, b, BOND_MIN_AFFINITY * 0.85, BOND_MIN_TRUST * 0.85)
+  if (!known) {
+    score *= 0.35
+    if (pathway !== 'romance' || love < 0.5) {
+      return {
+        ...empty,
+        love,
+        pressure,
+        wealthPull,
+        creedPull,
+        proximity,
+        ageFit,
+        valuesFit,
+        kinPenalty,
+        blocked: true,
+      }
+    }
+  }
+
   return {
     score,
     blocked: false,
@@ -272,6 +310,9 @@ export function formBond(
 ): boolean {
   if (a.spouseId !== null || b.spouseId !== null) return false
   if (a.refusesMarriage || b.refusesMarriage) return false
+  const minAff = kind === 'romance' ? ROMANCE_AFFINITY * 0.7 : kind === 'arranged' ? BOND_MIN_AFFINITY : 0.2
+  const minTrust = kind === 'romance' ? ROMANCE_TRUST * 0.75 : BOND_MIN_TRUST * 0.85
+  if (!acquaintedEnough(a, b, minAff, minTrust)) return false
 
   a.spouseId = b.id
   b.spouseId = a.id

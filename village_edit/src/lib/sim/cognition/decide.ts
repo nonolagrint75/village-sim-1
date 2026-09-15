@@ -224,10 +224,18 @@ function needsFactor(mind: CognitiveState, kind: TaskKind): number {
       consciousAccessBias(mind, 'kin') * 0.55 +
       peWeight(pe, 'social') * 0.2 +
       peWeight(pe, 'belonging') * 0.15
-    // Micro-social must yield hard when survival / shelter / fatigue pressure is on.
-    if (n.hunger > 0.28) m *= 0.18
-    else if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
-    else if (n.purpose > 0.3) m *= 0.55
+    // Spectacle yields hard under hunger; talk / food-share only soft-yield.
+    if (kind === 'entertain' || kind === 'counsel' || kind === 'teachCraft') {
+      if (n.hunger > 0.28) m *= 0.2
+      else if (n.shelter > 0.4 || n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) m *= 0.35
+      else if (n.purpose > 0.3) m *= 0.55
+    } else if (n.hunger > 0.55) {
+      m *= 0.55
+    } else if (n.hunger > 0.4 || n.shelter > 0.45 || n.purpose > 0.3) {
+      m *= 0.78
+    } else if (n.fatigue > 0.55 || n.light > 0.55 || n.warmth > 0.55) {
+      m *= 0.55
+    }
   }
   if (kind === 'entertain') {
     m *= n.hunger > 0.25 ? 0.2 : 1 + n.boredom * 0.45 + n.status * 0.2
