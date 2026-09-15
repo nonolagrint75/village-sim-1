@@ -47,6 +47,12 @@ export type ActorVillager = {
   x: number
   y: number
   hue: number
+  /** Melanin 0–1 for skin sprite. */
+  pigmentation: number
+  /** Hair darkness 0–1. */
+  hairTone: number
+  /** Outerwear present (cloak / mantle). */
+  cloak: boolean
   mounted: boolean
   embarked: boolean
   hasCart: boolean
@@ -582,12 +588,17 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
   for (let i = 0; i < vv.length; i++) {
     const v = vv[i]
     if (!v.alive) continue
+    const ph = v.phenotype
+    const eq = v.equipment
     villagers.push({
       id: v.id,
       name: v.name,
       x: v.x,
       y: v.y,
       hue: v.hue,
+      pigmentation: ph?.pigmentation ?? 0.45,
+      hairTone: ph?.hairTone ?? 0.5,
+      cloak: !!(eq && eq.outer),
       mounted: v.mounted,
       embarked: v.embarked,
       hasCart: v.hasCart,
