@@ -2213,18 +2213,14 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
     let wood: number | undefined
     let stone: number | undefined
     if ((c.kind === 'threat' || c.norms.includes('protect_all')) && village) {
-      const alreadyKeep = state.projects.some(
-        (p) =>
-          p.villageId === village.id &&
-          p.phase === 'done' &&
-          p.intent.purposes.includes('fortify') &&
-          (p.params.towers || p.params.wallMaterial === 'stone'),
+      const hasFort = state.projects.some(
+        (p) => p.villageId === village.id && p.phase === 'done' && p.intent.purposes.includes('fortify') && p.footprint.walls.length > 0 && p.intent.scale >= 0.25,
       )
-      if (!alreadyKeep || village.wallTier !== 'stone') {
+      if (!hasFort || village.wallTier === 'none') {
         reasons = [`institution ${c.name} (gardes)`, 'fortification']
         purposes = ['fortify']
-        wood = village.wallTier === 'none' ? 0.55 : 0.25
-        stone = village.wallTier === 'wood' || alreadyKeep ? 0.85 : 0.55
+        wood = village.wallTier === 'none' ? 0.62 : 0.25
+        stone = village.wallTier === 'wood' ? 0.85 : 0.4
       }
     } else if (
       village &&
@@ -2232,17 +2228,18 @@ function tickInstitutionEffects(state: SimState, c: Circle) {
       ((village.prosperity ?? 0) >= 45 || (village.surplus.stone ?? 0) >= 0.75) &&
       (c.kind === 'elder' || c.norms.includes('maintain_commons') || c.isInstitution)
     ) {
-      const hasKeep = state.projects.some(
+      const hasOpen = state.projects.some(
         (p) => p.villageId === village.id && p.intent.purposes.includes('fortify') && p.phase !== 'done',
       )
-      const doneKeep = state.projects.some(
+      const hasStoneKeep = state.projects.some(
         (p) =>
           p.villageId === village.id &&
           p.phase === 'done' &&
           p.intent.purposes.includes('fortify') &&
-          (p.params.towers || p.intent.scale >= 0.55),
+          p.params.wallMaterial === 'stone' &&
+          p.footprint.walls.length > 0,
       )
-      if (!hasKeep && !doneKeep) {
+      if (!hasOpen && !hasStoneKeep) {
         reasons = [`institution ${c.name} (prospérité)`, 'donjon / fort']
         purposes = ['fortify']
         wood = 0.22
