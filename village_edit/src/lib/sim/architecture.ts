@@ -158,7 +158,12 @@ export function houseFootprint(design: HouseDesign, cx: number, cy: number): Hou
       }
     }
     door.y = cy + r
-    return { walls: walls.filter((c) => !(c.x === door.x && c.y === door.y)), interior, door, open }
+    return finishFootprint(design, {
+      walls: walls.filter((c) => !(c.x === door.x && c.y === door.y)),
+      interior,
+      door,
+      open,
+    })
   }
 
   if (shape === 'ell') {
@@ -183,7 +188,12 @@ export function houseFootprint(design: HouseDesign, cx: number, cy: number): Hou
     }
     door.x = cx - Math.floor(rx / 2)
     door.y = cy + ry
-    return { walls: walls.filter((c) => !(c.x === door.x && c.y === door.y)), interior, door, open }
+    return finishFootprint(design, {
+      walls: walls.filter((c) => !(c.x === door.x && c.y === door.y)),
+      interior,
+      door,
+      open,
+    })
   }
 
   if (shape === 'courtyard') {
@@ -206,7 +216,7 @@ export function houseFootprint(design: HouseDesign, cx: number, cy: number): Hou
         }
       }
     }
-    return { walls, interior, door, open }
+    return finishFootprint(design, { walls, interior, door, open })
   }
 
   for (let x = cx - rx; x <= cx + rx; x++) {
@@ -220,30 +230,46 @@ export function houseFootprint(design: HouseDesign, cx: number, cy: number): Hou
     }
   }
 
-  // Multi-room partitions from planned roomKinds (fallback: one mid wall).
+  return finishFootprint(design, { walls, interior, door, open })
+}
+
+/** Apply multi-room partitions (or legacy mid wall) onto a shell. */
+function finishFootprint(
+  design: HouseDesign,
+  shell: { walls: Cell[]; interior: Cell[]; door: Cell; open: Cell[] },
+): HouseFootprint {
   const kinds = design.roomKinds?.length ? design.roomKinds : null
-  if (kinds && kinds.length >= 2 && interior.length >= 4) {
-    const layout = layoutRoomsFromInterior(interior, kinds, door)
+  if (kinds && kinds.length >= 2 && shell.interior.length >= 4) {
+    const layout = layoutRoomsFromInterior(shell.interior, kinds, shell.door)
     const partKeys = new Set(layout.partitions.map((c) => `${c.x},${c.y}`))
+    const walls = [...shell.walls]
     for (const p of layout.partitions) walls.push(p)
     return {
       walls,
-      interior: interior.filter((c) => !partKeys.has(`${c.x},${c.y}`)),
-      door,
-      open,
+      interior: layout.interior.length > 0 ? layout.interior : shell.interior.filter((c) => !partKeys.has(`${c.x},${c.y}`)),
+      door: shell.door,
+      open: shell.open,
     }
   }
 
-  if (rx >= 3 && ry >= 3) {
-    const partitionY = cy
+  const { rx, ry } = design
+  if (rx >= 3 && ry >= 3 && shell.open.length === 0) {
+    const cy = shell.door.y - ry
+    const cx = shell.door.x
+    const walls = [...shell.walls]
     for (let x = cx - rx + 1; x <= cx + rx - 1; x++) {
       if (x === cx) continue
-      walls.push({ x, y: partitionY })
+      walls.push({ x, y: cy })
     }
-    return { walls, interior: interior.filter((c) => !(c.y === partitionY && c.x !== cx)), door, open }
+    return {
+      walls,
+      interior: shell.interior.filter((c) => !(c.y === cy && c.x !== cx)),
+      door: shell.door,
+      open: shell.open,
+    }
   }
 
-  return { walls, interior, door, open }
+  return shell
 }
 
 export function furnitureSlots(footprint: HouseFootprint): { workbench: Cell; chest: Cell; beds: Cell[] } {

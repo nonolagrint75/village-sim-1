@@ -770,11 +770,10 @@ body {
   border-radius: 16px;
   background: rgba(10, 13, 8, 0.92);
   animation: sim-in 180ms ease-out;
-  position: sticky;
-  top: 0;
-  z-index: 4;
   flex-shrink: 0;
   min-height: 72px;
+  position: relative;
+  z-index: 3;
 }
 
 .sim-portrait-pending,

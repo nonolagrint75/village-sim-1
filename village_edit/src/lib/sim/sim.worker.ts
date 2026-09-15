@@ -1,6 +1,13 @@
 import { createSimulation, stepSimulation } from './engine'
 import { applySimConfig, type SimConfigInput } from './simConfig'
-import { packDraw, packUi, takeDirty } from './snapshot'
+import {
+  EMPTY_STATS,
+  findSelectedVillager,
+  packDraw,
+  packSelectedMinimal,
+  packUi,
+  takeDirty,
+} from './snapshot'
 import type { SimState } from './types'
 import type { WorkerInMsg } from './workerMessages'
 import { getSimPerfBudget, noteSimTps } from './perfBudget'
@@ -37,6 +44,59 @@ function drawIntervalMs(): number {
   return Math.max(DRAW_MS_NORMAL, perfDraw)
 }
 
+/** Always echo selectedId; never let pack/post failures swallow a select reply. */
+function postUiFrame(opts?: { priority?: boolean }) {
+  if (!state) return
+  const priority = !!opts?.priority
+  try {
+    const frame = packUi(state, selectedId, tps, { priority })
+    self.postMessage({ type: 'ui', frame })
+    if (priority) lastUi = performance.now()
+    return
+  } catch {
+    /* fall through to minimal echo */
+  }
+  try {
+    const entity = findSelectedVillager(state, selectedId)
+    const selected = entity ? packSelectedMinimal(entity) : null
+    self.postMessage({
+      type: 'ui',
+      frame: {
+        stats: EMPTY_STATS,
+        chronicle: [],
+        selectedId,
+        selected,
+        groups: [],
+        lineages: [],
+        cultures: [],
+        creeds: [],
+        ticksPerSec: tps,
+      },
+    })
+    if (priority) lastUi = performance.now()
+  } catch {
+    // Absolute last resort: id echo only so the main thread knows the worker heard select.
+    try {
+      self.postMessage({
+        type: 'ui',
+        frame: {
+          stats: EMPTY_STATS,
+          chronicle: [],
+          selectedId,
+          selected: null,
+          groups: [],
+          lineages: [],
+          cultures: [],
+          creeds: [],
+          ticksPerSec: tps,
+        },
+      })
+    } catch {
+      /* DataClone / closed worker — nothing else we can do */
+    }
+  }
+}
+
 function boot(seed: number, config?: SimConfigInput) {
   resetBrainGpu()
   void tryInitBrainGpu()
@@ -63,7 +123,7 @@ function boot(seed: number, config?: SimConfigInput) {
     playing,
   })
   self.postMessage({ type: 'draw', frame: packDraw(state, 0) })
-  self.postMessage({ type: 'ui', frame: packUi(state, selectedId, 0) })
+  postUiFrame({ priority: true })
 }
 
 function slice() {
@@ -121,7 +181,7 @@ function slice() {
   const uiMs = getSimPerfBudget().uiIntervalMs
   if (now - lastUi >= uiMs) {
     lastUi = now
-    self.postMessage({ type: 'ui', frame: packUi(state, selectedId, tps) })
+    postUiFrame()
   }
 }
 
@@ -154,6 +214,7 @@ self.onmessage = (ev: MessageEvent<WorkerInMsg>) => {
   }
   if (msg.type === 'select') {
     selectedId = msg.id
-    if (state) self.postMessage({ type: 'ui', frame: packUi(state, selectedId, tps) })
+    // Priority reply: echo selectedId + pack selected immediately; do not wait for uiInterval.
+    postUiFrame({ priority: true })
   }
 }

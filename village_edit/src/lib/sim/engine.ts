@@ -208,6 +208,8 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       chestX: -1,
       chestY: -1,
       chestInventory: null,
+      homeFurniture: [],
+      cupboardInventory: null,
       villageId: null,
       hue: phenotype.hue,
       alive: true,

@@ -19,6 +19,7 @@ import {
   ROAD,
   SAND,
   STONE,
+  TABLE,
   TRAIL,
   TREE,
   TUNNEL,
@@ -227,6 +228,16 @@ export const TILE_ART: Record<number, TileArt> = {
       [0, 0, '#e4ded0'],
       [1, 0, '#e4ded0'],
       [2, 2, '#7c2e3a'],
+    ],
+  },
+  [TABLE]: {
+    base: '#8a5a28',
+    detail: [
+      [0, 0, '#a46e34'],
+      [2, 0, '#a46e34'],
+      [0, 2, '#6e441c'],
+      [2, 2, '#6e441c'],
+      [1, 1, '#b87838'],
     ],
   },
   [TRAIL]: {
@@ -510,6 +521,7 @@ const STRUCTURE = new Set([
   WORKBENCH,
   CHEST,
   BED,
+  TABLE,
   BUSH,
   TREE,
 ])

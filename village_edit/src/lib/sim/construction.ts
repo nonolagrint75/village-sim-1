@@ -587,6 +587,7 @@ const PIONEER_DESIGN = {
   bedSlots: 2,
   hasWorkshop: true,
   hasStoreroom: false,
+  roomKinds: ['hall', 'chambre', 'atelier'] as import('./rooms').RoomType[],
 }
 
 function clearPlotVegetation(grid: WorldGrid, cells: Cell[]): void {
