@@ -6,16 +6,21 @@ import {
 } from '@/lib/sim/biomeVisual'
 import {
   BED,
+  BENCH,
   BRIDGE,
   BUSH,
   CHEST,
+  CRADLE,
+  CUPBOARD,
   DIRT,
   FENCE,
   FIELD,
   GOLD,
   GRASS,
+  HEARTH,
   HOUSE,
   IRON,
+  LOOM,
   LOOT,
   MILL,
   MOUNTAIN,
@@ -24,13 +29,16 @@ import {
   PORT,
   ROAD,
   SAND,
+  SHELF,
   STONE,
+  STOOL,
   TABLE,
   TRAIL,
   TREE,
   TUNNEL,
   WALL_STONE,
   WALL_WOOD,
+  WASHING_TUB,
   WATER,
   WHEAT,
   WORKBENCH,
@@ -249,85 +257,242 @@ export const TILE_ART: Record<number, TileArt> = {
     ],
     vary: true,
   },
+  // Thatched cottage orbit glyph ? straw ridge / timber eaves (no biome wash).
   [HOUSE]: {
     base: '#8b4e32',
     detail: [
-      [0, 0, '#6e3c26'],
-      [1, 0, '#a45a38'],
-      [2, 0, '#6e3c26'],
-      [0, 1, '#c4a878'],
-      [1, 1, '#d8bc8c'],
-      [2, 1, '#c4a878'],
+      [0, 0, '#6a4820'],
+      [1, 0, '#c4a050'],
+      [2, 0, '#6a4820'],
+      [0, 1, '#b89a68'],
+      [1, 1, '#d4bc88'],
+      [2, 1, '#a88858'],
       [0, 2, '#5a3420'],
       [1, 2, '#7a4a2e'],
-      [2, 2, '#5a3420'],
+      [2, 2, '#4a2c18'],
     ],
   },
+  // Floorboards: alternating grain columns.
   [PLANK]: {
     base: '#a88452',
     detail: [
-      [0, 0, '#967444'],
-      [0, 1, '#b89462'],
-      [0, 2, '#967444'],
+      [0, 0, '#8e6e3c'],
+      [1, 0, '#b8945c'],
+      [2, 0, '#967444'],
+      [0, 1, '#967444'],
+      [1, 1, '#c4a468'],
+      [2, 1, '#8a6a38'],
+      [0, 2, '#8e6e3c'],
+      [1, 2, '#b08c50'],
+      [2, 2, '#9a7848'],
     ],
   },
   [FENCE]: {
     base: '#6a4a2c',
     detail: [
-      [1, 0, '#866038'],
-      [1, 2, '#866038'],
-      [0, 1, '#543820'],
+      [0, 0, '#543820'],
+      [1, 0, '#8a6440'],
+      [2, 0, '#543820'],
+      [0, 1, '#6a4a2c'],
+      [1, 1, '#866038'],
+      [2, 1, '#6a4a2c'],
+      [0, 2, '#543820'],
+      [1, 2, '#8a6440'],
+      [2, 2, '#543820'],
     ],
   },
+  // Vertical timber boards + seam shadow.
   [WALL_WOOD]: {
     base: '#5e4024',
     detail: [
       [0, 0, '#725030'],
-      [2, 2, '#4a321c'],
-      [1, 1, '#684828'],
+      [1, 0, '#4a321c'],
+      [2, 0, '#684828'],
+      [0, 1, '#6a4a2c'],
+      [1, 1, '#3e2814'],
+      [2, 1, '#725030'],
+      [0, 2, '#5a3c22'],
+      [1, 2, '#4a321c'],
+      [2, 2, '#644428'],
     ],
   },
+  // Ashlar: light face / dark mortar joints.
   [WALL_STONE]: {
     base: '#6e6a64',
     detail: [
-      [0, 1, '#7e7a72'],
-      [2, 0, '#5a5650'],
-      [1, 2, '#86827a'],
-      [1, 0, '#4e4a44'],
+      [0, 0, '#8a8680'],
+      [1, 0, '#5a5650'],
+      [2, 0, '#7e7a74'],
+      [0, 1, '#4e4a44'],
+      [1, 1, '#74706a'],
+      [2, 1, '#4e4a44'],
+      [0, 2, '#82807a'],
+      [1, 2, '#5a5650'],
+      [2, 2, '#8e8a84'],
     ],
   },
   [WORKBENCH]: {
     base: '#9a582c',
     detail: [
-      [0, 0, '#b86a38'],
-      [2, 2, '#744420'],
+      [0, 0, '#c47a40'],
+      [1, 0, '#b86a38'],
+      [2, 0, '#8a4e24'],
+      [0, 1, '#7a4420'],
       [1, 1, '#a86032'],
+      [2, 1, '#6e3c1c'],
+      [0, 2, '#5a3018'],
+      [1, 2, '#744420'],
+      [2, 2, '#5a3018'],
     ],
   },
   [CHEST]: {
     base: '#a87230',
     detail: [
-      [0, 1, '#865820'],
-      [2, 1, '#865820'],
-      [1, 0, '#d09844'],
+      [0, 0, '#8a5c24'],
+      [1, 0, '#d4a050'],
+      [2, 0, '#8a5c24'],
+      [0, 1, '#c09040'],
+      [1, 1, '#e8c060'],
+      [2, 1, '#c09040'],
+      [0, 2, '#6e4818'],
+      [1, 2, '#865820'],
+      [2, 2, '#6e4818'],
     ],
   },
   [BED]: {
     base: '#9a3a48',
     detail: [
-      [0, 0, '#e4ded0'],
-      [1, 0, '#e4ded0'],
-      [2, 2, '#7c2e3a'],
+      [0, 0, '#e8e2d4'],
+      [1, 0, '#f0eadc'],
+      [2, 0, '#d8d0c0'],
+      [0, 1, '#b8505c'],
+      [1, 1, '#c4606c'],
+      [2, 1, '#a8404c'],
+      [0, 2, '#6e2a32'],
+      [1, 2, '#7c2e3a'],
+      [2, 2, '#5a242c'],
     ],
   },
   [TABLE]: {
     base: '#8a5a28',
     detail: [
-      [0, 0, '#a46e34'],
-      [2, 0, '#a46e34'],
-      [0, 2, '#6e441c'],
-      [2, 2, '#6e441c'],
-      [1, 1, '#b87838'],
+      [0, 0, '#b87838'],
+      [1, 0, '#c88848'],
+      [2, 0, '#b87838'],
+      [0, 1, '#6e441c'],
+      [1, 1, '#a46e34'],
+      [2, 1, '#6e441c'],
+      [0, 2, '#5a3818'],
+      [1, 2, '#7a4c20'],
+      [2, 2, '#5a3818'],
+    ],
+  },
+  [HEARTH]: {
+    base: '#6a4a3c',
+    detail: [
+      [0, 0, '#8a7a6c'],
+      [1, 0, '#5a4a40'],
+      [2, 0, '#8a7a6c'],
+      [0, 1, '#4a3a30'],
+      [1, 1, '#e87830'],
+      [2, 1, '#4a3a30'],
+      [0, 2, '#3a2e26'],
+      [1, 2, '#c45820'],
+      [2, 2, '#3a2e26'],
+    ],
+  },
+  [BENCH]: {
+    base: '#7a522c',
+    detail: [
+      [0, 0, '#9a6a38'],
+      [1, 0, '#a87844'],
+      [2, 0, '#9a6a38'],
+      [0, 1, '#5a3c20'],
+      [1, 1, '#8a5c30'],
+      [2, 1, '#5a3c20'],
+      [0, 2, '#4a3018'],
+      [1, 2, '#6a4424'],
+      [2, 2, '#4a3018'],
+    ],
+  },
+  [STOOL]: {
+    base: '#8a5a30',
+    detail: [
+      [1, 0, '#b07840'],
+      [0, 1, '#6a4424'],
+      [1, 1, '#9a6838'],
+      [2, 1, '#6a4424'],
+      [1, 2, '#5a381c'],
+    ],
+  },
+  [SHELF]: {
+    base: '#7a5634',
+    detail: [
+      [0, 0, '#9a7448'],
+      [1, 0, '#a88050'],
+      [2, 0, '#9a7448'],
+      [0, 1, '#5a3e24'],
+      [1, 1, '#c4a878'],
+      [2, 1, '#5a3e24'],
+      [0, 2, '#9a7448'],
+      [1, 2, '#8a6840'],
+      [2, 2, '#9a7448'],
+    ],
+  },
+  [CUPBOARD]: {
+    base: '#6e4a28',
+    detail: [
+      [0, 0, '#8a6238'],
+      [1, 0, '#5a3a1c'],
+      [2, 0, '#8a6238'],
+      [0, 1, '#7a542c'],
+      [1, 1, '#c4a050'],
+      [2, 1, '#7a542c'],
+      [0, 2, '#5a3a1c'],
+      [1, 2, '#4a2e16'],
+      [2, 2, '#5a3a1c'],
+    ],
+  },
+  [CRADLE]: {
+    base: '#a87848',
+    detail: [
+      [0, 0, '#c49860'],
+      [1, 0, '#e8dcc8'],
+      [2, 0, '#c49860'],
+      [0, 1, '#8a5c30'],
+      [1, 1, '#d8c8a8'],
+      [2, 1, '#8a5c30'],
+      [0, 2, '#6a4424'],
+      [1, 2, '#7a5230'],
+      [2, 2, '#6a4424'],
+    ],
+  },
+  [LOOM]: {
+    base: '#7a4a28',
+    detail: [
+      [0, 0, '#9a6440'],
+      [1, 0, '#d8c8a0'],
+      [2, 0, '#9a6440'],
+      [0, 1, '#5a3420'],
+      [1, 1, '#c4a878'],
+      [2, 1, '#5a3420'],
+      [0, 2, '#4a2818'],
+      [1, 2, '#6a3e24'],
+      [2, 2, '#4a2818'],
+    ],
+  },
+  [WASHING_TUB]: {
+    base: '#6a5a48',
+    detail: [
+      [0, 0, '#8a7a64'],
+      [1, 0, '#5a4a38'],
+      [2, 0, '#8a7a64'],
+      [0, 1, '#4a3e30'],
+      [1, 1, '#7aa0b8'],
+      [2, 1, '#4a3e30'],
+      [0, 2, '#3a3024'],
+      [1, 2, '#5a4a38'],
+      [2, 2, '#3a3024'],
     ],
   },
   [TRAIL]: {
@@ -685,18 +850,112 @@ const STRUCTURE = new Set([
   WALL_STONE,
   FENCE,
   BRIDGE,
+  PLANK,
   WORKBENCH,
   CHEST,
   BED,
   TABLE,
+  HEARTH,
+  BENCH,
+  STOOL,
+  SHELF,
+  CUPBOARD,
+  CRADLE,
+  LOOM,
+  WASHING_TUB,
   BUSH,
   TREE,
+])
+
+const FURNITURE = new Set([
+  WORKBENCH,
+  CHEST,
+  BED,
+  TABLE,
+  HEARTH,
+  BENCH,
+  STOOL,
+  SHELF,
+  CUPBOARD,
+  CRADLE,
+  LOOM,
+  WASHING_TUB,
 ])
 
 const GROUND_CLOSEUP = new Set([GRASS, DIRT, SAND, STONE, MOUNTAIN, FIELD, GOLD, IRON])
 
 function isWater(t: number) {
   return t === WATER
+}
+
+/** Indoor / crafted timber grain ? fixed colors, never biome-washed. */
+function fillWoodGrain(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seedX: number,
+  seedY: number,
+  light = 'rgba(210, 180, 120, 0.22)',
+  dark = 'rgba(40, 26, 12, 0.2)',
+) {
+  const lines = Math.max(2, Math.min(6, (h / 3) | 0))
+  for (let i = 0; i < lines; i++) {
+    const n = tileNoise(seedX + i * 3, seedY + i)
+    const yy = y + h * ((i + 0.35) / lines)
+    ctx.fillStyle = n > 0.5 ? light : dark
+    const inset = w * (0.04 + n * 0.08)
+    ctx.fillRect(x + inset, yy, w - inset * 2, Math.max(0.7, h * 0.06))
+  }
+}
+
+function fillBoardSeams(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  boards: number,
+  seam = 'rgba(30, 20, 10, 0.28)',
+) {
+  ctx.fillStyle = seam
+  const step = w / boards
+  for (let i = 1; i < boards; i++) {
+    ctx.fillRect(x + i * step, y, Math.max(0.7, w * 0.04), h)
+  }
+}
+
+function fillStoneCourses(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seedX: number,
+  seedY: number,
+) {
+  const rows = Math.max(2, Math.min(4, (h / 4) | 0))
+  const rowH = h / rows
+  for (let r = 0; r < rows; r++) {
+    const yy = y + r * rowH
+    const n = tileNoise(seedX, seedY + r)
+    ctx.fillStyle = n > 0.55 ? 'rgba(160, 156, 148, 0.28)' : 'rgba(50, 46, 40, 0.22)'
+    ctx.fillRect(x + w * 0.04, yy + rowH * 0.15, w * 0.42, rowH * 0.55)
+    ctx.fillRect(x + w * 0.52, yy + rowH * 0.2, w * 0.4, rowH * 0.5)
+    ctx.fillStyle = 'rgba(35, 32, 28, 0.35)'
+    ctx.fillRect(x, yy + rowH - Math.max(0.6, rowH * 0.12), w, Math.max(0.6, rowH * 0.12))
+  }
+}
+
+function fillThatchBands(ctx: CanvasRenderingContext2D, px: number, py: number, tileS: number, bands = 4) {
+  for (let i = 0; i < bands; i++) {
+    const t = (i + 1) / (bands + 1)
+    const y = py + tileS * (0.08 + t * 0.34)
+    const half = tileS * (0.08 + t * 0.42)
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(196, 160, 80, 0.35)' : 'rgba(90, 60, 28, 0.28)'
+    ctx.fillRect(px + tileS * 0.5 - half, y, half * 2, Math.max(1, tileS * 0.055))
+  }
 }
 
 /** Cheap height proxy for north-lit slope shade (no stored elevation). */
@@ -954,20 +1213,27 @@ export function drawCloseupTerrain(
         }
         ctx.fillStyle = '#c8b48a'
         ctx.fillRect(px + tileS * 0.12, py + tileS * 0.38, tileS * 0.76, tileS * 0.48)
-        ctx.fillStyle = '#8a4428'
+        if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.4, tileS * 0.72, tileS * 0.42, gx, gy, 'rgba(232, 214, 170, 0.28)', 'rgba(90, 60, 32, 0.18)')
+          fillBoardSeams(ctx, px + tileS * 0.14, py + tileS * 0.4, tileS * 0.72, tileS * 0.42, 4)
+        }
+        ctx.fillStyle = '#a87838'
         ctx.beginPath()
         ctx.moveTo(px + tileS * 0.08, py + tileS * 0.42)
-        ctx.lineTo(px + tileS * 0.5, py + tileS * 0.08)
+        ctx.lineTo(px + tileS * 0.5, py + tileS * 0.06)
         ctx.lineTo(px + tileS * 0.92, py + tileS * 0.42)
         ctx.closePath()
         ctx.fill()
+        if (detail) fillThatchBands(ctx, px, py, tileS)
         ctx.fillStyle = '#6e3420'
-        ctx.fillRect(px + tileS * 0.18, py + tileS * 0.42, tileS * 0.64, tileS * 0.1)
+        ctx.fillRect(px + tileS * 0.18, py + tileS * 0.4, tileS * 0.64, tileS * 0.08)
         if (tileS >= 14) {
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.42, py + tileS * 0.58, tileS * 0.16, tileS * 0.28)
           ctx.fillStyle = '#6ab0c8'
           ctx.fillRect(px + tileS * 0.22, py + tileS * 0.52, tileS * 0.14, tileS * 0.14)
+          ctx.fillStyle = 'rgba(255,255,255,0.25)'
+          ctx.fillRect(px + tileS * 0.24, py + tileS * 0.54, tileS * 0.05, tileS * 0.05)
         }
         continue
       }
@@ -979,6 +1245,7 @@ export function drawCloseupTerrain(
         }
         ctx.fillStyle = '#8a8478'
         ctx.fillRect(px + tileS * 0.28, py + tileS * 0.28, tileS * 0.44, tileS * 0.58)
+        if (detail) fillStoneCourses(ctx, px + tileS * 0.28, py + tileS * 0.28, tileS * 0.44, tileS * 0.58, gx, gy)
         ctx.fillStyle = '#4a3a28'
         ctx.fillRect(px + tileS * 0.24, py + tileS * 0.2, tileS * 0.52, tileS * 0.14)
         if (tileS >= 12) {
@@ -1005,27 +1272,60 @@ export function drawCloseupTerrain(
           ctx.fillRect(px + tileS * 0.1, py + tileS * 0.4 + i * plank * 1.35, tileS * 0.8, plank)
         }
         if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.1, py + tileS * 0.4, tileS * 0.8, tileS * 0.36, gx, gy)
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(px + tileS * 0.72, py + tileS * 0.18, tileS * 0.1, tileS * 0.28)
+          ctx.fillStyle = '#8a6840'
+          ctx.fillRect(px + tileS * 0.7, py + tileS * 0.16, tileS * 0.14, tileS * 0.05)
         }
         continue
       }
 
-      if (t === WALL_STONE || t === WALL_WOOD) {
-        ctx.fillStyle = t === WALL_STONE ? '#7a7670' : '#6a4a2c'
-        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.15, tileS * 0.7, tileS * 0.7)
+      if (t === PLANK) {
+        ctx.fillStyle = '#a88452'
+        ctx.fillRect(px + tileS * 0.04, py + tileS * 0.04, tileS * 0.92, tileS * 0.92)
         if (detail) {
-          ctx.fillStyle = t === WALL_STONE ? '#5a5650' : '#4a321c'
-          ctx.fillRect(px + tileS * 0.15, py + tileS * 0.15, tileS * 0.7, tileS * 0.12)
+          ctx.fillStyle = '#b8945c'
+          ctx.fillRect(px + tileS * 0.06, py + tileS * 0.06, tileS * 0.88, tileS * 0.88)
+          fillBoardSeams(ctx, px + tileS * 0.06, py + tileS * 0.06, tileS * 0.88, tileS * 0.88, 3)
+          fillWoodGrain(ctx, px + tileS * 0.08, py + tileS * 0.08, tileS * 0.84, tileS * 0.84, gx, gy)
+        }
+        continue
+      }
+
+      if (t === WALL_STONE) {
+        ctx.fillStyle = '#7a7670'
+        ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76)
+        if (detail) {
+          fillStoneCourses(ctx, px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76, gx, gy)
+          ctx.fillStyle = '#5a5650'
+          ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.1)
+        }
+        continue
+      }
+
+      if (t === WALL_WOOD) {
+        ctx.fillStyle = '#6a4a2c'
+        ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.76)
+        if (detail) {
+          ctx.fillStyle = '#7a5838'
+          ctx.fillRect(px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72)
+          fillBoardSeams(ctx, px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72, 3)
+          fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.14, tileS * 0.72, tileS * 0.72, gx, gy)
+          ctx.fillStyle = '#4a321c'
+          ctx.fillRect(px + tileS * 0.12, py + tileS * 0.12, tileS * 0.76, tileS * 0.1)
         }
         continue
       }
 
       if (t === FENCE) {
         ctx.fillStyle = '#6a4a2c'
-        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.35, tileS * 0.7, tileS * 0.12)
-        ctx.fillRect(px + tileS * 0.22, py + tileS * 0.25, tileS * 0.1, tileS * 0.45)
-        ctx.fillRect(px + tileS * 0.68, py + tileS * 0.25, tileS * 0.1, tileS * 0.45)
+        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.35, tileS * 0.7, tileS * 0.1)
+        ctx.fillRect(px + tileS * 0.15, py + tileS * 0.52, tileS * 0.7, tileS * 0.08)
+        ctx.fillStyle = '#866038'
+        ctx.fillRect(px + tileS * 0.22, py + tileS * 0.22, tileS * 0.1, tileS * 0.5)
+        ctx.fillRect(px + tileS * 0.68, py + tileS * 0.22, tileS * 0.1, tileS * 0.5)
+        if (detail) fillWoodGrain(ctx, px + tileS * 0.18, py + tileS * 0.34, tileS * 0.64, tileS * 0.12, gx, gy)
         continue
       }
 
@@ -1036,6 +1336,12 @@ export function drawCloseupTerrain(
         const plank = Math.max(1, tileS * 0.1)
         for (let i = 0; i < 3; i++) {
           ctx.fillRect(px + tileS * 0.12 + i * plank * 1.4, py + tileS * 0.32, plank, tileS * 0.36)
+        }
+        if (detail) {
+          fillWoodGrain(ctx, px + tileS * 0.1, py + tileS * 0.3, tileS * 0.8, tileS * 0.4, gx, gy)
+          ctx.fillStyle = '#4a3420'
+          ctx.fillRect(px + tileS * 0.08, py + tileS * 0.28, Math.max(1, tileS * 0.06), tileS * 0.44)
+          ctx.fillRect(px + tileS * 0.86, py + tileS * 0.28, Math.max(1, tileS * 0.06), tileS * 0.44)
         }
         continue
       }
@@ -1072,21 +1378,166 @@ export function drawCloseupTerrain(
         ctx.fillRect(px + tileS * 0.2, py + tileS * 0.45, tileS * 0.6, tileS * 0.22)
         ctx.fillStyle = '#c4a06a'
         ctx.fillRect(px + tileS * 0.25, py + tileS * 0.4, tileS * 0.5, tileS * 0.12)
+        if (detail) fillWoodGrain(ctx, px + tileS * 0.22, py + tileS * 0.4, tileS * 0.56, tileS * 0.24, gx, gy)
         continue
       }
 
-      if (t === WORKBENCH || t === CHEST || t === BED || t === TABLE) {
-        const art = tileArtFor(t)
-        ctx.fillStyle = art.base
-        ctx.fillRect(px + tileS * 0.2, py + tileS * 0.3, tileS * 0.6, tileS * 0.45)
-        if (detail && art.detail.length) {
-          const s = tileS / 3
-          for (const [dx, dy, col] of art.detail) {
-            ctx.fillStyle = col
-            ctx.fillRect(px + dx * s, py + dy * s, s, s)
-          }
-        }
+      if (FURNITURE.has(t)) {
+        drawFurnitureCloseup(ctx, t, px, py, tileS, detail, tileS >= 14, gx, gy)
       }
+    }
+  }
+}
+
+function drawFurnitureCloseup(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  px: number,
+  py: number,
+  tileS: number,
+  detail: boolean,
+  rich: boolean,
+  gx: number,
+  gy: number,
+) {
+  if (t === BED) {
+    ctx.fillStyle = '#6e4428'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.28, tileS * 0.72, tileS * 0.52)
+    ctx.fillStyle = '#c45864'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.4, tileS * 0.64, tileS * 0.34)
+    ctx.fillStyle = '#e8e2d4'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.3, tileS * 0.28, tileS * 0.14)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.28, tileS * 0.72, tileS * 0.12, gx, gy)
+    return
+  }
+  if (t === CHEST) {
+    ctx.fillStyle = '#8a5c24'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.35, tileS * 0.64, tileS * 0.4)
+    ctx.fillStyle = '#c09040'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.35, tileS * 0.64, tileS * 0.12)
+    ctx.fillStyle = '#e8c060'
+    ctx.fillRect(px + tileS * 0.44, py + tileS * 0.48, tileS * 0.12, tileS * 0.1)
+    if (detail) {
+      ctx.fillStyle = '#6e4818'
+      ctx.fillRect(px + tileS * 0.18, py + tileS * 0.52, tileS * 0.64, Math.max(1, tileS * 0.05))
+      fillWoodGrain(ctx, px + tileS * 0.2, py + tileS * 0.38, tileS * 0.6, tileS * 0.32, gx, gy)
+    }
+    return
+  }
+  if (t === TABLE) {
+    ctx.fillStyle = '#b87838'
+    ctx.fillRect(px + tileS * 0.16, py + tileS * 0.32, tileS * 0.68, tileS * 0.16)
+    ctx.fillStyle = '#6e441c'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.48, tileS * 0.1, tileS * 0.28)
+    ctx.fillRect(px + tileS * 0.7, py + tileS * 0.48, tileS * 0.1, tileS * 0.28)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.16, py + tileS * 0.32, tileS * 0.68, tileS * 0.16, gx, gy)
+    return
+  }
+  if (t === WORKBENCH) {
+    ctx.fillStyle = '#7a4420'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.42, tileS * 0.72, tileS * 0.32)
+    ctx.fillStyle = '#c47a40'
+    ctx.fillRect(px + tileS * 0.14, py + tileS * 0.3, tileS * 0.72, tileS * 0.16)
+    if (detail) {
+      fillWoodGrain(ctx, px + tileS * 0.14, py + tileS * 0.3, tileS * 0.72, tileS * 0.16, gx, gy)
+      ctx.fillStyle = '#d8d0c0'
+      ctx.fillRect(px + tileS * 0.55, py + tileS * 0.22, tileS * 0.08, tileS * 0.12)
+    }
+    return
+  }
+  if (t === HEARTH) {
+    ctx.fillStyle = '#6a5a50'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.28, tileS * 0.64, tileS * 0.5)
+    if (detail) fillStoneCourses(ctx, px + tileS * 0.18, py + tileS * 0.28, tileS * 0.64, tileS * 0.5, gx, gy)
+    ctx.fillStyle = '#e87830'
+    ctx.fillRect(px + tileS * 0.32, py + tileS * 0.48, tileS * 0.36, tileS * 0.22)
+    if (rich) {
+      ctx.fillStyle = '#f0c050'
+      ctx.fillRect(px + tileS * 0.4, py + tileS * 0.42, tileS * 0.2, tileS * 0.12)
+    }
+    return
+  }
+  if (t === BENCH) {
+    ctx.fillStyle = '#9a6a38'
+    ctx.fillRect(px + tileS * 0.12, py + tileS * 0.4, tileS * 0.76, tileS * 0.14)
+    ctx.fillStyle = '#5a3c20'
+    ctx.fillRect(px + tileS * 0.16, py + tileS * 0.54, tileS * 0.1, tileS * 0.22)
+    ctx.fillRect(px + tileS * 0.74, py + tileS * 0.54, tileS * 0.1, tileS * 0.22)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.12, py + tileS * 0.4, tileS * 0.76, tileS * 0.14, gx, gy)
+    return
+  }
+  if (t === STOOL) {
+    ctx.fillStyle = '#b07840'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.4, tileS * 0.22, tileS * 0.1, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#6a4424'
+    ctx.fillRect(px + tileS * 0.44, py + tileS * 0.48, tileS * 0.12, tileS * 0.28)
+    return
+  }
+  if (t === SHELF) {
+    ctx.fillStyle = '#5a3e24'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.22, tileS * 0.6, tileS * 0.56)
+    ctx.fillStyle = '#a88050'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.3, tileS * 0.56, tileS * 0.06)
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.48, tileS * 0.56, tileS * 0.06)
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.66, tileS * 0.56, tileS * 0.06)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.2, py + tileS * 0.22, tileS * 0.6, tileS * 0.56, gx, gy)
+    return
+  }
+  if (t === CUPBOARD) {
+    ctx.fillStyle = '#6e4a28'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.18, tileS * 0.6, tileS * 0.66)
+    ctx.fillStyle = '#8a6238'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.22, tileS * 0.26, tileS * 0.56)
+    ctx.fillRect(px + tileS * 0.52, py + tileS * 0.22, tileS * 0.26, tileS * 0.56)
+    ctx.fillStyle = '#c4a050'
+    ctx.fillRect(px + tileS * 0.4, py + tileS * 0.44, tileS * 0.06, tileS * 0.08)
+    ctx.fillRect(px + tileS * 0.54, py + tileS * 0.44, tileS * 0.06, tileS * 0.08)
+    if (detail) fillWoodGrain(ctx, px + tileS * 0.22, py + tileS * 0.22, tileS * 0.56, tileS * 0.56, gx, gy)
+    return
+  }
+  if (t === CRADLE) {
+    ctx.fillStyle = '#8a5c30'
+    ctx.fillRect(px + tileS * 0.2, py + tileS * 0.35, tileS * 0.6, tileS * 0.38)
+    ctx.fillStyle = '#e8dcc8'
+    ctx.fillRect(px + tileS * 0.26, py + tileS * 0.4, tileS * 0.48, tileS * 0.18)
+    ctx.fillStyle = '#c49860'
+    ctx.fillRect(px + tileS * 0.18, py + tileS * 0.28, tileS * 0.12, tileS * 0.2)
+    ctx.fillRect(px + tileS * 0.7, py + tileS * 0.28, tileS * 0.12, tileS * 0.2)
+    return
+  }
+  if (t === LOOM) {
+    ctx.fillStyle = '#5a3420'
+    ctx.fillRect(px + tileS * 0.22, py + tileS * 0.2, tileS * 0.1, tileS * 0.6)
+    ctx.fillRect(px + tileS * 0.68, py + tileS * 0.2, tileS * 0.1, tileS * 0.6)
+    ctx.fillStyle = '#d8c8a0'
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(px + tileS * 0.3, py + tileS * (0.28 + i * 0.1), tileS * 0.4, Math.max(1, tileS * 0.04))
+    }
+    ctx.fillStyle = '#9a6440'
+    ctx.fillRect(px + tileS * 0.28, py + tileS * 0.55, tileS * 0.44, tileS * 0.12)
+    return
+  }
+  if (t === WASHING_TUB) {
+    ctx.fillStyle = '#6a5a48'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.55, tileS * 0.34, tileS * 0.22, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#7aa0b8'
+    ctx.beginPath()
+    ctx.ellipse(px + tileS * 0.5, py + tileS * 0.5, tileS * 0.26, tileS * 0.14, 0, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+  const art = tileArtFor(t)
+  ctx.fillStyle = art.base
+  ctx.fillRect(px + tileS * 0.2, py + tileS * 0.3, tileS * 0.6, tileS * 0.45)
+  if (detail && art.detail.length) {
+    const s = tileS / 3
+    for (const [dx, dy, col] of art.detail) {
+      ctx.fillStyle = col
+      ctx.fillRect(px + dx * s, py + dy * s, s, s)
     }
   }
 }

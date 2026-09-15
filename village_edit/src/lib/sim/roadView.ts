@@ -9,8 +9,10 @@ const ROAD_COL = '#d0bc98'
 const ROAD_MID = '#c4ae86'
 const ROAD_EDGE = '#8e7a58'
 const ROAD_RUT = '#6e5a3e'
+const ROAD_STONE = '#b8a888'
 const BRIDGE_COL = '#6e4e2e'
 const BRIDGE_PLANK = '#8a6840'
+const BRIDGE_SEAM = 'rgba(40, 26, 12, 0.35)'
 const PORT_COL = '#5a3e24'
 const PORT_PLANK = '#7a5838'
 const SHOULDER = 'rgba(50, 38, 22, 0.16)'
@@ -93,7 +95,7 @@ export function drawWornWays(
       const e = gx < WORLD_SIZE - 1 && isWay(terrain[row + gx + 1])
       const west = gx > 0 && isWay(terrain[row + gx - 1])
 
-      // Soft shoulder — worn ground bleeding into grass.
+      // Soft shoulder — worn ground bleeding into grass (outdoor; biome tint stays on bitmap).
       if (detail && t !== BRIDGE && t !== PORT) {
         ctx.fillStyle = SHOULDER
         const sh = tileS * 0.12
@@ -132,10 +134,14 @@ export function drawWornWays(
         ctx.fillRect(ix, iy, edge, iw)
         ctx.fillRect(ix + iw - edge, iy, edge, iw)
         if (rich) {
-          const speck = tileNoise(gx, gy)
-          if (speck > 0.55) {
-            ctx.fillStyle = 'rgba(90, 72, 48, 0.28)'
-            ctx.fillRect(ix + iw * speck * 0.7, iy + iw * tileNoise(gx + 2, gy) * 0.7, Math.max(1, tileS * 0.08), Math.max(1, tileS * 0.06))
+          // Packed gravel / pale stone flecks
+          for (let k = 0; k < 3; k++) {
+            const speck = tileNoise(gx + k * 17, gy + k * 9)
+            if (speck < 0.42) continue
+            ctx.fillStyle = speck > 0.72 ? ROAD_STONE : 'rgba(90, 72, 48, 0.3)'
+            const sw = Math.max(1, tileS * (0.06 + speck * 0.05))
+            const sh = Math.max(1, tileS * 0.05)
+            ctx.fillRect(ix + iw * (0.15 + speck * 0.55), iy + iw * tileNoise(gx + 2 + k, gy) * 0.7, sw, sh)
           }
         }
       } else if (detail && t === PATH) {
@@ -146,6 +152,11 @@ export function drawWornWays(
         if (rich) {
           ctx.fillStyle = 'rgba(70, 52, 28, 0.2)'
           ctx.fillRect(ix + iw * 0.35, iy + 1, Math.max(0.8, tileS * 0.06), iw - 2)
+          const dust = tileNoise(gx, gy)
+          if (dust > 0.6) {
+            ctx.fillStyle = 'rgba(180, 150, 100, 0.22)'
+            ctx.fillRect(ix + iw * dust * 0.5, iy + iw * 0.3, Math.max(1, tileS * 0.08), Math.max(1, tileS * 0.05))
+          }
         }
       } else if (detail && t === TRAIL) {
         ctx.fillStyle = TRAIL_EDGE
@@ -154,6 +165,11 @@ export function drawWornWays(
           ctx.fillStyle = 'rgba(60, 44, 24, 0.22)'
           const wobble = (tileNoise(gx, gy) - 0.5) * iw * 0.15
           ctx.fillRect(ix + wobble, iy + iw * 0.4, iw, Math.max(1, iw * 0.1))
+          const step = tileNoise(gx + 5, gy)
+          if (step > 0.55) {
+            ctx.fillStyle = 'rgba(50, 36, 20, 0.18)'
+            ctx.fillRect(ix + iw * 0.2, iy + iw * (0.25 + step * 0.3), Math.max(1, tileS * 0.07), Math.max(1, tileS * 0.05))
+          }
         }
       } else if (detail && t === BRIDGE) {
         ctx.fillStyle = BRIDGE_PLANK
@@ -162,24 +178,48 @@ export function drawWornWays(
         if (across) {
           for (let i = 0; i < 4; i++) {
             ctx.fillRect(ix + 1, iy + i * plank * 1.15, iw - 2, plank * 0.7)
+            if (rich) {
+              ctx.fillStyle = BRIDGE_SEAM
+              ctx.fillRect(ix + 2, iy + i * plank * 1.15 + plank * 0.55, iw - 4, Math.max(0.6, tileS * 0.03))
+              ctx.fillStyle = BRIDGE_PLANK
+            }
           }
         } else {
           for (let i = 0; i < 4; i++) {
             ctx.fillRect(ix + i * plank * 1.15, iy + 1, plank * 0.7, iw - 2)
+            if (rich) {
+              ctx.fillStyle = 'rgba(210, 180, 120, 0.2)'
+              ctx.fillRect(ix + i * plank * 1.15 + 1, iy + iw * 0.2, Math.max(0.6, plank * 0.25), iw * 0.5)
+              ctx.fillStyle = BRIDGE_PLANK
+            }
           }
         }
         ctx.fillStyle = '#4a3420'
         ctx.fillRect(ix, iy, Math.max(1, tileS * 0.06), iw)
         ctx.fillRect(ix + iw - Math.max(1, tileS * 0.06), iy, Math.max(1, tileS * 0.06), iw)
+        if (rich) {
+          ctx.fillStyle = '#9a7850'
+          ctx.fillRect(ix, iy, Math.max(1, tileS * 0.06), Math.max(1, tileS * 0.05))
+          ctx.fillRect(ix + iw - Math.max(1, tileS * 0.06), iy, Math.max(1, tileS * 0.06), Math.max(1, tileS * 0.05))
+        }
       } else if (detail && t === PORT) {
         ctx.fillStyle = PORT_PLANK
         const plank = Math.max(1, tileS * 0.1)
         for (let i = 0; i < 3; i++) {
           ctx.fillRect(ix + 2, iy + 2 + i * plank * 1.3, iw - 4, plank * 0.75)
+          if (rich) {
+            ctx.fillStyle = 'rgba(40, 26, 12, 0.28)'
+            ctx.fillRect(ix + 3, iy + 2 + i * plank * 1.3 + plank * 0.55, iw - 6, Math.max(0.6, tileS * 0.03))
+            ctx.fillStyle = 'rgba(200, 168, 110, 0.18)'
+            ctx.fillRect(ix + iw * 0.15, iy + 3 + i * plank * 1.3, iw * 0.55, Math.max(0.6, plank * 0.25))
+            ctx.fillStyle = PORT_PLANK
+          }
         }
         if (rich) {
           ctx.fillStyle = '#3a2818'
           ctx.fillRect(ix + iw * 0.75, iy - tileS * 0.15, Math.max(1, tileS * 0.08), tileS * 0.35)
+          ctx.fillStyle = '#8a6840'
+          ctx.fillRect(ix + iw * 0.72, iy - tileS * 0.18, Math.max(1, tileS * 0.14), Math.max(1, tileS * 0.05))
         }
       }
     }

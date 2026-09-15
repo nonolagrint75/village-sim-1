@@ -400,23 +400,54 @@ export function SimulationCanvas() {
         ctx.ellipse(sx, sy + bs * 0.2, bs * 0.9, bs * 0.22, 0, 0, Math.PI * 2)
         ctx.fill()
       }
-      ctx.fillStyle = cargo ? '#4a3018' : '#b87a40'
+      // Fixed craft timber colors — never biome-washed.
+      const hull = cargo ? '#4a3018' : '#a86a34'
+      const deck = cargo ? '#6e4a28' : '#c89050'
+      const gunwale = cargo ? '#3a2410' : '#7a4a22'
       if (bs < 5) {
+        ctx.fillStyle = hull
         ctx.fillRect(sx - bs * 0.75, sy - bs * 0.28, bs * 1.5, bs * 0.55)
-        ctx.fillStyle = cargo ? '#6a4828' : '#d4a060'
+        ctx.fillStyle = deck
         ctx.fillRect(sx - bs * 0.55, sy - bs * 0.18, bs * 1.1, bs * 0.28)
         continue
       }
+      // Hull silhouette
+      ctx.fillStyle = hull
       ctx.beginPath()
       ctx.moveTo(sx - bs * 0.95, sy)
       ctx.quadraticCurveTo(sx - bs * 0.2, sy + bs * 0.42, sx + bs * 0.95, sy)
       ctx.quadraticCurveTo(sx - bs * 0.2, sy - bs * 0.38, sx - bs * 0.95, sy)
       ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = cargo ? '#6e4a28' : '#d4a060'
+      // Plank strakes along the hull
+      if (bs >= 7) {
+        ctx.strokeStyle = 'rgba(30, 18, 8, 0.35)'
+        ctx.lineWidth = Math.max(0.6, bs * 0.04)
+        for (let i = 0; i < 3; i++) {
+          const yy = sy - bs * 0.18 + i * bs * 0.14
+          ctx.beginPath()
+          ctx.moveTo(sx - bs * 0.72, yy)
+          ctx.quadraticCurveTo(sx, yy + bs * 0.08, sx + bs * 0.72, yy)
+          ctx.stroke()
+        }
+        ctx.strokeStyle = 'rgba(210, 180, 120, 0.18)'
+        ctx.beginPath()
+        ctx.moveTo(sx - bs * 0.7, sy - bs * 0.12)
+        ctx.quadraticCurveTo(sx, sy - bs * 0.06, sx + bs * 0.7, sy - bs * 0.12)
+        ctx.stroke()
+      }
+      // Deck / thwart
+      ctx.fillStyle = deck
       ctx.beginPath()
       ctx.ellipse(sx, sy - bs * 0.02, bs * 0.62, bs * 0.16, 0, 0, Math.PI * 2)
       ctx.fill()
+      if (bs >= 8) {
+        ctx.fillStyle = gunwale
+        ctx.fillRect(sx - bs * 0.55, sy - bs * 0.1, bs * 1.1, Math.max(0.8, bs * 0.05))
+        ctx.fillStyle = 'rgba(200, 168, 110, 0.22)'
+        ctx.fillRect(sx - bs * 0.4, sy - bs * 0.08, bs * 0.8, Math.max(0.6, bs * 0.035))
+      }
+      // Mast + sail
       ctx.fillStyle = '#2e2214'
       ctx.fillRect(sx - 1, sy - bs * 0.78, Math.max(1.4, bs * 0.12), bs * 0.62)
       ctx.fillStyle = cargo ? '#d0c4a8' : '#f0e8d8'
@@ -429,6 +460,8 @@ export function SimulationCanvas() {
       if (cargo && bs >= 8) {
         ctx.fillStyle = '#8a6840'
         ctx.fillRect(sx - bs * 0.35, sy - bs * 0.12, bs * 0.5, bs * 0.18)
+        ctx.fillStyle = 'rgba(40, 26, 12, 0.3)'
+        ctx.fillRect(sx - bs * 0.32, sy - bs * 0.02, bs * 0.44, Math.max(0.6, bs * 0.04))
       }
     }
 
