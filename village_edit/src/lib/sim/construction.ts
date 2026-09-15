@@ -18,7 +18,9 @@ import {
   type WallMaterial,
 } from './architecture'
 import type { ResourceType } from './inventory'
-import { countOf, createInventory } from './inventory'
+import { addToInventory, countOf, createInventory } from './inventory'
+import { planFurnitureJobs } from './furniture'
+import { buildHouseLayout } from './rooms'
 import {
   metersToTilesRound,
   structureHalfSpanMeters,
@@ -27,6 +29,7 @@ import {
 import { stampPlaza } from './roads'
 import { logEvent } from './social'
 import {
+  BED,
   CHEST,
   CLAIM_HOUSE,
   DIRT,
@@ -690,6 +693,8 @@ export function seedPioneerCamps(
       const slots = furnitureSlots(fp)
       setTerrain(grid, slots.workbench.x, slots.workbench.y, WORKBENCH)
       setTerrain(grid, slots.chest.x, slots.chest.y, CHEST)
+      const bedCell = slots.beds[0]
+      if (bedCell) setTerrain(grid, bedCell.x, bedCell.y, BED)
 
       v.house = design
       v.hasHome = true
@@ -703,6 +708,32 @@ export function seedPioneerCamps(
       v.chestX = slots.chest.x
       v.chestY = slots.chest.y
       v.chestInventory = createInventory(20)
+      v.bedCount = bedCell ? 1 : 0
+      v.homeLayout = buildHouseLayout(design, fp)
+      const jobs = planFurnitureJobs(v.homeLayout, {
+        beds: design.bedSlots,
+        wantWorkshop: true,
+        wantStore: true,
+        household: 2,
+      })
+      let bedsMarked = 0
+      v.furnitureQueue = jobs.map((j) => {
+        if (j.kind === 'workbench') return { ...j, done: true, x: slots.workbench.x, y: slots.workbench.y }
+        if (j.kind === 'chest') return { ...j, done: true, x: slots.chest.x, y: slots.chest.y }
+        if (j.kind === 'bed' && bedCell && bedsMarked < 1) {
+          bedsMarked++
+          return { ...j, done: true, x: bedCell.x, y: bedCell.y }
+        }
+        return j
+      })
+      addToInventory(v.inventory, 'wood', 10)
+      addToInventory(v.inventory, 'stone', 4)
+      addToInventory(v.inventory, 'food', 8)
+      addToInventory(v.inventory, 'wheat', 4)
+      if (v.chestInventory) {
+        addToInventory(v.chestInventory, 'food', 6)
+        addToInventory(v.chestInventory, 'wood', 4)
+      }
       v.x = fp.door.x
       v.y = fp.door.y
       v.villageId = village.id
