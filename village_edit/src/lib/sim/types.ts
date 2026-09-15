@@ -668,6 +668,9 @@ export interface SimStats {
   prices: Partial<Record<ResourceType, number>>
   circles: number
   institutions: number
+  guilds: number
+  councils: number
+  laws: { id: string; label: string; count: number }[]
   rumors: number
   leadingCircle: string | null
   leadingLegitimacy: number
@@ -675,6 +678,8 @@ export interface SimStats {
   polities: number
   chiefdoms: number
   kingdoms: number
+  /** Polities still at camp tier (loose settlement). */
+  camps: number
   /** Finished keeps / donjons (fortify projects stamped on the map). */
   castles: number
   /** Compact rows for Royaume panel (rulers / claims). */
