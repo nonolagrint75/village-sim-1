@@ -48,6 +48,7 @@ import {
   describeLayoutFr,
   expandRoomKinds,
   findRoomAt,
+  findRoomByKind,
   ROOM_LABEL_FR,
   roomCountToSpan,
   type HouseLayout,
@@ -1139,6 +1140,48 @@ function setTask(v: Villager, kind: TaskKind, targetX: number, targetY: number, 
     pathTick: -999,
   }
 }
+
+/** Force eat / night bed / storm shelter when task is null. */
+function forceBiologicalRhythm(state: SimState, v: Villager): boolean {
+  if (v.hunger < 2.85 && bestEdible(v)) {
+    setTask(v, 'eat', v.x, v.y)
+    noteChosenAction(v, 'eat', 'faim — rythme forcé')
+    return true
+  }
+  if (v.hunger < 1.6 && v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0) {
+    setTask(v, 'takeFromChest', v.chestX, v.chestY)
+    noteChosenAction(v, 'takeFromChest', 'faim — coffre forcé')
+    return true
+  }
+  const night = isNight(state.tick)
+  const rain = sampleRain(state.climate, v.x, v.y)
+  const stormy = state.climate.weather === 'storm' || rain > 0.5
+  const cold = coldStress01(sampleTempC(state.climate, v.x, v.y))
+  const exhausted = v.stamina < STAMINA_EXHAUSTED
+  const tired = v.stamina < STAMINA_TIRED
+  if (v.hasHome && (night || exhausted || (stormy && !atHomeShelter(v)) || (cold > 0.4 && !atHomeShelter(v)))) {
+    const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
+    setTask(v, 'rest', bed?.x ?? v.homeX, bed?.y ?? v.homeY)
+    noteChosenAction(v, 'rest', night ? 'nuit — lit forcé' : stormy ? 'tempête — foyer forcé' : 'fatigue — foyer forcé')
+    return true
+  }
+  if (!v.hasHome && (night || exhausted || cold > 0.45 || stormy || tired)) {
+    setTask(v, 'rest', v.x, v.y)
+    noteChosenAction(v, 'rest', night ? 'nuit — abri improvisé' : 'repos forcé')
+    return true
+  }
+  if (v.hasHome && v.homeLayout && !night) {
+    const lat = findRoomByKind(v.homeLayout, 'latrines')
+    if (lat && (state.tick + v.id * 19) % (TICKS_PER_DAY * 2) === 0) {
+      setTask(v, 'rest', lat.centroid.x, lat.centroid.y)
+      noteChosenAction(v, 'rest', 'latrines')
+      return true
+    }
+  }
+  return false
+}
+
+
 
 function curiosityRadius(v: Villager, base: number): number {
   return Math.round(base * (0.7 + 0.6 * v.personality.curiosity))
@@ -3617,12 +3660,13 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         // Quiet recovery near the hearth — slight hunger cost of resting idle.
         if (state.season === 'winter') recoverStamina(v, 0.02)
       }
-      const need = isNight(state.tick) ? 30 : v.stamina < STAMINA_TIRED ? 50 : 40
-      // Cut rest short when hungry with food so eat/farm can resume.
+      if (isNight(state.tick)) {
+        if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 10) return false
+        return task.ageTicks < 28
+      }
+      const need = v.stamina < STAMINA_EXHAUSTED ? 28 : v.stamina < STAMINA_TIRED ? 16 : 8
       if (v.hunger < 1.6 && bestEdible(v) && task.ageTicks >= 8) return false
-      // Daytime: break rest to sow/clear the waiting field.
       if (
-        !isNight(state.tick) &&
         v.fieldX !== -1 &&
         !v.hasField &&
         v.homeOwnerId === v.id &&
@@ -3631,7 +3675,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       ) {
         return false
       }
-      return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.05
+      return task.ageTicks < need && v.stamina < STAMINA_MAX - 0.15
     }
     case 'socialise': {
       if (task.targetId !== null) {
@@ -3985,7 +4029,7 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'sowField' &&
     v.task.kind !== 'clearLand'
   ) {
-    if (v.hunger < 1.85 && bestEdible(v)) {
+    if (v.hunger < 2.35 && bestEdible(v)) {
       stashInterruptedTask(v)
       setTask(v, 'eat', v.x, v.y)
       noteChosenAction(v, 'eat', 'faim — interruption')
@@ -4019,9 +4063,8 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     }
   }
 
-  // Nuit : rentrer dormir — même logique d'interruption que la faim (sinon craft forever).
+  // Nuit / tempête / épuisement : rentrer dormir (lit si connu).
   if (
-    isNight(state.tick) &&
     v.task &&
     v.task.kind !== 'rest' &&
     v.task.kind !== 'flee' &&
@@ -4029,30 +4072,53 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     v.task.kind !== 'eat' &&
     v.task.kind !== 'takeFromChest'
   ) {
-    const mindNight = mindOf(v)
-    const starvingNow = v.hunger < 1.6
-    const verySocial =
-      mindNight.needs.social > 0.78 &&
-      (v.task.kind === 'socialise' || v.task.kind === 'giveFood' || v.task.kind === 'entertain')
-    if (!starvingNow && !verySocial) {
+    const rainNow = sampleRain(state.climate, v.x, v.y)
+    const stormy = state.climate.weather === 'storm' || rainNow > 0.55
+    const coldNow = coldStress01(sampleTempC(state.climate, v.x, v.y))
+    const night = isNight(state.tick)
+    const starvingNow = v.hunger < 1.2 && !bestEdible(v)
+    const leisure =
+      v.task.kind === 'socialise' ||
+      v.task.kind === 'giveFood' ||
+      v.task.kind === 'entertain' ||
+      v.task.kind === 'idle' ||
+      v.task.kind === 'counsel' ||
+      v.task.kind === 'teachCraft'
+    const hardLabor =
+      v.task.kind.startsWith('gather') ||
+      v.task.kind.startsWith('build') ||
+      v.task.kind.startsWith('craft') ||
+      v.task.kind === 'clearLand' ||
+      v.task.kind === 'mineTunnel' ||
+      v.task.kind === 'mineGold' ||
+      v.task.kind === 'tradeRun' ||
+      v.task.kind === 'fish'
+    const wantShelter =
+      (!starvingNow && night) ||
+      (!starvingNow && stormy && (leisure || hardLabor || !atHomeShelter(v))) ||
+      (!starvingNow && v.hasHome && !atHomeShelter(v) && coldNow > 0.4) ||
+      (v.stamina < STAMINA_EXHAUSTED && !starvingNow)
+    if (wantShelter && (leisure || night || stormy || coldNow > 0.4 || v.stamina < STAMINA_EXHAUSTED || hardLabor)) {
+      stashInterruptedTask(v)
       if (v.hasHome) {
-        stashInterruptedTask(v)
-        setTask(v, 'rest', v.homeX, v.homeY)
-        noteChosenAction(v, 'rest', 'nuit — foyer')
-      } else if (v.stamina < STAMINA_TIRED || mindNight.needs.fatigue > 0.55) {
-        stashInterruptedTask(v)
+        const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
+        setTask(v, 'rest', bed?.x ?? v.homeX, bed?.y ?? v.homeY)
+        noteChosenAction(v, 'rest', night ? 'nuit — lit' : stormy ? 'tempête — foyer' : 'abri — foyer')
+      } else {
         setTask(v, 'rest', v.x, v.y)
-        noteChosenAction(v, 'rest', 'nuit — abri improvisé')
+        noteChosenAction(v, 'rest', night ? 'nuit — abri improvisé' : stormy ? 'tempête — abri' : 'épuisement')
       }
     }
   }
 
   if (!v.task) {
-    if (state.tick < v.nextThinkTick) return
-    const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
-    tickCognition(state, v, rng, depth)
-    chooseTask(state, v, rng)
-    // Cooldown applied when the task ends — not here — so micro-tasks don't strand agents as null.
+    const forced = forceBiologicalRhythm(state, v)
+    if (!forced) {
+      if (state.tick < v.nextThinkTick) return
+      const depth = shouldDeepThink(state, v) ? 'deep' : 'fast'
+      tickCognition(state, v, rng, depth)
+      chooseTask(state, v, rng)
+    }
   }
   const active = v.task
   const continued = executeTask(state, v, rng)
@@ -4070,7 +4136,6 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
     const stuck = active.stuckTicks >= stuckCap
     const timedOut = active.ageTicks > (active.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE)
     const failed = stuck || timedOut
-    // Voluntary completion (incl. 1-tick socialise/eat) is success — ageTicks>1 marked them as failures and thrashed plans.
     recordTaskOutcome(v, active.kind, !failed, stuck ? 'stuck' : 'generic')
     if (!failed) noteActivityPractice(v, active.kind, 1)
     else if (active.work > 0 || active.ageTicks > 12) noteActivityPractice(v, active.kind, 0.35)
@@ -4081,9 +4146,18 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
       noteChosenAction(v, v.task!.kind, 'reprise après repas')
       v.nextThinkTick = state.tick + 1
     } else {
-      // Micro acts rethink next tick; lasting work keeps a short settle so cognition can breathe.
       const micro = active.ageTicks <= 2 && active.work <= 0
-      v.nextThinkTick = state.tick + (micro ? 0 : THINK_COOLDOWN)
+      if (micro && forceBiologicalRhythm(state, v)) {
+        v.nextThinkTick = state.tick
+      } else if (micro && (active.kind.startsWith('craft') || active.kind.startsWith('build') || active.kind === 'experiment')) {
+        setTask(v, 'idle', v.x, v.y)
+        noteChosenAction(v, 'idle', 'pause après ' + active.kind)
+        v.nextThinkTick = state.tick + THINK_COOLDOWN
+      } else if (micro) {
+        v.nextThinkTick = state.tick + (v.hunger < 2.2 ? 0 : 1)
+      } else {
+        v.nextThinkTick = state.tick + THINK_COOLDOWN
+      }
     }
   } else if (!continued) {
     v.task = null
