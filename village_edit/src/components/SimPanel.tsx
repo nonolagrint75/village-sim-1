@@ -650,35 +650,61 @@ const Portrait = memo(function Portrait({
   onFollow: () => void
   onClose: () => void
 }) {
+  const rootRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selected.id])
+
+  const personality = selected.personality
   const bonds = [...(selected.relations ?? [])]
+    .filter((row) => Array.isArray(row) && row.length >= 2 && row[1])
     .sort((a, b) => {
       const sa =
-        Math.abs(a[1].affinity) * 1.2 + (a[1].respect ?? 0) + (a[1].grudge ?? 0) * 0.9 + (a[1].kinship ?? 0) * 0.5
+        Math.abs(num(a[1].affinity)) * 1.2 +
+        num(a[1].respect) +
+        num(a[1].grudge) * 0.9 +
+        num(a[1].kinship) * 0.5
       const sb =
-        Math.abs(b[1].affinity) * 1.2 + (b[1].respect ?? 0) + (b[1].grudge ?? 0) * 0.9 + (b[1].kinship ?? 0) * 0.5
+        Math.abs(num(b[1].affinity)) * 1.2 +
+        num(b[1].respect) +
+        num(b[1].grudge) * 0.9 +
+        num(b[1].kinship) * 0.5
       return sb - sa
     })
     .slice(0, 6)
-  const recalled = [...(selected.memories ?? [])].sort((a, b) => b.weight - a.weight).slice(0, 4)
-  const staminaMax = selected.staminaMax ?? 4
-  const loadCap = Math.max(0.01, selected.loadCap ?? 1)
-  const loadMass = selected.loadMass ?? 0
+  const recalled = [...(selected.memories ?? [])]
+    .filter((m) => m && typeof m === 'object')
+    .sort((a, b) => num(b.weight) - num(a.weight))
+    .slice(0, 4)
+  const staminaMax = num(selected.staminaMax, 4) || 4
+  const loadCap = Math.max(0.01, num(selected.loadCap, 1))
+  const loadMass = num(selected.loadMass)
+  const equipment = Array.isArray(selected.equipment) ? selected.equipment.filter(Boolean) : []
+  const inventory = Array.isArray(selected.inventory) ? selected.inventory.filter((l) => l && l.type) : []
   const travelBits: string[] = []
-  if (selected.embarked) travelBits.push(selected.boatKind ? `à bord (${BOAT_LABELS[selected.boatKind]})` : 'à bord')
-  else if (selected.mounted) travelBits.push('à cheval')
+  if (selected.embarked) {
+    travelBits.push(
+      selected.boatKind && BOAT_LABELS[selected.boatKind]
+        ? `à bord (${BOAT_LABELS[selected.boatKind]})`
+        : 'à bord',
+    )
+  } else if (selected.mounted) travelBits.push('à cheval')
   if (selected.hasCart) travelBits.push('charrette')
-  if (!selected.embarked && selected.boatId !== null && selected.boatKind) {
+  if (!selected.embarked && selected.boatId !== null && selected.boatKind && BOAT_LABELS[selected.boatKind]) {
     travelBits.push(BOAT_LABELS[selected.boatKind])
   }
 
+  const displayName = selected.fullName || selected.name || `#${selected.id}`
+  const alive = selected.alive !== false
+
   return (
-    <article className="sim-portrait">
+    <article className="sim-portrait" ref={rootRef}>
       <div className="sim-portrait-head">
-        <div className="sim-avatar" style={{ background: `hsl(${selected.hue}, 46%, 36%)` }} />
+        <div className="sim-avatar" style={{ background: `hsl(${num(selected.hue, 40)}, 46%, 36%)` }} />
         <div className="sim-portrait-id">
-          <h3>{selected.fullName ?? selected.name}</h3>
+          <h3>{displayName}</h3>
           <p>
-            {selected.alive === false ? 'Décédé · ' : ''}
+            {!alive ? 'Décédé · ' : ''}
             {selected.livelihoodTitle ?? PROFESSION_LABELS[selected.profession] ?? 'sans métier'}
             {selected.unemployed ? ' · sans activité stable' : ''}
             {selected.surname ? ` · ${selected.surname}` : ''}
@@ -689,7 +715,7 @@ const Portrait = memo(function Portrait({
               {selected.guildName && selected.livelihoodActivities?.length ? ' · ' : ''}
               {selected.livelihoodActivities?.length ? selected.livelihoodActivities.join(' · ') : ''}
               {selected.profession !== 'none' && selected.livelihoodTitle !== PROFESSION_LABELS[selected.profession]
-                ? `${selected.guildName || selected.livelihoodActivities?.length ? ' · ' : ''}hint ${PROFESSION_LABELS[selected.profession]}`
+                ? `${selected.guildName || selected.livelihoodActivities?.length ? ' · ' : ''}hint ${PROFESSION_LABELS[selected.profession] ?? selected.profession}`
                 : ''}
             </p>
           )}
@@ -704,20 +730,22 @@ const Portrait = memo(function Portrait({
         {travelBits.length > 0 ? ` · ${travelBits.join(' · ')}` : ''}
       </p>
       <p className="sim-ambition">
-        Veut {AMBITION_LABELS[selected.ambition] ?? selected.ambition}
-        {selected.grudgeTarget !== null ? ` · en veut à ${nameOf(selected.grudgeTarget)}` : ''}
+        Veut {AMBITION_LABELS[selected.ambition] ?? selected.ambition ?? 'survivre'}
+        {selected.grudgeTarget !== null && selected.grudgeTarget !== undefined
+          ? ` · en veut à ${nameOf(selected.grudgeTarget)}`
+          : ''}
       </p>
 
       <div className="sim-meters">
-        <Meter label="Santé" value={selected.health} max={4} color="#e05650" />
-        <Meter label="Faim" value={selected.hunger} max={4} color="#e0a045" />
-        <Meter label="Endurance" value={selected.stamina ?? staminaMax} max={staminaMax} color="#7eb8a2" />
+        <Meter label="Santé" value={num(selected.health)} max={4} color="#e05650" />
+        <Meter label="Faim" value={num(selected.hunger)} max={4} color="#e0a045" />
+        <Meter label="Endurance" value={num(selected.stamina, staminaMax)} max={staminaMax} color="#7eb8a2" />
         <Meter label="Charge" value={loadMass} max={loadCap} color="#c4a574" decimals={1} />
       </div>
 
       <div className="sim-portrait-block">
         <h4>Apparence</h4>
-        {selected.phenotype ? (
+        {selected.phenotype?.lines?.length ? (
           <p className="sim-kit">{selected.phenotype.lines.join(' · ')}</p>
         ) : (
           <p className="sim-empty">Traits physiques pas encore exprimés.</p>
@@ -727,11 +755,11 @@ const Portrait = memo(function Portrait({
       <div className="sim-portrait-block">
         <h4>Personnalité</h4>
         <div className="sim-traits">
-          <Trait label="Courage" value={selected.personality.courage} />
-          <Trait label="Sociabilité" value={selected.personality.sociability} />
-          <Trait label="Ambition" value={selected.personality.ambition} />
-          <Trait label="Générosité" value={selected.personality.generosity} />
-          <Trait label="Curiosité" value={selected.personality.curiosity} />
+          <Trait label="Courage" value={num(personality?.courage, 0.5)} />
+          <Trait label="Sociabilité" value={num(personality?.sociability, 0.5)} />
+          <Trait label="Ambition" value={num(personality?.ambition, 0.5)} />
+          <Trait label="Générosité" value={num(personality?.generosity, 0.5)} />
+          <Trait label="Curiosité" value={num(personality?.curiosity, 0.5)} />
         </div>
       </div>
 
@@ -765,13 +793,13 @@ const Portrait = memo(function Portrait({
         <h4>Appartenance</h4>
         {(selected.creed ||
           (selected.circleNames?.length ?? 0) > 0 ||
-          (selected.legitimacy ?? 0) > 0.05 ||
+          num(selected.legitimacy) > 0.05 ||
           selected.identity?.cultureTag) ? (
           <p className="sim-kit">
-            {selected.creed ? `Creed : ${selected.creedLabel}` : 'Sans creed'}
-            {(selected.legitimacy ?? 0) > 0.05 ? ` · légitimité ${Math.round(selected.legitimacy * 100)} %` : ''}
-            {(selected.grievance ?? 0) > 0.25 ? ` · grief ${Math.round(selected.grievance * 100)} %` : ''}
-            {(selected.circleNames?.length ?? 0) > 0 ? ` · ${selected.circleNames.join(', ')}` : ''}
+            {selected.creed ? `Creed : ${selected.creedLabel ?? selected.creed}` : 'Sans creed'}
+            {num(selected.legitimacy) > 0.05 ? ` · légitimité ${Math.round(num(selected.legitimacy) * 100)} %` : ''}
+            {num(selected.grievance) > 0.25 ? ` · grief ${Math.round(num(selected.grievance) * 100)} %` : ''}
+            {(selected.circleNames?.length ?? 0) > 0 ? ` · ${selected.circleNames!.join(', ')}` : ''}
           </p>
         ) : (
           <p className="sim-empty">Pas encore de cercle ni de creed.</p>
@@ -779,8 +807,8 @@ const Portrait = memo(function Portrait({
         {selected.identity?.cultureTag && (
           <p className="sim-kit">
             Culture : {selected.identity.cultureTag}
-            {selected.identity.cultureWeight > 0.05
-              ? ` (${Math.round(selected.identity.cultureWeight * 100)} %)`
+            {num(selected.identity.cultureWeight) > 0.05
+              ? ` (${Math.round(num(selected.identity.cultureWeight) * 100)} %)`
               : ''}
           </p>
         )}
@@ -801,32 +829,34 @@ const Portrait = memo(function Portrait({
               : selected.family.surname
                 ? `Nom ${selected.family.surname}`
                 : 'Sans lignée nommée'}
-            {selected.family.lineageReputation > 0.05
-              ? ` · réputation ${Math.round(selected.family.lineageReputation * 100)} %`
+            {num(selected.family.lineageReputation) > 0.05
+              ? ` · réputation ${Math.round(num(selected.family.lineageReputation) * 100)} %`
               : ''}
-            {selected.lineageWealth !== null && selected.lineageWealth > 0.5
-              ? ` · fortune ~${Math.round(selected.lineageWealth)}`
+            {selected.lineageWealth !== null && num(selected.lineageWealth) > 0.5
+              ? ` · fortune ~${Math.round(num(selected.lineageWealth))}`
               : ''}
-            {selected.descendantCount > 0 ? ` · ${selected.descendantCount} descendant${selected.descendantCount > 1 ? 's' : ''}` : ''}
-            {selected.family.livingKin > 0 ? ` · ${selected.family.livingKin} proches` : ''}
-            {selected.family.ancestorMemory > 0.08
-              ? ` · mémoire ancestrale ${Math.round(selected.family.ancestorMemory * 100)} %`
+            {num(selected.descendantCount) > 0
+              ? ` · ${selected.descendantCount} descendant${num(selected.descendantCount) > 1 ? 's' : ''}`
+              : ''}
+            {num(selected.family.livingKin) > 0 ? ` · ${selected.family.livingKin} proches` : ''}
+            {num(selected.family.ancestorMemory) > 0.08
+              ? ` · mémoire ancestrale ${Math.round(num(selected.family.ancestorMemory) * 100)} %`
               : ''}
           </p>
-          {selected.family.parents.length > 0 && (
+          {(selected.family.parents?.length ?? 0) > 0 && (
             <p className="sim-kit">Parents : {selected.family.parents.map((p) => p.name).join(', ')}</p>
           )}
           {selected.family.spouse && <p className="sim-kit">Compagnon·ne : {selected.family.spouse.name}</p>}
-          {selected.family.children.length > 0 && (
+          {(selected.family.children?.length ?? 0) > 0 && (
             <p className="sim-kit">
               Enfants : {selected.family.children.map((c) => c.name).join(', ')}
               {selected.family.children.length >= 8 ? '…' : ''}
             </p>
           )}
-          {selected.family.siblings.length > 0 && (
+          {(selected.family.siblings?.length ?? 0) > 0 && (
             <p className="sim-kit">Fratrie : {selected.family.siblings.map((s) => s.name).join(', ')}</p>
           )}
-          {selected.family.famousAncestors.length > 0 && (
+          {(selected.family.famousAncestors?.length ?? 0) > 0 && (
             <p className="sim-kit">
               Ancêtres connus :{' '}
               {selected.family.famousAncestors
@@ -844,10 +874,10 @@ const Portrait = memo(function Portrait({
                 .join(' · ')}
             </p>
           )}
-          {selected.family.traditions.length > 0 && (
+          {(selected.family.traditions?.length ?? 0) > 0 && (
             <p className="sim-kit">Traditions : {selected.family.traditions.join(' · ')}</p>
           )}
-          {selected.family.pedigree.length > 1 && (
+          {(selected.family.pedigree?.length ?? 0) > 1 && (
             <div style={{ marginTop: '0.4rem' }}>
               <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9aa58d' }}>
                 Arbre (profondeur limitée)
@@ -880,13 +910,13 @@ const Portrait = memo(function Portrait({
 
       <div className="sim-portrait-block">
         <h4>Équipement porté</h4>
-        {(selected.equipment?.length ?? 0) === 0 ? (
+        {equipment.length === 0 ? (
           <p className="sim-empty">Aucun emplacement corporel.</p>
         ) : (
           <ul className="sim-equip">
-            {selected.equipment.map((slot) => (
-              <li key={slot.slot} title={slot.hint ?? undefined}>
-                <span className="sim-equip-slot">{slot.slotLabel}</span>
+            {equipment.map((slot, i) => (
+              <li key={slot.slot ?? `slot-${i}`} title={slot.hint ?? undefined}>
+                <span className="sim-equip-slot">{slot.slotLabel ?? slot.slot ?? 'slot'}</span>
                 <strong className={slot.label ? undefined : 'sim-equip-empty'}>
                   {slot.label ?? '—'}
                 </strong>
@@ -895,12 +925,12 @@ const Portrait = memo(function Portrait({
           </ul>
         )}
         <p className="sim-kit">
-          Prestige {Math.round((selected.gearPrestige01 ?? 0) * 100)}%
+          Prestige {Math.round(num(selected.gearPrestige01) * 100)}%
           {selected.equipmentEffects
-            ? ` · chaleur ${(selected.equipmentEffects.clo ?? 0).toFixed(1)} clo · protection ${Math.round((selected.equipmentEffects.protect ?? 0) * 100)}% · charge +${Math.round(selected.equipmentEffects.carryKg ?? 0)} kg`
+            ? ` · chaleur ${num(selected.equipmentEffects.clo).toFixed(1)} clo · protection ${Math.round(num(selected.equipmentEffects.protect) * 100)}% · charge +${Math.round(num(selected.equipmentEffects.carryKg))} kg`
             : ''}
-          {(selected.purseCoins ?? 0) > 0
-            ? ` · bourse ${selected.purseCoins} pièce${selected.purseCoins > 1 ? 's' : ''}`
+          {num(selected.purseCoins) > 0
+            ? ` · bourse ${selected.purseCoins} pièce${num(selected.purseCoins) > 1 ? 's' : ''}`
             : ''}
         </p>
       </div>
@@ -909,20 +939,20 @@ const Portrait = memo(function Portrait({
         <h4>Foyer & sac</h4>
         <p className="sim-kit">
           {selected.house
-            ? `Maison ${SHAPE_LABELS[selected.house.shape]} ${selected.house.rx * 2 + 1}×${selected.house.ry * 2 + 1}`
+            ? `Maison ${SHAPE_LABELS[selected.house.shape] ?? selected.house.shape} ${num(selected.house.rx) * 2 + 1}×${num(selected.house.ry) * 2 + 1}`
             : 'Pas encore de maison'}
           {' · outils '}
-          {TOOL_LABELS[selected.toolTier] ?? selected.toolTier}
-          {selected.horseId !== null ? ' · cheval' : ''}
+          {TOOL_LABELS[selected.toolTier] ?? selected.toolTier ?? 'aucun'}
+          {selected.horseId !== null && selected.horseId !== undefined ? ' · cheval' : ''}
         </p>
-        {(selected.inventory?.length ?? 0) === 0 ? (
+        {inventory.length === 0 ? (
           <p className="sim-empty">Sac vide.</p>
         ) : (
           <ul className="sim-inv">
-            {selected.inventory.slice(0, 8).map((line) => (
-              <li key={line.type}>
-                <span>{RESOURCE_LABELS_FR[line.type] ?? line.type}</span>
-                <strong>×{line.count}</strong>
+            {inventory.slice(0, 8).map((line, i) => (
+              <li key={`${String(line.type)}-${i}`}>
+                <span>{resourceLabel(line.type)}</span>
+                <strong>×{num(line.count)}</strong>
               </li>
             ))}
           </ul>
@@ -937,30 +967,31 @@ const Portrait = memo(function Portrait({
           ) : (
             <ul>
               {bonds.map(([id, rel]) => {
-                const respect = rel.respect ?? 0
-                const grudge = rel.grudge ?? 0
-                const kin = rel.kinship ?? 0
+                const respect = num(rel.respect)
+                const grudge = num(rel.grudge)
+                const kin = num(rel.kinship)
+                const affinity = num(rel.affinity)
                 let label = 'neutre'
                 let color = '#a8a29a'
-                if (respect > 0.55 && rel.affinity >= 0) {
+                if (respect > 0.55 && affinity >= 0) {
                   label = 'admiré'
                   color = '#c9a227'
-                } else if (grudge > 0.45 || rel.affinity <= -0.55) {
+                } else if (grudge > 0.45 || affinity <= -0.55) {
                   label = grudge > 0.55 ? 'rival' : 'ennemi'
                   color = '#e05650'
                 } else if (kin > 0.5 || selected.family?.spouse?.id === id) {
                   label = 'famille'
                   color = '#7eb8a2'
-                } else if (rel.affinity > 0.6) {
+                } else if (affinity > 0.6) {
                   label = 'très proche'
                   color = '#6ecf8a'
-                } else if (rel.affinity > 0.2) {
+                } else if (affinity > 0.2) {
                   label = 'ami'
                   color = '#8ecf6a'
-                } else if (rel.affinity > -0.2) {
+                } else if (affinity > -0.2) {
                   label = 'neutre'
                   color = '#a8a29a'
-                } else if (rel.affinity > -0.6) {
+                } else if (affinity > -0.6) {
                   label = 'hostile'
                   color = '#e08850'
                 } else {
@@ -991,7 +1022,7 @@ const Portrait = memo(function Portrait({
             <ul>
               {recalled.map((m, i) => (
                 <li key={i}>
-                  {m.subjectId !== null ? `${nameOf(m.subjectId)} — ` : ''}
+                  {m.subjectId !== null && m.subjectId !== undefined ? `${nameOf(m.subjectId)} — ` : ''}
                   {MEMORY_LABELS[m.kind] ?? m.kind}
                 </li>
               ))}
@@ -1006,7 +1037,7 @@ const Portrait = memo(function Portrait({
           <>
             <p className="sim-ambition">
               {selected.cognition.processMode ? `${selected.cognition.processMode} · ` : ''}
-              But : {selected.cognition.goal}
+              But : {selected.cognition.goal ?? '—'}
               {selected.cognition.plan ? ` · plan ${selected.cognition.plan}` : ''}
             </p>
             {selected.cognition.selfModel ? (
@@ -1037,62 +1068,70 @@ const Portrait = memo(function Portrait({
                   <p className="sim-kit">Affect ressenti : {selected.cognition.conscience.feltAffect}</p>
                 ) : null}
                 {(selected.cognition.conscience.awareOf?.length ?? 0) > 0 && (
-                  <p className="sim-kit">Conscient de : {selected.cognition.conscience.awareOf.join(' · ')}</p>
+                  <p className="sim-kit">Conscient de : {selected.cognition.conscience.awareOf!.join(' · ')}</p>
                 )}
                 {(selected.cognition.conscience.innerSpeech?.length ?? 0) > 0 && (
-                  <p className="sim-kit">Parole intérieure : « {selected.cognition.conscience.innerSpeech.join(' » · « ')} »</p>
+                  <p className="sim-kit">Parole intérieure : « {selected.cognition.conscience.innerSpeech!.join(' » · « ')} »</p>
                 )}
               </div>
             ) : null}
             {(selected.cognition.factorWhy?.length ?? 0) > 0 && (
-              <p className="sim-kit">Facteurs : {selected.cognition.factorWhy.join(' · ')}</p>
+              <p className="sim-kit">Facteurs : {selected.cognition.factorWhy!.join(' · ')}</p>
             )}
             {(selected.cognition.reasons?.length ?? 0) > 0 && (
               <ul className="sim-why">
-                {selected.cognition.reasons.map((r, i) => (
+                {selected.cognition.reasons!.map((r, i) => (
                   <li key={i}>{r}</li>
                 ))}
               </ul>
             )}
             {(selected.cognition.needs?.length ?? 0) > 0 && (
               <p className="sim-kit">
-                Besoins : {selected.cognition.needs.map((n) => `${n.key} ${Math.round(n.value * 100)}%`).join(' · ')}
+                Besoins :{' '}
+                {selected.cognition.needs!
+                  .filter((n) => n)
+                  .map((n) => `${n.key ?? '?'} ${Math.round(num(n.value) * 100)}%`)
+                  .join(' · ')}
               </p>
             )}
             {(selected.cognition.predictionErrors?.length ?? 0) > 0 && (
-              <p className="sim-kit">Erreurs de prédiction : {selected.cognition.predictionErrors.join(' · ')}</p>
+              <p className="sim-kit">Erreurs de prédiction : {selected.cognition.predictionErrors!.join(' · ')}</p>
             )}
             {(selected.cognition.emotions?.length ?? 0) > 0 && (
               <p className="sim-kit">
-                Émotions : {selected.cognition.emotions.map((e) => `${e.key} ${Math.round(e.value * 100)}%`).join(' · ')}
+                Émotions :{' '}
+                {selected.cognition.emotions!
+                  .filter((e) => e)
+                  .map((e) => `${e.key ?? '?'} ${Math.round(num(e.value) * 100)}%`)
+                  .join(' · ')}
               </p>
             )}
             {(selected.cognition.workspace?.length ?? 0) > 0 && (
-              <p className="sim-kit">Espace de travail : {selected.cognition.workspace.join(' · ')}</p>
+              <p className="sim-kit">Espace de travail : {selected.cognition.workspace!.join(' · ')}</p>
             )}
             {(selected.cognition.working?.length ?? 0) > 0 && (
-              <p className="sim-kit">Mémoire de travail : {selected.cognition.working.join(' · ')}</p>
+              <p className="sim-kit">Mémoire de travail : {selected.cognition.working!.join(' · ')}</p>
             )}
             {typeof selected.cognition.executive === 'number' ? (
               <p className="sim-kit">Contrôle exécutif : {Math.round(selected.cognition.executive * 100)}%</p>
             ) : null}
             {(selected.cognition.memories?.length ?? 0) > 0 && (
-              <p className="sim-kit">Épisodes : {selected.cognition.memories.join(' · ')}</p>
+              <p className="sim-kit">Épisodes : {selected.cognition.memories!.join(' · ')}</p>
             )}
             {(selected.cognition.beliefs?.length ?? 0) > 0 && (
-              <p className="sim-kit">Croyances : {selected.cognition.beliefs.join(' · ')}</p>
+              <p className="sim-kit">Croyances : {selected.cognition.beliefs!.join(' · ')}</p>
             )}
             {(selected.cognition.skills?.length ?? 0) > 0 && (
-              <p className="sim-kit">Savoir-faire : {selected.cognition.skills.join(' · ')}</p>
+              <p className="sim-kit">Savoir-faire : {selected.cognition.skills!.join(' · ')}</p>
             )}
             {(selected.cognition.preferences?.length ?? 0) > 0 && (
-              <p className="sim-kit">Goûts de travail : {selected.cognition.preferences.join(' · ')}</p>
+              <p className="sim-kit">Goûts de travail : {selected.cognition.preferences!.join(' · ')}</p>
             )}
             {(selected.cognition.laborThoughts?.length ?? 0) > 0 && (
-              <p className="sim-kit">Pensées de labeur : {selected.cognition.laborThoughts.join(' · ')}</p>
+              <p className="sim-kit">Pensées de labeur : {selected.cognition.laborThoughts!.join(' · ')}</p>
             )}
             {(selected.cognition.thoughts?.length ?? 0) > 0 && (
-              <p className="sim-kit">Pensées : {selected.cognition.thoughts.join(' · ')}</p>
+              <p className="sim-kit">Pensées : {selected.cognition.thoughts!.join(' · ')}</p>
             )}
             {typeof selected.cognition.stress === 'number' && selected.cognition.stress > 0.08 ? (
               <p className="sim-kit">Stress : {Math.round(selected.cognition.stress * 100)}%</p>
@@ -1109,11 +1148,51 @@ const Portrait = memo(function Portrait({
       </div>
 
       <button type="button" className={following ? 'sim-follow is-on' : 'sim-follow'} onClick={onFollow}>
-        {following ? 'Ne plus suivre' : `Suivre ${selected.name}`}
+        {following ? 'Ne plus suivre' : `Suivre ${selected.name || displayName}`}
       </button>
     </article>
   )
 })
+
+class PortraitBoundary extends Component<
+  { selectedId: number; onClose: () => void; children: ReactNode },
+  { error: string | null }
+> {
+  state: { error: string | null } = { error: null }
+
+  static getDerivedStateFromError(err: unknown) {
+    return { error: err instanceof Error ? err.message : 'erreur de rendu' }
+  }
+
+  componentDidCatch(_err: unknown, _info: ErrorInfo) {
+    /* keep panel alive — silent click was caused by an uncaught Portrait throw */
+  }
+
+  componentDidUpdate(prev: { selectedId: number }) {
+    if (prev.selectedId !== this.props.selectedId && this.state.error) {
+      this.setState({ error: null })
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <article className="sim-portrait sim-portrait-error">
+          <div className="sim-portrait-head">
+            <div className="sim-portrait-id">
+              <h3>Villageois #{this.props.selectedId}</h3>
+              <p className="sim-empty">Portrait indisponible ({this.state.error}).</p>
+            </div>
+            <button type="button" className="sim-ghost" onClick={this.props.onClose} aria-label="Fermer">
+              ×
+            </button>
+          </div>
+        </article>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function Meter({
   label,
@@ -1128,13 +1207,15 @@ function Meter({
   color: string
   decimals?: number
 }) {
-  const t = Math.max(0, Math.min(1, value / Math.max(0.01, max)))
+  const safeValue = num(value)
+  const safeMax = Math.max(0.01, num(max, 1))
+  const t = Math.max(0, Math.min(1, safeValue / safeMax))
   return (
     <div className="sim-meter">
       <div className="sim-meter-label">
         <span>{label}</span>
         <span>
-          {value.toFixed(decimals)}/{max.toFixed(decimals === 0 ? 0 : 1)}
+          {safeValue.toFixed(decimals)}/{safeMax.toFixed(decimals === 0 ? 0 : 1)}
         </span>
       </div>
       <div className="sim-bar">
@@ -1145,14 +1226,15 @@ function Meter({
 }
 
 function Trait({ label, value }: { label: string; value: number }) {
+  const v = Math.max(0, Math.min(1, num(value)))
   return (
     <div className="sim-meter">
       <div className="sim-meter-label">
         <span>{label}</span>
-        <span>{Math.round(value * 100)}%</span>
+        <span>{Math.round(v * 100)}%</span>
       </div>
       <div className="sim-bar">
-        <i style={{ transform: `scaleX(${value})` }} />
+        <i style={{ transform: `scaleX(${v})` }} />
       </div>
     </div>
   )

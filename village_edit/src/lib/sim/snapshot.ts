@@ -684,8 +684,143 @@ function emptyEquipmentPack(): {
   }
 }
 
+function cloneableRelation(r: Relation): Relation {
+  return {
+    affinity: r.affinity ?? 0,
+    trust: r.trust ?? 0,
+    lastTick: r.lastTick ?? 0,
+    debt: r.debt ?? 0,
+    grudge: r.grudge ?? 0,
+    kinship: r.kinship ?? 0,
+    respect: r.respect ?? 0,
+    history: Array.isArray(r.history)
+      ? r.history.slice(-4).map((h) => ({ kind: h.kind, tick: h.tick }))
+      : [],
+  }
+}
+
+function cloneableMemory(m: Memory): Memory {
+  return {
+    kind: m.kind,
+    subjectId: m.subjectId ?? null,
+    x: m.x ?? 0,
+    y: m.y ?? 0,
+    tick: m.tick ?? 0,
+    weight: m.weight ?? 0,
+    emotion: m.emotion ?? 0,
+  }
+}
+
+/** Bare portrait payload — always structured-cloneable; used when full pack throws. */
+export function packSelectedMinimal(v: Villager): SelectedVillager {
+  const personality = v.personality ?? {
+    courage: 0.5,
+    sociability: 0.5,
+    ambition: 0.5,
+    generosity: 0.5,
+    curiosity: 0.5,
+  }
+  let equipment: PackedEquipmentSlot[] = []
+  let equipmentEffects: SelectedVillager['equipmentEffects'] = {
+    clo: 0,
+    protect: 0,
+    prestige: 0,
+    wealthDisplay: 0,
+    carryKg: 0,
+  }
+  let gearPrestige01 = 0
+  let purseCoins = 0
+  try {
+    const packed = packEquipmentForUi(v)
+    equipment = packed.slots.filter(Boolean)
+    equipmentEffects = {
+      clo: packed.effects.clo,
+      protect: packed.effects.protect,
+      prestige: packed.effects.prestige,
+      wealthDisplay: packed.effects.wealthDisplay,
+      carryKg: packed.effects.carryKg,
+    }
+    gearPrestige01 = packed.prestige01
+    purseCoins = packed.purseCoins
+  } catch {
+    /* keep empty kit */
+  }
+  let cognition: CognitionDebug | null = null
+  try {
+    cognition = packCognitionDebug(v)
+  } catch {
+    cognition = null
+  }
+  return {
+    id: v.id,
+    name: v.name ?? `#${v.id}`,
+    surname: v.surname ?? '',
+    fullName: v.surname ? `${v.name} ${v.surname}` : (v.name ?? `#${v.id}`),
+    hue: Number.isFinite(v.hue) ? v.hue : 40,
+    alive: !!v.alive,
+    profession: v.profession ?? 'none',
+    livelihoodTitle: PROFESSION_FALLBACK(v.profession),
+    livelihoodRole: null,
+    livelihoodActivities: [],
+    guildName: null,
+    unemployed: false,
+    ambition: v.ambition ?? 'survive',
+    grudgeTarget: v.grudgeTarget ?? null,
+    task: null,
+    mounted: !!v.mounted,
+    embarked: !!v.embarked,
+    health: Number.isFinite(v.health) ? v.health : 0,
+    hunger: Number.isFinite(v.hunger) ? v.hunger : 0,
+    stamina: Number.isFinite(v.stamina) ? v.stamina : 4,
+    staminaMax: 4,
+    loadMass: 0,
+    loadCap: 1,
+    personality,
+    house: v.house ?? null,
+    inventory: [],
+    horseId: v.horseId ?? null,
+    hasCart: !!v.hasCart,
+    boatId: v.boatId ?? null,
+    boatKind: null,
+    toolTier: v.toolTier ?? 'none',
+    equipment,
+    equipmentEffects,
+    gearPrestige01,
+    purseCoins,
+    relations: [],
+    memories: [],
+    creed: null,
+    creedLabel: 'aucune',
+    legitimacy: 0,
+    grievance: 0,
+    circleNames: [],
+    cognition,
+    family: null,
+    phenotype: packPhenotypeSummary(v.phenotype),
+    identity: null,
+    lineageWealth: null,
+    descendantCount: 0,
+    knowledgeCount: 0,
+    knowledgeLabels: [],
+    villageKnowledgeCount: 0,
+  }
+}
+
 function packSelected(state: SimState, v: Villager): SelectedVillager {
-  const pol = politicsOf(v)
+  let polCreed: ReturnType<typeof politicsOf>['creed'] = null
+  let polLegitimacy = 0
+  let polGrievance = 0
+  let creedLbl = 'aucune'
+  try {
+    const pol = politicsOf(v)
+    polCreed = pol.creed
+    polLegitimacy = pol.legitimacy ?? 0
+    polGrievance = pol.grievance ?? 0
+    creedLbl = creedLabel(pol.creed)
+  } catch {
+    /* bare politics */
+  }
+
   const boat = v.boatId !== null ? state.boats.find((b) => b.id === v.boatId && b.alive) : undefined
   let family: FamilySummary | null = null
   try {
@@ -771,7 +906,7 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
         (b[1]?.trust ?? 0) * 0.2
       return sb - sa
     })
-    relations = entries.slice(0, 12)
+    relations = entries.slice(0, 12).map(([id, rel]) => [id, cloneableRelation(rel)])
   } catch {
     relations = []
   }
@@ -800,13 +935,22 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     curiosity: 0.5,
   }
 
+  let memories: Memory[] = []
+  try {
+    const raw = Array.isArray(v.memories) ? (v.memories.length <= 8 ? v.memories : v.memories.slice(-8)) : []
+    memories = raw.map(cloneableMemory)
+  } catch {
+    memories = []
+  }
+
   return {
     id: v.id,
     name: v.name ?? `#${v.id}`,
     surname: v.surname ?? '',
     fullName: v.surname ? `${v.name} ${v.surname}` : (v.name ?? `#${v.id}`),
     hue: v.hue ?? 40,
-    alive: v.alive !== false,
+    // Keep false for corpses — do not coerce dead → alive.
+    alive: !!v.alive,
     profession: v.profession ?? 'none',
     livelihoodTitle,
     livelihoodRole,
@@ -859,11 +1003,11 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     gearPrestige01: packedEq.prestige01 ?? 0,
     purseCoins: packedEq.purseCoins ?? 0,
     relations,
-    memories: Array.isArray(v.memories) ? (v.memories.length <= 8 ? v.memories : v.memories.slice(-8)) : [],
-    creed: pol.creed,
-    creedLabel: creedLabel(pol.creed),
-    legitimacy: pol.legitimacy ?? 0,
-    grievance: pol.grievance ?? 0,
+    memories,
+    creed: polCreed,
+    creedLabel: creedLbl,
+    legitimacy: polLegitimacy,
+    grievance: polGrievance,
     circleNames,
     cognition,
     family,
@@ -908,34 +1052,86 @@ function PROFESSION_FALLBACK(p: Profession | undefined): string {
   return p
 }
 
-export function packUi(state: SimState, selectedId: number | null, ticksPerSec: number): UiFrame {
-  let selected: SelectedVillager | null = null
-  if (selectedId !== null) {
-    const list = state.villagers
-    for (let i = 0; i < list.length; i++) {
-      const o = list[i]
-      // Keep packing after death so the portrait can show a sensible "deceased" state.
-      if (o.id === selectedId) {
-        try {
-          selected = packSelected(state, o)
-        } catch {
-          selected = null
-        }
-        break
-      }
-    }
+/** Resolve selected villager by id — alive or dead (until purge). */
+export function findSelectedVillager(state: SimState, selectedId: number | null): Villager | null {
+  if (selectedId === null) return null
+  const list = state.villagers
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].id === selectedId) return list[i]
   }
-  // Under load: still pack groups (small); stagger heavier lineage/culture tallies.
-  const light = takeUiLightGate()
+  return null
+}
+
+/** Pack selected entity; never returns null when the villager is still in state. */
+export function packSelectedSafe(state: SimState, v: Villager): SelectedVillager {
+  try {
+    return packSelected(state, v)
+  } catch {
+    return packSelectedMinimal(v)
+  }
+}
+
+export function packUi(
+  state: SimState,
+  selectedId: number | null,
+  ticksPerSec: number,
+  opts?: PackUiOptions,
+): UiFrame {
+  const entity = findSelectedVillager(state, selectedId)
+  const selected = entity ? packSelectedSafe(state, entity) : null
+  // Under load / select priority: still pack groups; stagger heavier tallies.
+  const light = opts?.priority ? true : takeUiLightGate()
+  let stats = EMPTY_STATS
+  let chronicle: string[] = []
+  let groups: UiGroupRow[] = []
+  try {
+    stats = computeStats(state)
+  } catch {
+    stats = EMPTY_STATS
+  }
+  try {
+    chronicle = packChronicle(state.log)
+  } catch {
+    chronicle = []
+  }
+  try {
+    groups = packGroups(state)
+  } catch {
+    groups = []
+  }
   return {
-    stats: computeStats(state),
-    chronicle: packChronicle(state.log),
+    stats,
+    chronicle,
     selectedId,
     selected,
-    groups: packGroups(state),
-    lineages: light ? [] : packLineages(state),
-    cultures: light ? [] : packCultureCounts(state),
-    creeds: light ? [] : packCreedCounts(state),
+    groups,
+    lineages: light
+      ? []
+      : (() => {
+          try {
+            return packLineages(state)
+          } catch {
+            return []
+          }
+        })(),
+    cultures: light
+      ? []
+      : (() => {
+          try {
+            return packCultureCounts(state)
+          } catch {
+            return []
+          }
+        })(),
+    creeds: light
+      ? []
+      : (() => {
+          try {
+            return packCreedCounts(state)
+          } catch {
+            return []
+          }
+        })(),
     ticksPerSec,
   }
 }

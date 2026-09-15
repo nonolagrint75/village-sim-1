@@ -878,6 +878,7 @@ export function SimulationCanvas() {
           lineages={lineages}
           cultures={cultures}
           creeds={creeds}
+          selectedId={selectedId}
           selected={selected}
           nameOf={nameOf}
           following={following}

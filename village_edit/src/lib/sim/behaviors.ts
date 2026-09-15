@@ -1628,13 +1628,24 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
         : v.hunger < 2.1
           ? starving * 120 + (2.1 - v.hunger) * 35
           : starving * 55
-    if (eatUrge > 8) add('eat', v.x, v.y, eatUrge)
+    if (eatUrge > 8) {
+      const table = eatSpot(v.furnitureQueue, v.homeLayout)
+      const eatX = table && v.hasHome ? table.x : v.hasTable ? v.tableX : v.x
+      const eatY = table && v.hasHome ? table.y : v.hasTable ? v.tableY : v.y
+      add('eat', eatX, eatY, eatUrge * (table || v.hasTable ? reach(v, eatX, eatY) : 1))
+    }
   }
   if (v.hasChest && v.chestInventory && edibleValue(v.chestInventory) > 0 && v.hunger < 2.0) {
-    add('takeFromChest', v.chestX, v.chestY, starving * 180 * reach(v, v.chestX, v.chestY))
+    const store = storeSpot(v.furnitureQueue, v.homeLayout)
+    const cx = store?.x ?? v.chestX
+    const cy = store?.y ?? v.chestY
+    add('takeFromChest', cx, cy, starving * 180 * reach(v, cx, cy))
   }
   if (overloaded && v.hasChest && v.chestInventory) {
-    add('storeChest', v.chestX, v.chestY, 160 * reach(v, v.chestX, v.chestY))
+    const store = storeSpot(v.furnitureQueue, v.homeLayout)
+    const cx = store?.x ?? v.chestX
+    const cy = store?.y ?? v.chestY
+    add('storeChest', cx, cy, 160 * reach(v, cx, cy))
   }
 
   if (bush) {
@@ -2003,13 +2014,15 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
     const ironNeed = ironToolCostFor(v, IRON_TOOL_COST, vgKnow)
     if (iron >= ironNeed) add('craftIronTool', v.x, v.y, upgradeIron)
     else if (ironOre) add('gatherIron', ironOre.x, ironOre.y, upgradeIron * 0.8 * reach(v, ironOre.x, ironOre.y))
+    else if (mountainOre) add('mineTunnel', mountainOre.x, mountainOre.y, upgradeIron * 0.75 * reach(v, mountainOre.x, mountainOre.y))
   }
 
   if (mountainOre) {
     const minerBoost = v.profession === 'miner' ? 40 : v.profession === 'mason' || v.profession === 'blacksmith' ? 25 : 0
-    const ironBoost = v.toolTier === 'iron' ? 18 : 0
+    const ironBoost = v.toolTier === 'iron' ? 18 : v.toolTier === 'stone' ? 8 : 0
+    const woodToolPenalty = v.toolTier === 'wood' ? 0.55 : 1
     const deeperBoost = village?.hasMine ? 12 : 0
-    const mineUrge = 20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost
+    const mineUrge = (20 + p.ambition * 25 + p.courage * 10 + minerBoost + ironBoost + deeperBoost) * woodToolPenalty
     add('mineTunnel', mountainOre.x, mountainOre.y, mineUrge * reach(v, mountainOre.x, mountainOre.y))
   }
 
@@ -2302,17 +2315,23 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
 
   const sellableSurplus = wool > 3 || cloth > 2 || hide > 2 || iron > 3 || gold > 2 || countOf(v.inventory, 'coin') > 6
   if (v.hasChest && (wood > 6 || stone > 6 || larder > stockTarget + 2 || sellableSurplus || granaryPush > 12)) {
+    const store = storeSpot(v.furnitureQueue, v.homeLayout)
+    const cx = store?.x ?? v.chestX
+    const cy = store?.y ?? v.chestY
     add(
       'storeChest',
-      v.chestX,
-      v.chestY,
-      (25 + p.ambition * 20 + granaryPush + (season === 'autumn' ? 30 : 0)) * reach(v, v.chestX, v.chestY),
+      cx,
+      cy,
+      (25 + p.ambition * 20 + granaryPush + (season === 'autumn' ? 30 : 0)) * reach(v, cx, cy),
     )
   }
 
   if (goldTile) add('mineGold', goldTile.x, goldTile.y, (12 + (1 - p.generosity) * 35) * (goldSense?.source === 'search' ? 0.75 : 1.1) * reach(v, goldTile.x, goldTile.y))
 
   if (v.hasHome) {
+    const bed = sleepSpot(v.furnitureQueue, v.homeLayout)
+    const restX = bed?.x ?? v.homeX
+    const restY = bed?.y ?? v.homeY
     const restNeed =
       (season === 'winter' ? 38 : 8) +
       cold * 55 +
@@ -2320,8 +2339,9 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       (night ? 70 : 0) +
       (exhausted ? 90 : tired ? 40 : 0) +
       (1 - v.stamina / STAMINA_MAX) * 50 +
-      (!atHomeShelter(v) && cold > 0.25 ? 50 : 0)
-    add('rest', v.homeX, v.homeY, restNeed * reach(v, v.homeX, v.homeY))
+      (!atHomeShelter(v) && cold > 0.25 ? 50 : 0) +
+      (bed && v.bedCount > 0 ? 18 : 0)
+    add('rest', restX, restY, restNeed * reach(v, restX, restY))
   } else if (exhausted || tired || cold > 0.4 || heat > 0.5) {
     // Sans foyer : s'asseoir sur place plutôt que de s'effondrer en marchant.
     add('rest', v.x, v.y, (exhausted ? 70 : 32) + (night ? 28 : 0) + cold * 40 + heat * 25)
@@ -3160,6 +3180,13 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         stampHouseFloors(grid, fp)
         v.hasHome = true
         v.homeOwnerId = v.id
+        const layout = ensureHomeLayout(v)
+        if (layout) {
+          seedFurnitureQueue(v, layout)
+          logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']} — ${describeLayoutFr(layout)}`)
+        } else {
+          logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']}`)
+        }
         const joinRadius = VILLAGE_JOIN_RADIUS * (0.5 + v.personality.sociability)
         const village = findOrCreateVillage(state, v.homeX, v.homeY, joinRadius, rng)
         village.memberIds.push(v.id)
@@ -3171,7 +3198,6 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
         linkToHub(grid, door.x, door.y, village.centerX, village.centerY, village.memberIds.length >= 4 ? 1 : 0)
         village.perimeterTick = -PERIMETER_REFRESH
         if (v.profession === 'none') v.profession = assignProfession(state, v)
-        logEvent(state, `${v.name} a bâti une maison ${SHAPE_FR[v.house?.shape ?? 'square']}`)
         noteMilestone(state, 'firstHouse', `Première maison fondée`)
         onCognitiveEvent(v, 'new_home', 1)
         if (village.memberIds.length === 2) {
@@ -3267,6 +3293,9 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       v.hasWorkbench = true
       v.workbenchX = task.targetX
       v.workbenchY = task.targetY
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'atelier'
+      logEvent(state, `${v.name} installe un ${furnitureLabelFr(done?.kind ?? 'workbench')} dans ${roomFr}`)
       return false
     }
     case 'buildChest': {
@@ -3279,7 +3308,10 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       v.hasChest = true
       v.chestX = task.targetX
       v.chestY = task.targetY
-      v.chestInventory = createInventory(20)
+      if (!v.chestInventory) v.chestInventory = createInventory(20)
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'réserve'
+      logEvent(state, `${v.name} place un ${furnitureLabelFr(done?.kind ?? 'chest')} dans ${roomFr}`)
       return false
     }
     case 'buildBed': {
@@ -3290,6 +3322,24 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       setTerrain(grid, task.targetX, task.targetY, BED)
       removeFromInventory(v.inventory, 'wood', BED_COST)
       v.bedCount += 1
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'chambre'
+      logEvent(state, `${v.name} fabrique un ${furnitureLabelFr(done?.kind ?? 'bed')} dans ${roomFr}`)
+      return false
+    }
+    case 'buildTable': {
+      if (countOf(v.inventory, 'wood') < TABLE_COST) return false
+      const labor = accumulateLabor('buildTable')
+      if (labor === 'abort') return false
+      if (labor === 'continue') return true
+      setTerrain(grid, task.targetX, task.targetY, TABLE)
+      removeFromInventory(v.inventory, 'wood', TABLE_COST)
+      v.hasTable = true
+      v.tableX = task.targetX
+      v.tableY = task.targetY
+      const done = markFurnitureDone(v.furnitureQueue, task.targetX, task.targetY)
+      const roomFr = done ? ROOM_LABEL_FR[done.roomKind] : 'salle à manger'
+      logEvent(state, `${v.name} dresse une table dans ${roomFr}`)
       return false
     }
     case 'buildWall': {
@@ -3825,12 +3875,23 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
   const active = v.task
   const continued = executeTask(state, v, rng)
   if (active && !continued) {
-    const stuck = active.stuckTicks >= STUCK_LIMIT
+    const productive =
+      active.kind.startsWith('gather') ||
+      active.kind.startsWith('build') ||
+      active.kind === 'clearLand' ||
+      active.kind === 'mineTunnel' ||
+      active.kind === 'harvestWheat' ||
+      active.kind === 'sowField' ||
+      active.kind === 'craftGoods' ||
+      active.kind === 'craftGear'
+    const stuckCap = productive ? STUCK_LIMIT + 6 : STUCK_LIMIT
+    const stuck = active.stuckTicks >= stuckCap
     const timedOut = active.ageTicks > (active.kind === 'tradeRun' ? TRADE_TASK_MAX_AGE : TASK_MAX_AGE)
     const failed = stuck || timedOut
     // Voluntary completion (incl. 1-tick socialise/eat) is success — ageTicks>1 marked them as failures and thrashed plans.
     recordTaskOutcome(v, active.kind, !failed, stuck ? 'stuck' : 'generic')
     if (!failed) noteActivityPractice(v, active.kind, 1)
+    else if (active.work > 0 || active.ageTicks > 12) noteActivityPractice(v, active.kind, 0.35)
 
     const wasSurvivalBite = active.kind === 'eat' || active.kind === 'takeFromChest'
     v.task = null

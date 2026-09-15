@@ -462,6 +462,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   overflow: auto;
   overscroll-behavior: contain;
   border-left: 1px solid rgba(214, 196, 140, 0.14);
@@ -470,6 +471,8 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #5d6a4a transparent;
   contain: layout paint;
+  position: relative;
+  z-index: 5;
 }
 
 .sim-hero {
@@ -765,8 +768,18 @@ body {
   padding: 14px;
   border: 1px solid rgba(232, 215, 163, 0.16);
   border-radius: 16px;
-  background: rgba(10, 13, 8, 0.35);
+  background: rgba(10, 13, 8, 0.92);
   animation: sim-in 180ms ease-out;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  flex-shrink: 0;
+  min-height: 72px;
+}
+
+.sim-portrait-pending,
+.sim-portrait-error {
+  opacity: 0.92;
 }
 
 .sim-portrait-head {
