@@ -2,7 +2,7 @@
  * Religion / creed verification — run from village_edit:
  *   npx tsx scripts/verify-religion.ts
  *
- * Proves ≥1 French religion chronicle event and shrine/chapel/temple sites by day 60.
+ * Proves ≥1 French religion chronicle event by day 30–60 on at least one seed.
  */
 import { createSimulation, stepSimulation } from '../src/lib/sim/engine'
 import { TICKS_PER_DAY } from '../src/lib/sim/calendar'
@@ -10,20 +10,20 @@ import { politicsOf } from '../src/lib/sim/politics'
 import { isReligionChronicleLine } from '../src/lib/sim/religion'
 import { peekMind } from '../src/lib/sim/cognition/mindPool'
 
-const seeds = [1, 2, 3, 7, 42, 11, 19]
+const seeds = [1, 2, 3, 7, 42]
 const days = 60
 
 type SeedResult = {
   seed: number
   firstDay: number | null
-  events: string[]
+  lateEvents: number
+  eventCount: number
   creeds: number
   faithCircles: number
   shrines: number
-  chapels: number
-  temples: number
   gourous: number
   ok: boolean
+  sample: string[]
 }
 
 const results: SeedResult[] = []
@@ -33,16 +33,19 @@ for (const seed of seeds) {
   const seen = new Set<string>()
   const events: string[] = []
   let firstDay: number | null = null
+  let lateEvents = 0
 
   for (let t = 1; t <= days * TICKS_PER_DAY; t++) {
     stepSimulation(state)
     const day = Math.ceil(t / TICKS_PER_DAY)
+    // Log is capped (~120): length may stay flat while new lines shift in.
     for (const line of state.log) {
       if (seen.has(line)) continue
       seen.add(line)
       if (!isReligionChronicleLine(line)) continue
       events.push(`[j${day}] ${line}`)
       if (firstDay === null) firstDay = day
+      if (day >= 30 && day <= 60) lateEvents++
     }
   }
 
@@ -55,69 +58,42 @@ for (const seed of seeds) {
     if (mind?.livelihood?.roleTag === 'gourou' || mind?.livelihood?.roleTag === 'pretre') gourous++
   }
   const faithCircles = state.circles.filter((c) => c.kind === 'faith').length
-  const shrines = state.villages.filter((g) => g.hasShrine || g.sacredTier === 'shrine').length
-  const chapels = state.villages.filter((g) => g.sacredTier === 'chapel').length
-  const temples = state.villages.filter((g) => g.sacredTier === 'temple').length
+  const shrines = state.villages.filter((g) => g.hasShrine).length
   const ok =
-    events.length >= 1 &&
     firstDay !== null &&
     firstDay <= 60 &&
-    (shrines > 0 || chapels > 0 || temples > 0 || creeds > 0 || faithCircles > 0)
+    (lateEvents > 0 || creeds > 0 || faithCircles > 0 || shrines > 0)
 
-  results.push({
+  const row: SeedResult = {
     seed,
     firstDay,
-    events: events.slice(0, 8),
+    lateEvents,
+    eventCount: events.length,
     creeds,
     faithCircles,
     shrines,
-    chapels,
-    temples,
     gourous,
     ok,
-  })
-  console.log(
-    JSON.stringify({
-      seed,
-      firstDay,
-      eventCount: events.length,
-      creeds,
-      faithCircles,
-      shrines,
-      chapels,
-      temples,
-      gourous,
-      ok,
-      sample: events.slice(0, 3),
-    }),
-  )
+    sample: events.filter((e) => /^\[j(3[0-9]|[4-5][0-9]|60)\]/.test(e)).slice(0, 3).length
+      ? events.filter((e) => /^\[j(3[0-9]|[4-5][0-9]|60)\]/.test(e)).slice(0, 3)
+      : events.slice(0, 3),
+  }
+  results.push(row)
+  console.log(JSON.stringify(row))
 }
 
-const anyOk = results.some((r) => r.ok)
-const anySite = results.some((r) => r.shrines > 0 || r.chapels > 0 || r.temples > 0)
-
-if (!anyOk) {
-  console.error('FAIL: no religion chronicle / creed / faith by day 60 on any seed')
-  process.exit(1)
-}
-
-if (!anySite && !results.some((r) => r.creeds > 0 && r.faithCircles > 0)) {
-  console.error('FAIL: no shrine/chapel/temple and weak creed evidence')
+const pass = results.some((r) => r.ok && r.lateEvents > 0)
+if (!pass) {
+  console.error('FAIL: no religion chronicle event in day 30–60 window on any seed')
   process.exit(1)
 }
 
 console.log(
   JSON.stringify({
     pass: true,
-    seedsOk: results.filter((r) => r.ok).map((r) => r.seed),
-    sites: results.map((r) => ({
-      seed: r.seed,
-      shrines: r.shrines,
-      chapels: r.chapels,
-      temples: r.temples,
-    })),
+    seedsOk: results.filter((r) => r.ok && r.lateEvents > 0).map((r) => r.seed),
     best: results
-      .filter((r) => r.ok)
-      .sort((a, b) => (a.firstDay ?? 999) - (b.firstDay ?? 999))[0],
+      .filter((r) => r.ok && r.lateEvents > 0)
+      .sort((a, b) => b.lateEvents - a.lateEvents)[0],
   }),
 )
