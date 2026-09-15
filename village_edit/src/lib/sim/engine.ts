@@ -331,7 +331,10 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
 
   for (const v of villagers) {
     const air = sampleTempC(climate, v.x, v.y)
-    const cold01 = Math.min(1, coldStress01(air) + biomeColdBias(sampleBiome(climate, v.x, v.y)) * 0.85)
+    const airCold = coldStress01(air)
+    const biomeCold = biomeColdBias(sampleBiome(climate, v.x, v.y))
+    // Match outdoorCold01 gating — warm temperate air must not inflate starter clo need.
+    const cold01 = Math.min(1, airCold + (airCold < 0.15 ? 0 : biomeCold * 0.4))
     seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng, { cold01 })
     // Soft heat_wood seed so charcoal / bronze chains aren't knowledge-locked forever.
     if (rng() < 0.55) {

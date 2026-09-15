@@ -464,14 +464,117 @@ function sowingSeason(season: Season, tempC = 12): boolean {
   if (cropTempFactor(tempC) < 0.35) return false
   return season === 'spring' || season === 'summer' || (season === 'autumn' && tempC > 14)
 }
-/** Fortnight 1 only — richer forage so Nouveau monde bags refill before first harvest. */
+/** Fortnight 1 — founding pantry / sow urgency spike. */
 function earlyFoundingWeeks(state: SimState): boolean {
   return state.tick < TICKS_PER_DAY * 14
 }
+/** Soft food ramp through day 28 — avoids the day-15 cliff after fortnight boost ends. */
+function earlyFoodRampDays(state: SimState): number {
+  return state.tick / TICKS_PER_DAY
+}
 function forageYieldAmt(state: SimState): number {
   const ripe = berriesRipeIn(state.season)
-  if (earlyFoundingWeeks(state)) return ripe ? 4 : 2
+  const day = earlyFoodRampDays(state)
+  if (day < 14) return ripe ? 4 : 2
+  // Taper: day 14–28 still above peacetime so bags refill between harvests.
+  if (day < 28) return ripe ? 3 : 2
   return ripe ? 2 : 1
+}
+/** Pantry target — stays elevated past week 2 so gather/sow don't fall off a cliff. */
+function foodStockTarget(state: SimState, season: Season): number {
+  const day = earlyFoodRampDays(state)
+  if (day < 14) return Math.max(FOOD_TARGET + 4, 8)
+  if (day < 28) return Math.max(FOOD_TARGET + 2, 6)
+  if (season === 'autumn') return WINTER_STOCK_TARGET + 4
+  if (season === 'winter') return WINTER_STOCK_TARGET * 0.85
+  return FOOD_TARGET
+}
+/** Empty bag + low hunger — must seek food, not idle/rest (except brief night sleep). */
+function bagEmptyFoodCrisis(v: Villager): boolean {
+  return !bestEdible(v) && (v.hunger < SURVIVAL_TIGHT_HUNGER || v.starveTimer > 0)
+}
+/**
+ * Hard assign gatherFood / takeFromChest / harvest / fish when the bag is empty.
+ * Used from survival interrupts so softmax idle/rest cannot win mid-starve.
+ */
+function tryAssignFoodSeek(state: SimState, v: Villager): boolean {
+  if (bestEdible(v)) return false
+  const grid = state.grid
+  const searchR = Math.max(LOCAL_SENSE_R, curiosityRadius(v, SHORT_BLIND_R))
+
+  if (
+    v.hasChest &&
+    v.chestInventory &&
+    edibleValue(v.chestInventory) > 0
+  ) {
+    const store = storeSpot(v.furnitureQueue, v.homeLayout)
+    setTask(v, 'takeFromChest', store?.x ?? v.chestX, store?.y ?? v.chestY)
+    noteChosenAction(v, 'takeFromChest', 'crise faim — garde-manger')
+    return true
+  }
+
+  if (v.fieldX !== -1) {
+    const ripe = findNearest(
+      grid,
+      v.fieldX,
+      v.fieldY,
+      FIELD_RADIUS + 1,
+      (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_RIPE,
+    )
+    if (ripe) {
+      setTask(v, 'harvestWheat', ripe.x, ripe.y)
+      noteChosenAction(v, 'harvestWheat', 'crise faim — moisson')
+      return true
+    }
+    if (v.hunger < 1.4 || v.starveTimer > 4) {
+      const green = findNearest(
+        grid,
+        v.fieldX,
+        v.fieldY,
+        FIELD_RADIUS + 1,
+        (x, y) => getTerrain(grid, x, y) === WHEAT && grid.amount[y * grid.width + x] >= WHEAT_SPROUT,
+      )
+      if (green) {
+        setTask(v, 'harvestWheat', green.x, green.y)
+        noteChosenAction(v, 'harvestWheat', 'crise faim — récolte précoce')
+        return true
+      }
+    }
+  }
+
+  const bush =
+    findNearbyTerrain(grid, v.x, v.y, searchR, BUSH) ??
+    findNearbyTerrain(grid, v.x, v.y, Math.round(searchR * 1.6), BUSH)
+  if (bush) {
+    setTask(v, 'gatherFood', bush.x, bush.y)
+    noteChosenAction(v, 'gatherFood', 'crise faim — cueillette')
+    return true
+  }
+
+  const fishBoat = boatOf(state, v)
+  let spot: { x: number; y: number } | null = null
+  if (fishBoat) {
+    spot = v.embarked
+      ? findOpenWater(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, 2) ??
+        findNearbyTerrain(grid, fishBoat.x, fishBoat.y, OPEN_WATER_RADIUS, WATER)
+      : dockBesideBoat(grid, fishBoat)
+  } else {
+    spot = findNearbyShore(grid, v.x, v.y, FISH_RADIUS)
+  }
+  if (spot) {
+    setTask(v, 'fish', spot.x, spot.y)
+    noteChosenAction(v, 'fish', 'crise faim — pêche')
+    return true
+  }
+
+  // Last resort: walk toward distant bush / shore — still food-seeking, not plaza idle.
+  const farBush = findNearbyTerrain(grid, v.x, v.y, 70, BUSH)
+  if (farBush) {
+    setTask(v, 'gatherFood', farBush.x, farBush.y)
+    noteChosenAction(v, 'gatherFood', 'crise faim — recherche buissons')
+    return true
+  }
+  return false
 }
 function growthRate(season: Season): number {
   if (season === 'spring') return 1.25
@@ -583,9 +686,9 @@ function outdoorCold01(state: SimState, v: Villager): number {
   const temp = sampleTempC(state.climate, v.x, v.y)
   const biomeCold = biomeColdBias(sampleBiome(state.climate, v.x, v.y))
   const airCold = coldStress01(temp)
-  // Only layer biome chill when air is already cool — otherwise temperate forests
-  // with residual coldBias burn calories like tundra at 20 °C.
-  return Math.min(1, airCold + (atHomeShelter(v) || airCold < 0.08 ? 0 : biomeCold * 0.55))
+  // Only layer biome chill in real cool air — temperate residual coldBias must not
+  // turn mild spring nights into tundra calorie/HP burn.
+  return Math.min(1, airCold + (atHomeShelter(v) || airCold < 0.15 ? 0 : biomeCold * 0.4))
 }
 
 /** Clothing/leather + hearth vs local air temperature (°C) — clo × surface corporelle. */
@@ -4485,11 +4588,13 @@ export function tickVillager(state: SimState, v: Villager, rng: () => number) {
         v,
         cold * (night ? 0.022 : 0.01) * cloMul + heat * 0.014 + rain * 0.008,
       )
-      // Hypothermia: health only when underdressed in real cold — cloaked folk mostly burn food.
-      const exposure = cold * deficit * (night ? 1.4 : 1)
-      if (exposure > 0.22 && (state.tick + v.id * 7) % 3 === 0) {
-        if (deficit > 0.35) {
-          v.health -= 0.45 + exposure * 0.85 + deficit * 0.35
+      // Hypothermia: HP only in hard cold while underdressed — cloaked folk burn food.
+      // Founding fortnight: stamina/hunger only (temperate starts must not wipe on chill).
+      const exposure = cold * deficit * (night ? 1.25 : 1)
+      const earlyColdGrace = state.tick < TICKS_PER_DAY * 14
+      if (!earlyColdGrace && cold > 0.28 && exposure > 0.34 && (state.tick + v.id * 7) % 4 === 0) {
+        if (deficit > 0.45) {
+          v.health -= 0.28 + exposure * 0.55 + deficit * 0.22
           if (v.health <= 0) {
             v.alive = false
             state.deaths += 1
