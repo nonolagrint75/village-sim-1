@@ -42,25 +42,63 @@ const ORTHO = [
   [0, -1],
 ] as const
 
+/** Real mining needs stone or iron — bare hands / wood spears chip nothing useful. */
+export function canMineRock(tier: ToolTier): boolean {
+  return tier === 'stone' || tier === 'iron'
+}
+
 export function digHpPerHit(tier: ToolTier): number {
   if (tier === 'iron') return 3
   if (tier === 'stone') return 2
-  if (tier === 'wood') return 1
-  return 1
+  return 0
 }
 
 export function digStoneYield(tier: ToolTier): number {
   if (tier === 'iron') return 3
   if (tier === 'stone') return 2
-  return 1
+  return 0
 }
 
 export function digIronYield(tier: ToolTier): number {
-  return tier === 'iron' ? 3 : 2
+  if (tier === 'iron') return 3
+  if (tier === 'stone') return 2
+  return 0
 }
 
 export function digGoldYield(tier: ToolTier): number {
-  return tier === 'iron' ? 2 : 1
+  if (tier === 'iron') return 2
+  if (tier === 'stone') return 1
+  return 0
+}
+
+/** Sum of local mountain/tunnel deposits — profession / dig targeting. */
+export function localOreRichness(grid: WorldGrid, cx: number, cy: number, radius: number): number {
+  let sum = 0
+  const r2 = radius * radius
+  const w = grid.width
+  const h = grid.height
+  for (let y = cy - radius; y <= cy + radius; y++) {
+    if (y < 0 || y >= h) continue
+    const row = y * w
+    const dy = y - cy
+    for (let x = cx - radius; x <= cx + radius; x++) {
+      if (x < 0 || x >= w) continue
+      const dx = x - cx
+      if (dx * dx + dy * dy > r2) continue
+      const i = row + x
+      const t = grid.terrain[i]
+      if (t !== MOUNTAIN && t !== TUNNEL) continue
+      sum +=
+        grid.ironDeposit[i] +
+        grid.goldDeposit[i] * 2.2 +
+        grid.copperDeposit[i] * 0.7 +
+        grid.tinDeposit[i] * 0.9 +
+        grid.silverDeposit[i] * 1.8 +
+        grid.coalDeposit[i] * 0.5 +
+        grid.leadDeposit[i] * 0.4
+    }
+  }
+  return sum
 }
 
 export function digStaminaCost(tier: ToolTier): number {

@@ -474,7 +474,7 @@ export function canPracticeCraft(
         skill > 0.15 ||
         craftMix > 0.1 ||
         mind.preferences.crafting > 0.4 ||
-        v.toolTier === 'none'
+        mind.preferences.woodwork > 0.45
       )
     case 'jewelry':
       return (
