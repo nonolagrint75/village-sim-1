@@ -1729,7 +1729,7 @@ function bestEdible(v: Villager): ResourceType | null {
   return bestEdibleIn(v.inventory)
 }
 
-/** Prefer table when housed — travel time is intentional (no teleport meals). */
+/** Table only when nearby & not urgently hungry — survival meals eat in place. */
 function eatTarget(v: Villager): { x: number; y: number } {
   // Hungry / starving: eat where you stand — distant table walks caused bag-full starve deaths.
   if (v.hunger < EAT_IN_PLACE || v.starveTimer > 0) return { x: Math.round(v.x), y: Math.round(v.y) }
@@ -2010,14 +2010,8 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
   const larder = edibleValue(v.inventory)
   const starving = (1 - v.hunger / HUNGER_MAX) * (1 - v.hunger / HUNGER_MAX)
   const village = state.villages.find((vg) => vg.id === v.villageId)
-  // Early colony: keep gathering past the peacetime pantry so bags don't empty mid-week 2.
-  const stockTarget = earlyFoundingWeeks(state)
-    ? Math.max(FOOD_TARGET + 4, 8)
-    : season === 'autumn'
-      ? WINTER_STOCK_TARGET + 4
-      : season === 'winter'
-        ? WINTER_STOCK_TARGET * 0.85
-        : FOOD_TARGET
+  // Use ramped pantry target — earlyFoundingWeeks alone cliffed gather at day 14.
+  const stockTarget = foodStockTarget(state, season)
   // Village granary pressure: low food surplus → stash harder before winter.
   const villageFoodGap =
     village && season !== 'summer'
@@ -2082,10 +2076,15 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
           ? starving * 140 + (2.3 - v.hunger) * 45
           : starving * 55
     if (eatUrge > 8) {
-      const table = eatSpot(v.furnitureQueue, v.homeLayout)
-      const eatX = table && v.hasHome ? table.x : v.hasTable ? v.tableX : v.x
-      const eatY = table && v.hasHome ? table.y : v.hasTable ? v.tableY : v.y
-      add('eat', eatX, eatY, eatUrge * (table || v.hasTable ? reach(v, eatX, eatY) : 1))
+      const tEat = eatTarget(v)
+      const nearTable =
+        (v.hasHome && eatSpot(v.furnitureQueue, v.homeLayout) != null) || v.hasTable
+      add(
+        'eat',
+        tEat.x,
+        tEat.y,
+        eatUrge * (nearTable && distance(v.x, v.y, tEat.x, tEat.y) <= 10 ? reach(v, tEat.x, tEat.y) : 1),
+      )
     }
   }
   if (
@@ -2662,13 +2661,15 @@ function chooseTask(state: SimState, v: Villager, rng: () => number) {
       if (veg) add('clearLand', veg.x, veg.y, (36 + p.ambition * 12) * reach(v, veg.x, veg.y))
       else if (bare) {
         const tFac = cropTempFactor(sampleTempC(state.climate, bare.x, bare.y))
-        // Stronger spring sow urge — fields were claimed but never sown under rest/social lock.
-        // Fortnight 1: push remaining bare cells so pioneer plots finish sowing fast.
-        const earlySow = earlyFoundingWeeks(state) ? 1.85 : 1
+        // Keep sow pressure through day 40 — fortnight cliff left fallow plots after pantry ran out.
+        const day = earlyFoodRampDays(state)
+        const earlySow = day < 14 ? 1.85 : day < 40 ? 1.45 : 1.15
+        const pantrySow = larder < stockTarget ? 1.35 : 1
         const sowUrge =
           (120 + (season === 'spring' ? 90 : 40) + p.ambition * 25 + (famine ? 50 : 0) + starving * 60) *
           Math.max(0.5, tFac) *
-          earlySow
+          earlySow *
+          pantrySow
         add('sowField', bare.x, bare.y, sowUrge * reach(v, bare.x, bare.y))
       }
     }
@@ -3516,7 +3517,7 @@ function executeTask(state: SimState, v: Villager, rng: () => number): boolean {
       if (rng() < 0.08) {
         remember(v, { kind: 'goodSpot', subjectId: null, x: task.targetX, y: task.targetY, tick: state.tick, weight: 0.6, emotion: 0.4 })
       }
-      const gatherTarget = earlyFoundingWeeks(state) ? Math.max(FOOD_TARGET + 4, 8) : FOOD_TARGET
+      const gatherTarget = foodStockTarget(state, state.season)
       return edibleValue(v.inventory) < gatherTarget
     }
     case 'clearLand': {
