@@ -7,3 +7,4 @@ release/
 Thumbs.db
 .env
 .env.local
+village_edit/sim_logs/*.json

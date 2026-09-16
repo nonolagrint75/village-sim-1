@@ -1,4 +1,6 @@
 import type { HouseDesign, StyleWeights } from './architecture'
+import type { BuildBlock, SpatialHomePlan } from './build/types'
+import type { ChunkStore } from './build/blockWorld'
 import type { SimCalendar } from './calendar'
 import type { ClimateState } from './climate'
 import type { BuildProject } from './construction'
@@ -80,6 +82,10 @@ export const CUPBOARD = 33
 export const CRADLE = 34
 export const LOOM = 35
 export const WASHING_TUB = 36
+/** Village well — drinkable outdoor water without a river. */
+export const WELL = 37
+/** Feu de place communal (réchauffe / rassemble). */
+export const PLAZA_FIRE = 38
 
 export type TerrainCode = number
 
@@ -89,6 +95,8 @@ export const CLAIM_PEN = 2
 export const CLAIM_FIELD = 3
 export const CLAIM_PATH = 4
 export const CLAIM_MILL = 5
+export const CLAIM_WELL = 6
+export const CLAIM_PLAZA_FIRE = 7
 
 export interface WorldGrid {
   width: number
@@ -122,6 +130,8 @@ export const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter']
 export type TaskKind =
   | 'idle'
   | 'eat'
+  /** Boire à la rive / cuve — hydratation. */
+  | 'drink'
   | 'gatherFood'
   | 'gatherWood'
   | 'clearLand'
@@ -137,6 +147,14 @@ export type TaskKind =
   | 'sewClothing'
   | 'tanHide'
   | 'buildHouse'
+  /** Aide un voisin sur son chantier (place un bloc de sa file). */
+  | 'helpBuild'
+  /** Apporte bois/pierre au chantier d’un autre. */
+  | 'haulForBuild'
+  /** Propriétaire riche : recrute un bâtisseur (accompte). */
+  | 'hireBuilder'
+  /** Forgeron / artisan : outils pour un chantier voisin. */
+  | 'assistCraftTools'
   | 'buildProject'
   | 'buildWorkbench'
   | 'buildChest'
@@ -154,6 +172,9 @@ export type TaskKind =
   | 'buildWall'
   | 'buildBridge'
   | 'buildMill'
+  | 'buildWell'
+  | 'buildPlazaFire'
+  | 'tendPlazaFire'
   | 'buildCart'
   | 'buildBoat'
   | 'buildPort'
@@ -184,6 +205,8 @@ export type TaskKind =
   | 'entertain'
   /** Conseil spirituel / guérison soft — gourou, guérisseur. */
   | 'counsel'
+  /** Prière / rite sur un lieu sacré émergent. */
+  | 'pray'
   /** Transmission de savoir-faire (apprentissage). */
   | 'teachCraft'
   /** Bois → charbon (si technique connue). */
@@ -251,6 +274,17 @@ export interface Personality {
   curiosity: number
 }
 
+/** État pathologique temporaire (T16). */
+export type IllnessKind = 'fever' | 'gut' | 'chill'
+
+export interface IllnessState {
+  kind: IllnessKind
+  /** Ticks restants. */
+  remaining: number
+  /** Intensité 0–1. */
+  severity: number
+}
+
 /** Génome compact (voir genetics.ts) — allèles QTL, pas de nucléotides. */
 export type Genome = Uint8Array
 
@@ -288,6 +322,22 @@ export interface Phenotype {
   hue: number
 }
 
+/**
+ * Grossesse multi-jours-sim — conception ≠ naissance.
+ * Traits enfant fixés à la conception ; naissance au `dueTick`.
+ */
+export interface Pregnancy {
+  partnerId: number
+  conceivedTick: number
+  dueTick: number
+  childSeed: number
+  genome: Genome
+  phenotype: Phenotype
+  motherId: number
+  fatherId: number
+  personality: Personality
+}
+
 export interface Villager {
   id: number
   seed: number
@@ -305,6 +355,11 @@ export interface Villager {
   marriageKind: MarriageKind | null
   /** Tick of marriage / pair-bond; 0 if never bonded. */
   marriedTick: number
+  /**
+   * Deuil : pas de remariage tant que `state.tick < mourningUntilTick`.
+   * 0 = pas en deuil.
+   */
+  mourningUntilTick: number
   /**
    * Soft stance: ambition / freedom / explorer → may refuse marriage.
    * Crystallised once, not re-rolled every tick.
@@ -329,10 +384,31 @@ export interface Villager {
   y: number
   health: number
   hunger: number
+  /**
+   * 0–4 hydratation (haut = rassasié d’eau). Drain plus rapide que la faim ;
+   * à 0, `thirstTimer` compte jusqu’à mort de soif.
+   */
+  thirst: number
   /** 0–4: walking / labor deplete; rest at home recovers. Low → slow / abandon hard work. */
   stamina: number
   starveTimer: number
+  /** Ticks à soif nulle avant mort (déshydratation). */
+  thirstTimer: number
+  /** Accumulation d’exposition au froid (hypothermie). */
+  coldExposure: number
+  /** Accumulation d’exposition à la chaleur (coup de chaleur). */
+  heatExposure: number
   healTimer: number
+  /**
+   * Dette de sommeil 0–4 (haut = privé de sommeil).
+   * Monte la nuit sans repos ; baisse en `rest` (surtout lit / nuit).
+   */
+  sleepDebt: number
+  /**
+   * Maladie active (durée + sévérité) — pénalités stamina/labeur ;
+   * dégâts HP seulement si sévère et prolongée.
+   */
+  illness: IllnessState | null
   inventory: Slot[]
   task: Task | null
   /** Interrupted non-critical job to resume after flee/fight (DF-style). */
@@ -350,6 +426,10 @@ export interface Villager {
   homeLayout: HouseLayout | null
   /** Pending / done furniture crafts for this household. */
   furnitureQueue: FurnitureJob[]
+  /** Dynamic construction AI plan (unique footprint; not a House01 template). */
+  homePlan: SpatialHomePlan | null
+  /** Progressive wall/floor/door/window cell placements. */
+  buildQueue: BuildBlock[]
   horseId: number | null
   mounted: boolean
   hasCart: boolean
@@ -393,6 +473,8 @@ export interface Villager {
   alive: boolean
   age: number
   reproCooldown: number
+  /** Grossesse multi-jours-sim ; null si non enceinte. */
+  pregnancy: Pregnancy | null
   /** Active generative BuildProject id, if any (see construction.ts). */
   activeProjectId: number | null
   /** Discovered techniques / recipes — generative tech, not a fixed tree. */
@@ -473,6 +555,19 @@ export interface Village {
   hasMill: boolean
   millX: number
   millY: number
+  /** Shared dug well — drink without walking to the river. */
+  hasWell: boolean
+  wellX: number
+  wellY: number
+  /** Circle/assembly agreed to dig — no personal wells. */
+  wellAgreed: boolean
+  /** Feu communal sur la place (réchauffe la nuit). */
+  hasPlazaFire: boolean
+  plazaFireX: number
+  plazaFireY: number
+  plazaFireAgreed: boolean
+  /** Tick jusqu’auquel le feu de place est allumé. */
+  plazaFireLitUntil: number
   hasPort: boolean
   portX: number
   portY: number
@@ -578,6 +673,13 @@ export interface SimStats {
   rumors: number
   leadingCircle: string | null
   leadingLegitimacy: number
+  /** Mean hunger among living (0–max). */
+  avgHunger: number
+  avgThirst: number
+  avgEdible: number
+  homeless: number
+  wells: number
+  plazaFires: number
 }
 
 /** Sparse chronicle flags — each fires at most once per world. */
@@ -586,6 +688,8 @@ export interface SimMilestones {
   firstPath: boolean
   firstRoad: boolean
   firstMill: boolean
+  firstWell: boolean
+  firstPlazaFire: boolean
   firstPort: boolean
   firstBoatVoyage: boolean
   firstBirth: boolean
@@ -647,6 +751,11 @@ export interface SimState {
   /** Emergent peoples (ethnogenesis) — never a preset ethnicity list. */
   ethnies: Ethnie[]
   nextEthnieId: number
+  /**
+   * Sparse block chunk store (16×16×H). Mirrors building cells beside 2D terrain.
+   * Place/remove marks dirty chunk keys for remesh; terrain remains render source of truth.
+   */
+  blocks: ChunkStore
 }
 
 export const WORLD_SIZE_MAX = 1200

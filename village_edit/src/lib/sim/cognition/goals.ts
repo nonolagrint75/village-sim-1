@@ -1,6 +1,7 @@
 import type { TaskKind, Villager } from '../types'
 import type { CognitiveGoal, CognitiveGoalId, CognitiveState, NeedPressures, PlanStub, ValueWeights } from './types'
 import { selfModelGoalBias } from './selfModel'
+import { MARRY_MIN_AGE, isInMourningTicks } from '../ages'
 
 const GOAL_LABELS_FR: Record<CognitiveGoalId, string> = {
   survive: 'survivre',
@@ -36,15 +37,25 @@ export function defaultGoal(v: Villager): CognitiveGoal {
 /** Map goal → short chain of existing tasks (HTN stub, 2–3 steps). */
 export function planForGoal(id: CognitiveGoalId): PlanStub | null {
   const chains: Partial<Record<CognitiveGoalId, TaskKind[]>> = {
-    home: ['gatherWood', 'clearLand', 'buildHouse', 'buildBed', 'buildTable', 'buildChest'],
-    survive: ['gatherFood', 'eat', 'buildChest'],
-    rest: ['tendHearth', 'placeCandle', 'rest'],
+    home: [
+      'gatherWood',
+      'clearLand',
+      'buildHouse',
+      'buildBed',
+      'buildHearth',
+      'buildTable',
+      'buildChest',
+      'buildBench',
+      'buildShelf',
+    ],
+    survive: ['drink', 'gatherFood', 'fish', 'sowField', 'harvestWheat', 'eat', 'buildChest'],
+    rest: ['tendHearth', 'placeCandle', 'rest', 'tendPlazaFire'],
     wealth: ['mineGold', 'mintCoins', 'tradeRun'],
-    security: ['lightTorch', 'gatherFuel', 'gatherWood', 'clearLand', 'buildProject'],
-    craft: ['gatherWood', 'buildWorkbench', 'craftLight', 'craftIronTool'],
-    family: ['gatherFood', 'giveFood', 'tendHearth', 'buildBed'],
+    security: ['lightTorch', 'gatherFuel', 'gatherWood', 'clearLand', 'buildPlazaFire', 'buildProject'],
+    craft: ['gatherWood', 'buildWorkbench', 'buildLoom', 'gatherStone', 'craftStoneSpear', 'craftIronTool'],
+    family: ['gatherFood', 'giveFood', 'tendHearth', 'buildBed', 'buildCradle'],
     mate: ['socialise', 'giveFood', 'buildBed'],
-    community: ['gatherWood', 'clearLand', 'buildProject'],
+    community: ['gatherWood', 'clearLand', 'buildWell', 'buildPlazaFire', 'buildProject'],
     revenge: ['confront'],
     explore: ['idle', 'fish'],
     migrate: ['idle', 'gatherWood', 'buildHouse'],
@@ -59,14 +70,15 @@ export function scoreGoals(
   needs: NeedPressures,
   values: ValueWeights,
   v: Villager,
-  extras: { migrateUrge: number; stress: number; loneliness: number },
+  extras: { migrateUrge: number; stress: number; loneliness: number; tick?: number },
   rng: () => number,
 ): CognitiveGoal[] {
   const noise = () => 0.85 + rng() * 0.3
+  const tick = extras.tick ?? 0
   const scored: CognitiveGoal[] = [
     {
       id: 'survive',
-      score: (needs.hunger * 3.2 + (v.health < 2.2 ? 1.8 : 0) + extras.stress * 0.8) * noise(),
+      score: (needs.hunger * 3.2 + needs.thirst * 3.4 + (v.health < 2.2 ? 1.8 : 0) + extras.stress * 0.8) * noise(),
       commitment: 0,
       targetId: null,
       targetX: v.x,
@@ -78,6 +90,7 @@ export function scoreGoals(
       score:
         (needs.fatigue * 2.4 +
           (v.stamina < 1.2 ? 1.5 : 0) +
+          (Number.isFinite(v.sleepDebt) ? v.sleepDebt * 0.85 : 0) +
           (v.hasHome ? needs.shelter * 1.5 : 0) +
           needs.warmth * 1.1) *
         noise(),
@@ -89,7 +102,12 @@ export function scoreGoals(
     {
       id: 'home',
       score:
-        ((!v.hasHome ? needs.shelter * 2.8 : needs.shelter * 0.35) + values.security * 0.6) * noise(),
+        ((!v.hasHome ? needs.shelter * 2.8 : needs.shelter * 0.35) +
+          values.security * 0.6 +
+          // Keep furnishing the shell attractive after walls go up.
+          (v.hasHome && v.furnitureQueue.some((j) => !j.done) ? 1.35 : 0) +
+          (v.hasHome && v.bedCount === 0 ? 0.85 : 0)) *
+        noise(),
       commitment: 0,
       targetId: null,
       targetX: v.x,
@@ -114,7 +132,10 @@ export function scoreGoals(
     {
       id: 'mate',
       score:
-        v.spouseId === null && !v.refusesMarriage && v.age >= 220
+        v.spouseId === null &&
+        !v.refusesMarriage &&
+        v.age >= MARRY_MIN_AGE &&
+        !isInMourningTicks(v.mourningUntilTick ?? 0, tick)
           ? (values.family * 1.1 + needs.social * 0.7 + (v.ambition === 'family' ? 0.55 : 0) - values.freedom * 0.4) *
             noise()
           : 0,
@@ -217,6 +238,7 @@ export function pickGoal(mind: CognitiveState, candidates: CognitiveGoal[], pers
 /** Survival / interrupt tasks that may break a plan without counting as failure. */
 const PLAN_INTERRUPTS: ReadonlySet<TaskKind> = new Set([
   'eat',
+  'drink',
   'flee',
   'fight',
   'defend',
@@ -233,23 +255,57 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
   const table: Record<CognitiveGoalId, Partial<Record<TaskKind, number>>> = {
     survive: {
       eat: 3.2,
+      drink: 3.4,
       gatherFood: 2.4,
       fish: 1.8,
-      harvestWheat: 1.7,
+      sowField: 1.9,
+      harvestWheat: 1.85,
       takeFromChest: 2.2,
       rest: 1.3,
       buildChest: 1.6,
       lightTorch: 1.5,
       tendHearth: 1.4,
       gatherFuel: 1.35,
+      buildPlazaFire: 1.6,
+      tendPlazaFire: 1.55,
+      sewClothing: 1.45,
     },
-    rest: { rest: 3.0, tendHearth: 2.2, placeCandle: 1.8, takeFromChest: 1.2, eat: 1.4, socialise: 0.55 },
-    home: { buildHouse: 3.0, gatherWood: 1.5, clearLand: 2.4, buildBed: 1.4, buildChest: 1.2, buildTable: 1.3, buildHearth: 1.6, rest: 1.8 },
-    wealth: { tradeRun: 2.2, mineGold: 2.0, mintCoins: 1.8, buyMaterial: 1.4, buildCart: 1.4, buildPort: 1.3, mineTunnel: 1.35 },
-    family: { buildHouse: 1.8, buildBed: 2.0, buildTable: 1.35, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4, tendHearth: 1.5, placeCandle: 1.3 },
-    mate: { socialise: 2.4, giveFood: 1.6, buildBed: 1.3, buildHouse: 1.2, buildTable: 1.15 },
-    status: { buildHouse: 1.5, buildProject: 1.9, buildWall: 1.5, buildPort: 1.35, buildMill: 1.3, craftIronTool: 1.5, gatherWood: 1.35, clearLand: 1.4, buildTable: 1.2 },
-    community: { socialise: 2.0, giveFood: 1.8, defend: 1.8, buildWall: 1.6, buildProject: 1.55, buildMill: 1.35, buildBridge: 1.3, clearLand: 1.35, gatherWood: 1.3 },
+    rest: {
+      rest: 3.0,
+      tendHearth: 2.2,
+      placeCandle: 1.8,
+      takeFromChest: 1.2,
+      eat: 1.4,
+      drink: 1.5,
+      tendPlazaFire: 1.7,
+      socialise: 0.55,
+    },
+    home: {
+      // After shell close, craft furniture before mopping leftover floors/windows.
+      buildBed: 3.2,
+      buildHearth: 3.0,
+      buildTable: 2.8,
+      buildChest: 2.6,
+      buildWorkbench: 2.4,
+      buildBench: 2.0,
+      buildStool: 1.7,
+      buildShelf: 1.9,
+      buildCupboard: 1.85,
+      buildCradle: 2.1,
+      buildLoom: 1.8,
+      buildWashingTub: 1.6,
+      buildHouse: 1.55,
+      helpBuild: 1.4,
+      haulForBuild: 1.35,
+      gatherWood: 1.85,
+      clearLand: 1.6,
+      rest: 1.8,
+    },
+    wealth: { tradeRun: 2.2, mineGold: 2.0, mintCoins: 1.8, buyMaterial: 1.4, buildCart: 1.4, buildPort: 1.3, mineTunnel: 1.35, hireBuilder: 1.3 },
+    family: { buildHouse: 1.8, helpBuild: 1.7, haulForBuild: 1.5, buildBed: 2.0, buildTable: 1.35, gatherFood: 1.35, giveFood: 1.5, socialise: 1.4, tendHearth: 1.5, placeCandle: 1.3 },
+    mate: { socialise: 2.4, giveFood: 1.6, buildBed: 1.3, buildHouse: 1.2, helpBuild: 1.25, buildTable: 1.15 },
+    status: { buildHouse: 1.5, buildProject: 1.9, buildWall: 1.5, buildPort: 1.35, buildMill: 1.3, craftIronTool: 1.5, gatherWood: 1.35, clearLand: 1.4, buildTable: 1.2, hireBuilder: 1.4, helpBuild: 1.25 },
+    community: { socialise: 2.0, giveFood: 1.8, defend: 1.8, helpBuild: 2.1, haulForBuild: 1.9, assistCraftTools: 1.55, buildWall: 1.6, buildProject: 1.55, buildMill: 1.35, buildWell: 1.45, buildPlazaFire: 1.4, tendPlazaFire: 1.35, buildBridge: 1.3, clearLand: 1.35, gatherWood: 1.3 },
     explore: { idle: 1.5, tameHorse: 1.4, fish: 1.15, tradeRun: 1.25, mineTunnel: 1.2, lightTorch: 1.35 },
     security: {
       flee: 2.5,
@@ -258,7 +314,8 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       buildWall: 2.0,
       buildProject: 1.7,
       craftSpear: 1.5,
-      craftStoneSpear: 1.6,
+      gatherStone: 1.55,
+      craftStoneSpear: 1.7,
       craftIronTool: 1.7,
       rest: 1.1,
       gatherWood: 1.4,
@@ -273,7 +330,8 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       buildWorkbench: 2,
       buildTable: 1.25,
       craftSpear: 1.5,
-      craftStoneSpear: 1.6,
+      gatherStone: 1.75,
+      craftStoneSpear: 1.85,
       craftIronTool: 1.8,
       craftGear: 1.85,
       craftLight: 2.1,
@@ -282,7 +340,7 @@ export function goalTaskModifier(mind: CognitiveState, kind: TaskKind, targetId:
       tanHide: 1.5,
       grindFlour: 1.4,
       bakeBread: 1.4,
-      mineTunnel: 1.4,
+      mineTunnel: 1.55,
     },
     revenge: { confront: 3.0, steal: 1.3, fight: 1.4, socialise: 0.75 },
     migrate: { idle: 2.2, tradeRun: 1.8, tameHorse: 1.5, buildHouse: 1.6, gatherWood: 1.4, clearLand: 1.35, buildProject: 1.45, lightTorch: 1.4 },
@@ -327,6 +385,33 @@ export function advancePlan(mind: CognitiveState, completedKind: TaskKind): void
   if (mind.plan.steps[mind.plan.stepI] === completedKind) {
     mind.plan.stepI += 1
     if (mind.plan.stepI >= mind.plan.steps.length) mind.plan = null
+  }
+}
+
+/**
+ * Exterior walls done → jump past gather/clear/buildHouse so furniture craft is the active HTN step.
+ */
+export function advanceHomePlanPastShell(mind: CognitiveState): void {
+  if (!mind.plan || mind.plan.goalId !== 'home') {
+    // Ensure a furniture-first plan exists once the shell is livable.
+    mind.plan = {
+      goalId: 'home',
+      steps: ['buildBed', 'buildHearth', 'buildTable', 'buildChest', 'buildWorkbench'],
+      stepI: 0,
+    }
+    return
+  }
+  const skip = new Set<TaskKind>(['gatherWood', 'clearLand', 'buildHouse'])
+  while (mind.plan && skip.has(mind.plan.steps[mind.plan.stepI]!)) {
+    mind.plan.stepI += 1
+    if (mind.plan.stepI >= mind.plan.steps.length) {
+      mind.plan = {
+        goalId: 'home',
+        steps: ['buildBed', 'buildHearth', 'buildTable', 'buildChest', 'buildWorkbench'],
+        stepI: 0,
+      }
+      return
+    }
   }
 }
 

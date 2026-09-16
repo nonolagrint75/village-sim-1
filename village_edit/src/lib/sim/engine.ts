@@ -1,4 +1,5 @@
 import { HOUSE_SHAPES } from './architecture'
+import { createBlockWorld } from './build'
 import {
   tickCombat,
   tickFamine,
@@ -18,14 +19,14 @@ import {
 import { tickMarketPrices, tickUrbanNetwork } from './commerce'
 import { makeHorse } from './horses'
 import { createEmptyEquipment, seedStarterKit } from './equipment'
-import { addToInventory, countOf, createInventory } from './inventory'
+import { addToInventory, countOf, createInventory, edibleValue } from './inventory'
 import {
   applyGeneticPersonalityBias,
   createFounderGenome,
   expressPhenotype,
 } from './genetics'
 import { seedFounderKin, tickAncestorMemory, tickLineages } from './family'
-import { tickAdoption, tickMarriage } from './marriage'
+import { clearMarriageCaches, tickAdoption, tickMarriage } from './marriage'
 import { generateName, generatePersonality } from './personality'
 import { compactIndex } from './resourceIndex'
 import { resetPathBudget } from './pathfinding'
@@ -62,51 +63,69 @@ import {
 } from './types'
 import { createClimate, tickClimate } from './climate'
 import { applySimConfig, type SimConfigInput } from './simConfig'
-import { createWorldGrid, makeRng, randomWalkableTile, randomWalkableTileNear, resourceDensity } from './world'
+import { createWorldGrid, ensureLocalBerryPatch, ensureLocalSpring, ensureLocalTimberStand, findNearbyShore, makeRng, randomWalkableTile, randomWalkableTileNear, resourceDensity } from './world'
+import { FOUNDER_AGE_MIN, FOUNDER_AGE_SPAN } from './ages'
 
 const GROUP_SPREAD = 14
 const HORSE_HERDS = 3
-/** A small starting purse so the coin economy (buying materials, minting, trade) isn't stuck at zero forever waiting for the first lucky gold find. */
-const STARTER_COINS = 4
-/** Rations de fondation — sans ça, BMR + cueillette race → morts de faim dès les premiers jours-sim. */
-const STARTER_FOOD = 5
-/** Bois de départ — lance + premiers murs / établi sans bloquer sur la cueillette seule. */
-const STARTER_WOOD = 5
+/** Lean purse — just enough to learn coins exist; trade must earn the rest. */
+const STARTER_COINS = 1
+/** Mix frais + pain (se conserve) — trop de baies pourrissent vers j5 ; privilégier le pain. */
+const STARTER_FOOD = 4
+const STARTER_BREAD = 12
 /**
- * Âge tick des fondateurs : adultes (CHILD_AGE≈220, ELDER_AGE≈800).
- * age=0 les traitait comme enfants pendant ~3 jours-sim.
+ * No free construction timber — walls/floors/furniture wood must be chopped first.
+ * (Stone is never gifted either.)
  */
-const FOUNDER_AGE_MIN = 280
-const FOUNDER_AGE_SPAN = 420
+const STARTER_WOOD = 0
 
 function newVillagerInventory() {
-  // 8 slots: food/coin/wood + gather extras (resin, herbs…) without choking craft inputs.
+  // 8 slots: food/coin + gather extras (resin, herbs…) without choking craft inputs.
   const inv = createInventory(8)
   addToInventory(inv, 'coin', STARTER_COINS)
-  addToInventory(inv, 'food', STARTER_FOOD)
-  addToInventory(inv, 'wood', STARTER_WOOD)
+  // Stamp spoil clocks at spawn so berries age from day 0 (not first spoil check).
+  addToInventory(inv, 'food', STARTER_FOOD, 0)
+  addToInventory(inv, 'bread', STARTER_BREAD, 0)
+  if (STARTER_WOOD > 0) addToInventory(inv, 'wood', STARTER_WOOD)
+  addToInventory(inv, 'wheat', 2, 0)
   return inv
 }
 
-const FOUNDING_SITE_CANDIDATES = 18
+const FOUNDING_SITE_CANDIDATES = 28
 const FOUNDING_SITE_RADIUS = 70
+/** Eau potable à portée de marche pour un camp fondateur. */
+const FOUNDING_WATER_R = 26
 
 /**
- * A founding village needs food and building material nearby to survive its first winters. On a
- * large map a purely random spot can land in a genuine desert far from any bush, tree or stone,
- * dooming that group before it starts — so instead of one random tile, sample a wide batch and
- * keep the one with the best combined resource density around it. This only runs once per
- * founding group at world creation, so a generous candidate count costs nothing at runtime.
+ * Camps fondateurs : eau d’abord, puis bois/pierre. Ne plus maximiser les buissons
+ * (ça plaçait les groupes dans des tapis de baies loin des rivières → mort de soif).
  */
 function pickFoundingSite(grid: ReturnType<typeof createWorldGrid>, rng: () => number): { x: number; y: number } {
   let best: { x: number; y: number } | null = null
   let bestScore = -Infinity
   for (let i = 0; i < FOUNDING_SITE_CANDIDATES; i++) {
     const candidate = randomWalkableTile(grid, rng)
+    const shore = findNearbyShore(grid, candidate.x, candidate.y, FOUNDING_WATER_R + 8)
+    const waterDist = shore
+      ? Math.hypot(shore.x - candidate.x, shore.y - candidate.y)
+      : FOUNDING_WATER_R + 40
+    const waterScore =
+      waterDist <= FOUNDING_WATER_R
+        ? 18 - waterDist * 0.35
+        : waterDist <= FOUNDING_WATER_R + 8
+          ? 4
+          : -22
+    // Prefer open plains: lightly reward a few bushes, penalize berry carpets.
+    // Timber is required — no free starter wood, so camps without trees softlock.
+    const bushNear = resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS)
+    const treeNear = resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS)
     const score =
-      resourceDensity(grid, candidate.x, candidate.y, 'bush', FOUNDING_SITE_RADIUS) * 2 +
-      resourceDensity(grid, candidate.x, candidate.y, 'tree', FOUNDING_SITE_RADIUS) +
-      resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.5
+      waterScore +
+      treeNear * 2.4 +
+      (treeNear < 3 ? -30 : 0) +
+      resourceDensity(grid, candidate.x, candidate.y, 'stone', FOUNDING_SITE_RADIUS) * 0.55 +
+      Math.min(bushNear, 4) * 0.15 -
+      Math.max(0, bushNear - 5) * 1.2
     if (score > bestScore) {
       bestScore = score
       best = candidate
@@ -121,6 +140,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   resetPoliticsCaches()
   resetCognitionCaches()
   resetEthnosCaches()
+  clearMarriageCaches()
   setRememberBridge(onRemember)
   const grid = createWorldGrid(seed)
   const climate = createClimate(grid, seed)
@@ -131,6 +151,12 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
   const groupSpread = Math.max(10, Math.round(GROUP_SPREAD * (cfg.worldSize / 1000)))
 
   const groupCenters = Array.from({ length: foundingGroups }, () => pickFoundingSite(grid, rng))
+  // Guarantee drinkable shore, forage, and timber (wood is farmed — never gifted).
+  for (const c of groupCenters) {
+    ensureLocalSpring(grid, c.x, c.y, FOUNDING_WATER_R)
+    ensureLocalBerryPatch(grid, c.x, c.y, rng, 7)
+    ensureLocalTimberStand(grid, c.x, c.y, rng, 12)
+  }
 
   const villagers: Villager[] = []
   for (let i = 0; i < cfg.initialVillagers; i++) {
@@ -150,6 +176,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       spouseId: null,
       marriageKind: null,
       marriedTick: 0,
+      mourningUntilTick: 0,
       refusesMarriage: false,
       adoptiveParentIds: [],
       personality,
@@ -163,11 +190,17 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       phenotype,
       x: spot.x,
       y: spot.y,
-      health: 4,
+      health: 6,
       hunger: 4,
+      thirst: 4,
       stamina: 4,
       starveTimer: 0,
+      thirstTimer: 0,
+      coldExposure: 0,
+      heatExposure: 0,
       healTimer: 0,
+      illness: null,
+      sleepDebt: 0,
       inventory: newVillagerInventory(),
       task: null,
       savedTask: null,
@@ -180,6 +213,8 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       house: null,
       homeLayout: null,
       furnitureQueue: [],
+      homePlan: null,
+      buildQueue: [],
       horseId: null,
       mounted: false,
       hasCart: false,
@@ -218,15 +253,16 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       alive: true,
       age: FOUNDER_AGE_MIN + Math.floor(rng() * FOUNDER_AGE_SPAN),
       reproCooldown: 0,
+      pregnancy: null,
       activeProjectId: null,
       knowledge: [],
     })
   }
 
   for (const v of villagers) {
-    seedStarterKit(v, 0.2 + rng() * 0.35, v.profession, rng)
+    seedStarterKit(v, 0.04 + rng() * 0.16, v.profession, rng)
     // Soft heat_wood seed so charcoal / bronze chains aren't knowledge-locked forever.
-    if (rng() < 0.55) {
+    if (rng() < 0.18) {
       v.knowledge.push({
         id: 'heat_wood',
         labelFr: 'chauffer le bois',
@@ -269,7 +305,22 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
 
   const wolves: Wolf[] = []
   for (let i = 0; i < cfg.wolfCount; i++) {
-    const spot = randomWalkableTile(grid, rng)
+    // Keep packs away from founding camps — day-1 wolf ambushes wiped pioneers.
+    let spot = randomWalkableTile(grid, rng)
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const candidate = randomWalkableTile(grid, rng)
+      let nearCamp = false
+      for (const c of groupCenters) {
+        if (Math.hypot(candidate.x - c.x, candidate.y - c.y) < 70) {
+          nearCamp = true
+          break
+        }
+      }
+      if (!nearCamp) {
+        spot = candidate
+        break
+      }
+    }
     wolves.push({
       id: nextId++,
       x: spot.x,
@@ -314,6 +365,8 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
       firstPath: false,
       firstRoad: false,
       firstMill: false,
+      firstWell: false,
+      firstPlazaFire: false,
       firstPort: false,
       firstBoatVoyage: false,
       firstBirth: false,
@@ -339,6 +392,7 @@ export function createSimulation(seed = 1, configInput?: SimConfigInput): SimSta
     nextLanguageId: 1,
     ethnies: [],
     nextEthnieId: 1,
+    blocks: createBlockWorld(grid.width, grid.height),
   }
   seedFounderKin(state, villagers, rng)
   seedFounderEthnos(state, villagers, rng)
@@ -474,6 +528,12 @@ export function computeStats(state: SimState): SimStats {
   let naturalCover = 0
   let villagers = 0
   let wolves = 0
+  let hungerSum = 0
+  let thirstSum = 0
+  let edibleSum = 0
+  let homeless = 0
+  let wells = 0
+  let plazaFires = 0
   const professions: Record<Profession, number> = {
     none: 0,
     forager: 0,
@@ -504,6 +564,8 @@ export function computeStats(state: SimState): SimStats {
   for (const vg of state.villages) {
     if (vg.hasMill) mills++
     if (vg.hasPort) ports++
+    if (vg.hasWell) wells++
+    if (vg.hasPlazaFire) plazaFires++
     tradeRunsTotal += vg.tradeRuns
     naturalCover += vg.naturalCover
   }
@@ -511,6 +573,10 @@ export function computeStats(state: SimState): SimStats {
   for (const v of state.villagers) {
     if (!v.alive) continue
     villagers++
+    hungerSum += Number.isFinite(v.hunger) ? v.hunger : 0
+    thirstSum += Number.isFinite(v.thirst) ? v.thirst : 0
+    edibleSum += edibleValue(v.inventory)
+    if (!v.hasHome) homeless++
     totalCoins += countOf(v.inventory, 'coin')
     totalBread += countOf(v.inventory, 'bread')
     professions[v.profession] += 1
@@ -522,7 +588,10 @@ export function computeStats(state: SimState): SimStats {
     }
     if (v.hasPen) pens++
     if (v.hasField) fields++
-    if (v.chestInventory) totalBread += countOf(v.chestInventory, 'bread')
+    if (v.chestInventory) {
+      totalBread += countOf(v.chestInventory, 'bread')
+      edibleSum += edibleValue(v.chestInventory)
+    }
     for (const rel of v.relations.values()) {
       if (rel.affinity > 0.5) friendships++
       else if (rel.affinity < -0.5) feuds++
@@ -583,5 +652,11 @@ export function computeStats(state: SimState): SimStats {
     rumors: pol.rumors,
     leadingCircle: pol.leadingName,
     leadingLegitimacy: pol.leadingLegitimacy,
+    avgHunger: villagers > 0 ? hungerSum / villagers : 0,
+    avgThirst: villagers > 0 ? thirstSum / villagers : 0,
+    avgEdible: villagers > 0 ? edibleSum / villagers : 0,
+    homeless,
+    wells,
+    plazaFires,
   }
 }

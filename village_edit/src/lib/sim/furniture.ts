@@ -3,9 +3,11 @@
  * Jobs target RoomKind zones from rooms.ts (API for AI builders).
  */
 
+import { mirrorTerrainToBlocks, type ChunkStore } from './build'
 import type { HouseLayout, RoomKind } from './rooms'
 import { pickCellInRoom, ROOM_FURNITURE, type RoomFurnitureKind } from './rooms'
-import { BED, CHEST, TABLE, WORKBENCH, type TaskKind } from './types'
+import { BED, CHEST, HEARTH, HOUSE, TABLE, WALL_STONE, WALL_WOOD, WORKBENCH, type TaskKind } from './types'
+import { getTerrain, inBounds, setTerrain, type WorldGrid } from './world'
 
 export type FurnitureKind =
   | 'workbench'
@@ -69,7 +71,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     kind: 'bed',
     labelFr: 'lit',
     buildTask: 'buildBed',
-    wood: 3,
+    wood: 2,
     room: 'chambre',
     terrain: BED,
   },
@@ -84,7 +86,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   bench: {
     kind: 'bench',
     labelFr: 'banc',
-    buildTask: 'buildTable',
+    buildTask: 'buildBench',
     wood: 3,
     room: 'salle_a_manger',
     terrain: null,
@@ -92,7 +94,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   stool: {
     kind: 'stool',
     labelFr: 'tabouret',
-    buildTask: 'buildTable',
+    buildTask: 'buildStool',
     wood: 1,
     room: 'hall',
     terrain: null,
@@ -100,7 +102,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   shelf: {
     kind: 'shelf',
     labelFr: 'étagère',
-    buildTask: 'buildChest',
+    buildTask: 'buildShelf',
     wood: 2,
     room: 'reserve',
     terrain: null,
@@ -108,7 +110,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   cupboard: {
     kind: 'cupboard',
     labelFr: 'armoire',
-    buildTask: 'buildChest',
+    buildTask: 'buildCupboard',
     wood: 5,
     room: 'reserve',
     terrain: null,
@@ -119,12 +121,12 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
     buildTask: 'buildHearth',
     wood: 2,
     room: 'cuisine',
-    terrain: null,
+    terrain: HEARTH,
   },
   loom: {
     kind: 'loom',
     labelFr: 'métier à tisser',
-    buildTask: 'buildWorkbench',
+    buildTask: 'buildLoom',
     wood: 5,
     room: 'atelier',
     terrain: null,
@@ -132,7 +134,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   cradle: {
     kind: 'cradle',
     labelFr: 'berceau',
-    buildTask: 'buildBed',
+    buildTask: 'buildCradle',
     wood: 2,
     room: 'chambre',
     terrain: null,
@@ -140,7 +142,7 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
   tub: {
     kind: 'tub',
     labelFr: 'cuve',
-    buildTask: 'buildChest',
+    buildTask: 'buildWashingTub',
     wood: 3,
     room: 'latrines',
     terrain: null,
@@ -164,9 +166,45 @@ export const FURNITURE_DEFS: Record<FurnitureKind, FurnitureDef> = {
 }
 
 const PLACEABLE_NOW: FurnitureKind[] = ['workbench', 'chest', 'bed', 'table', 'hearth']
+/** Soft props (no terrain tile) — planned after the core shell furniture. */
+const PLACEABLE_SOFT: FurnitureKind[] = ['bench', 'stool', 'shelf', 'cupboard', 'cradle', 'loom', 'tub']
+
+/** Instant cutaway props when a shell closes — AI can still craft workbench / extras later. */
+export const STARTER_FURNITURE: FurnitureKind[] = ['bed', 'chest', 'table', 'hearth']
 
 export function furnitureLabelFr(kind: FurnitureKind): string {
   return FURNITURE_DEFS[kind].labelFr
+}
+
+/**
+ * Stamp bed + chest + table + hearth onto interior cells from the furniture queue.
+ * Ensures RimWorld-style cutaway shows furniture immediately (no waiting on AI wood/labor).
+ * Marks those jobs done; leaves workbench / soft kinds for villagers to build.
+ */
+export function stampStarterFurniture(
+  grid: WorldGrid,
+  queue: FurnitureJob[],
+  onPlaced?: (job: FurnitureJob) => void,
+  blocks?: ChunkStore | null,
+): number {
+  let stamped = 0
+  for (const job of queue) {
+    if (job.done) continue
+    if (!STARTER_FURNITURE.includes(job.kind)) continue
+    const terrain = FURNITURE_DEFS[job.kind].terrain
+    if (terrain == null) continue
+    if (!inBounds(grid, job.x, job.y)) continue
+    const cur = getTerrain(grid, job.x, job.y)
+    if (cur === HOUSE || cur === WALL_WOOD || cur === WALL_STONE) continue
+    if (cur !== terrain) {
+      setTerrain(grid, job.x, job.y, terrain)
+      if (blocks) mirrorTerrainToBlocks(blocks, job.x, job.y, terrain, 0)
+      stamped++
+    }
+    job.done = true
+    onPlaced?.(job)
+  }
+  return stamped
 }
 
 export function woodCostOf(kind: FurnitureKind): number {
@@ -188,6 +226,7 @@ function preferredRoom(kind: FurnitureKind, layout: HouseLayout, opts: { wantWor
 
 /**
  * Plan furniture jobs into rooms — primary API for AI / household builders.
+ * Placement is craft-only (no stamp): beds/chests/hearth against walls, table centered.
  */
 export function planFurnitureJobs(
   layout: HouseLayout,
@@ -196,30 +235,51 @@ export function planFurnitureJobs(
   const used = new Set<string>()
   const jobs: FurnitureJob[] = []
 
-  const push = (kind: FurnitureKind, prefer: 'first' | 'last' | 'center' = 'first') => {
-    if (!PLACEABLE_NOW.includes(kind) && kind !== 'table') return
+  const push = (kind: FurnitureKind, prefer: 'first' | 'last' | 'center' | 'edge' = 'edge') => {
+    const allowed = PLACEABLE_NOW.includes(kind) || PLACEABLE_SOFT.includes(kind) || kind === 'table'
+    if (!allowed) return
     const roomKind = preferredRoom(kind, layout, opts)
     const cell = pickCellInRoom(layout, roomKind, used, prefer)
     if (!cell) return
     jobs.push({ kind, roomKind, x: cell.x, y: cell.y, done: false })
   }
 
-  if (opts.wantWorkshop || layout.rooms.some((r) => r.kind === 'atelier')) push('workbench', 'first')
-  else push('workbench', 'first')
+  // Bed against wall in chambre; hearth against wall in cuisine; table centered for walk space.
+  push('bed', 'edge')
+  push('hearth', 'edge')
+  push('table', 'center')
+  push('chest', 'edge')
 
-  if (opts.wantStore || layout.rooms.some((r) => r.kind === 'reserve')) push('chest', 'last')
-  else push('chest', 'last')
-
-  const bedCount = Math.max(1, Math.min(6, opts.beds))
-  for (let i = 0; i < bedCount; i++) push('bed', 'center')
-
-  if (layout.rooms.some((r) => r.kind === 'salle_a_manger' || r.kind === 'cuisine') || opts.household >= 2) {
-    push('table', 'center')
+  if (opts.wantWorkshop || layout.rooms.some((r) => r.kind === 'atelier')) {
+    push('workbench', 'edge')
   }
 
-  // Âtre — chaleur / lumière du foyer (cuisine ou hall).
-  if (layout.rooms.some((r) => r.kind === 'cuisine' || r.kind === 'hall') || opts.household >= 1) {
-    push('hearth', 'center')
+  const bedCount = Math.max(1, Math.min(6, opts.beds))
+  for (let i = 1; i < bedCount; i++) push('bed', 'edge')
+
+  if (opts.wantStore || layout.rooms.some((r) => r.kind === 'reserve')) {
+    push('chest', 'edge')
+  }
+
+  // Soft furnishings once the shell has rooms — craft-only, no terrain stamp.
+  if (layout.rooms.some((r) => r.kind === 'salle_a_manger' || r.kind === 'hall')) {
+    push('bench', 'edge')
+    push('stool', 'edge')
+  }
+  if (opts.wantStore || layout.rooms.some((r) => r.kind === 'reserve' || r.kind === 'cuisine')) {
+    push('shelf', 'edge')
+  }
+  if (opts.wantStore || opts.household >= 3) {
+    push('cupboard', 'edge')
+  }
+  if (opts.beds >= 2 || opts.household >= 2) {
+    push('cradle', 'edge')
+  }
+  if (opts.wantWorkshop || layout.rooms.some((r) => r.kind === 'atelier')) {
+    push('loom', 'edge')
+  }
+  if (layout.rooms.some((r) => r.kind === 'latrines' || r.kind === 'cuisine')) {
+    push('tub', 'edge')
   }
 
   return jobs

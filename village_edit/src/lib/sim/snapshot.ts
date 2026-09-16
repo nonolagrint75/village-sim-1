@@ -28,6 +28,7 @@ import type { Ambition, Memory, Relation } from './social'
 import { knowledgeCount, knowledgeLabelsFr } from './technology'
 import { ensureLivelihood, topActivitiesFr, livelihoodLabelForUi } from './livelihood'
 import { getCalendar } from './calendar'
+import { CHILD_AGE, ELDER_AGE } from './ages'
 import type {
   BoatKind,
   Phenotype,
@@ -53,6 +54,12 @@ export type ActorVillager = {
   toolTier: ToolTier
   grudgeTarget: number | null
   alive: boolean
+  /** Visual only — from sim profession. */
+  profession: Profession
+  /** child | adult | elder */
+  ageBand: 'child' | 'adult' | 'elder'
+  /** Current task kind for pose hints (or null). */
+  taskKind: string | null
 }
 
 export type ActorSheep = { x: number; y: number; captured: boolean; alive: boolean }
@@ -68,6 +75,15 @@ export type ActorVillage = {
   hasMill: boolean
   millX: number
   millY: number
+  hasWell: boolean
+  wellX: number
+  wellY: number
+  wellAgreed: boolean
+  hasPlazaFire: boolean
+  plazaFireX: number
+  plazaFireY: number
+  plazaFireAgreed: boolean
+  plazaFireLit: boolean
   hasMine: boolean
   mineX: number
   mineY: number
@@ -119,6 +135,7 @@ export type SelectedVillager = {
   embarked: boolean
   health: number
   hunger: number
+  thirst: number
   stamina: number
   staminaMax: number
   loadMass: number
@@ -517,6 +534,12 @@ export const EMPTY_STATS: SimStats = {
   rumors: 0,
   leadingCircle: null,
   leadingLegitimacy: 0,
+  avgHunger: 0,
+  avgThirst: 0,
+  avgEdible: 0,
+  homeless: 0,
+  wells: 0,
+  plazaFires: 0,
 }
 
 export type WorldFrame = {
@@ -594,6 +617,9 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
       toolTier: v.toolTier,
       grudgeTarget: v.grudgeTarget,
       alive: true,
+      profession: v.profession ?? 'none',
+      ageBand: v.age < CHILD_AGE ? 'child' : v.age >= ELDER_AGE ? 'elder' : 'adult',
+      taskKind: v.task?.kind ?? null,
     })
   }
   const sheep: ActorSheep[] = []
@@ -638,6 +664,15 @@ export function packDraw(state: SimState, ticksPerSec: number): DrawFrame {
       hasMill: vg.hasMill,
       millX: vg.millX,
       millY: vg.millY,
+      hasWell: vg.hasWell,
+      wellX: vg.wellX,
+      wellY: vg.wellY,
+      wellAgreed: vg.wellAgreed,
+      hasPlazaFire: vg.hasPlazaFire,
+      plazaFireX: vg.plazaFireX,
+      plazaFireY: vg.plazaFireY,
+      plazaFireAgreed: vg.plazaFireAgreed,
+      plazaFireLit: vg.plazaFireLitUntil > state.tick,
       hasMine: vg.hasMine,
       mineX: vg.mineX,
       mineY: vg.mineY,
@@ -694,7 +729,11 @@ function cloneableRelation(r: Relation): Relation {
     kinship: r.kinship ?? 0,
     respect: r.respect ?? 0,
     history: Array.isArray(r.history)
-      ? r.history.slice(-4).map((h) => ({ kind: h.kind, tick: h.tick }))
+      ? r.history.slice(-4).map((h) => ({
+          kind: h.kind,
+          tick: h.tick,
+          ...(h.topic ? { topic: h.topic } : {}),
+        }))
       : [],
   }
 }
@@ -771,6 +810,7 @@ export function packSelectedMinimal(v: Villager): SelectedVillager {
     embarked: !!v.embarked,
     health: Number.isFinite(v.health) ? v.health : 0,
     hunger: Number.isFinite(v.hunger) ? v.hunger : 0,
+    thirst: Number.isFinite(v.thirst) ? v.thirst : 4,
     stamina: Number.isFinite(v.stamina) ? v.stamina : 4,
     staminaMax: 4,
     loadMass: 0,
@@ -980,6 +1020,7 @@ function packSelected(state: SimState, v: Villager): SelectedVillager {
     embarked: !!v.embarked,
     health: Number.isFinite(v.health) ? v.health : 0,
     hunger: Number.isFinite(v.hunger) ? v.hunger : 0,
+    thirst: Number.isFinite(v.thirst) ? v.thirst : 4,
     stamina: Number.isFinite(v.stamina) ? v.stamina : 4,
     staminaMax: 4,
     loadMass,

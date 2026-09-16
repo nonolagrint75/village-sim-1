@@ -27,6 +27,8 @@ import { MONTH_LABELS_FR } from '@/lib/sim/calendar'
 import type { CircleKind } from '@/lib/sim/politics'
 import type { SelectedVillager, UiCountRow, UiGroupRow, UiLineageRow } from '@/lib/sim/snapshot'
 import type { Profession, SimStats } from '@/lib/sim/types'
+import { AtlasCharts } from '@/components/SimCharts'
+import type { SimRunArchive, TelemetryPoint } from '@/lib/sim/runTelemetry'
 
 function num(v: unknown, fallback = 0): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : fallback
@@ -37,13 +39,15 @@ function resourceLabel(type: unknown): string {
   return RESOURCE_LABELS_FR[type] ?? type
 }
 
-type Tab = 'realm' | 'society' | 'market' | 'log'
+type Tab = 'realm' | 'society' | 'market' | 'atlas' | 'log'
+type CogView = 'observer' | 'scientist'
 type GroupFilter = 'all' | 'circles' | 'institutions' | CircleKind
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'realm', label: 'Royaume' },
   { id: 'society', label: 'Société' },
   { id: 'market', label: 'Marché' },
+  { id: 'atlas', label: 'Atlas' },
   { id: 'log', label: 'Chronique' },
 ]
 
@@ -82,6 +86,8 @@ export const SimPanel = memo(function SimPanel({
   following,
   onFollow,
   onCloseSelected,
+  liveSeries,
+  archives,
 }: {
   stats: SimStats
   chronicle: string[]
@@ -96,6 +102,8 @@ export const SimPanel = memo(function SimPanel({
   following: boolean
   onFollow: () => void
   onCloseSelected: () => void
+  liveSeries: TelemetryPoint[]
+  archives: SimRunArchive[]
 }) {
   const [tab, setTab] = useState<Tab>('realm')
   const [groupsOpen, setGroupsOpen] = useState(false)
@@ -191,6 +199,11 @@ export const SimPanel = memo(function SimPanel({
           <HeroStat label="Villages" value={stats.villages} />
           <HeroStat label="Voies" value={stats.roadTiles} />
         </div>
+        <div className="sim-hero-stats sim-hero-stats-tight">
+          <HeroStat label="Faim ⌀" value={Number(stats.avgHunger?.toFixed?.(2) ?? 0)} />
+          <HeroStat label="Soif ⌀" value={Number(stats.avgThirst?.toFixed?.(2) ?? 0)} />
+          <HeroStat label="Sans toit" value={stats.homeless ?? 0} />
+        </div>
       </header>
 
       {selectedId !== null && (
@@ -253,6 +266,8 @@ export const SimPanel = memo(function SimPanel({
                   ['Champs', stats.fields],
                   ['Enclos', stats.pens],
                   ['Moulins', stats.mills],
+                  ['Puits', stats.wells ?? 0],
+                  ['Feux de place', stats.plazaFires ?? 0],
                   ['Ports', stats.ports],
                   ['Bateaux', stats.boats],
                 ]}
@@ -346,7 +361,7 @@ export const SimPanel = memo(function SimPanel({
             </Section>
             <Section title="Identités & cultures">
               {cultures.length === 0 && creeds.length === 0 ? (
-                <p className="sim-empty">Pas encore d’identités émergentes — imitation et creeds viendront.</p>
+                <p className="sim-empty">Pas encore d’identités émergentes — imitation et convictions viendront.</p>
               ) : (
                 <>
                   {cultures.length > 0 && (
@@ -360,7 +375,7 @@ export const SimPanel = memo(function SimPanel({
                   {creeds.length > 0 && (
                     <>
                       <p className="sim-muted" style={{ margin: '0.55rem 0 0.35rem' }}>
-                        Creeds / convictions
+                        Convictions
                       </p>
                       <StatGrid items={creeds.slice(0, 6).map((c) => [c.label, c.count])} />
                     </>
@@ -582,8 +597,49 @@ export const SimPanel = memo(function SimPanel({
           </div>
         )}
 
+        {tab === 'atlas' && (
+          <div className="sim-stack">
+            <Section title="Atlas du royaume">
+              <p className="sim-atlas-lead">
+                Courbes live — population, survie, prospérité, développement (style ledger).
+              </p>
+              <AtlasCharts points={liveSeries} />
+            </Section>
+          </div>
+        )}
+
         {tab === 'log' && (
           <div className="sim-stack">
+            <Section title="Archives (3 dernières)">
+              {archives.length === 0 ? (
+                <p className="sim-empty">Aucune partie archivée — relancer depuis le menu enregistre la run.</p>
+              ) : (
+                <ul className="sim-archives">
+                  {archives.map((a, i) => (
+                    <li key={a.id}>
+                      <header>
+                        <strong>
+                          #{i + 1} seed {a.seed}
+                        </strong>
+                        <span>
+                          j{a.summary.days} · pop {a.summary.finalPop}/{a.summary.maxPop}
+                        </span>
+                      </header>
+                      <p>
+                        †{a.summary.deaths} · nés {a.summary.births} · maisons {a.summary.houses} · puits{' '}
+                        {a.summary.wells} · moulins {a.summary.mills}
+                      </p>
+                      <p className="sim-archive-causes">
+                        {Object.entries(a.summary.causes)
+                          .sort((x, y) => y[1] - x[1])
+                          .map(([k, n]) => `${k} ${n}`)
+                          .join(' · ') || 'causes —'}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
             <Section title="Faits marquants">
               {chronicle.length === 0 ? (
                 <p className="sim-empty">Rien ne s’est encore produit.</p>
@@ -592,7 +648,9 @@ export const SimPanel = memo(function SimPanel({
                   {chronicle.map((entry, i) => (
                     <li
                       key={`${i}-${entry.slice(0, 28)}`}
-                      className={[i === 0 ? 'is-new' : '', entry.includes(' → ') ? 'is-causal' : ''].filter(Boolean).join(' ')}
+                      className={[i === 0 ? 'is-new' : '', entry.includes(' → ') ? 'is-causal' : '']
+                        .filter(Boolean)
+                        .join(' ')}
                     >
                       {entry}
                     </li>
@@ -651,6 +709,7 @@ const Portrait = memo(function Portrait({
   onFollow: () => void
   onClose: () => void
 }) {
+  const [cogView, setCogView] = useState<CogView>('observer')
   const rootRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     rootRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -716,7 +775,7 @@ const Portrait = memo(function Portrait({
               {selected.guildName && selected.livelihoodActivities?.length ? ' · ' : ''}
               {selected.livelihoodActivities?.length ? selected.livelihoodActivities.join(' · ') : ''}
               {selected.profession !== 'none' && selected.livelihoodTitle !== PROFESSION_LABELS[selected.profession]
-                ? `${selected.guildName || selected.livelihoodActivities?.length ? ' · ' : ''}hint ${PROFESSION_LABELS[selected.profession] ?? selected.profession}`
+                ? `${selected.guildName || selected.livelihoodActivities?.length ? ' · ' : ''}aussi ${PROFESSION_LABELS[selected.profession] ?? selected.profession}`
                 : ''}
             </p>
           )}
@@ -740,6 +799,7 @@ const Portrait = memo(function Portrait({
       <div className="sim-meters">
         <Meter label="Santé" value={num(selected.health)} max={4} color="#e05650" />
         <Meter label="Faim" value={num(selected.hunger)} max={4} color="#e0a045" />
+        <Meter label="Soif" value={num(selected.thirst, 4)} max={4} color="#5ba4d9" />
         <Meter label="Endurance" value={num(selected.stamina, staminaMax)} max={staminaMax} color="#7eb8a2" />
         <Meter label="Charge" value={loadMass} max={loadCap} color="#c4a574" decimals={1} />
       </div>
@@ -786,7 +846,15 @@ const Portrait = memo(function Portrait({
           </p>
         )}
         {selected.livelihoodRole ? (
-          <p className="sim-kit">Rôle émergent : {selected.livelihoodRole.replace(/^legacy_/, 'hint·').replace(/^gen_/, 'pratique·')}</p>
+          <p className="sim-kit">
+            Réputation : {selected.livelihoodTitle}
+            {selected.livelihoodRole &&
+            !selected.livelihoodRole.startsWith('legacy_') &&
+            !selected.livelihoodRole.startsWith('gen_') &&
+            selected.livelihoodRole !== selected.livelihoodTitle
+              ? ` · ${selected.livelihoodRole}`
+              : ''}
+          </p>
         ) : null}
       </div>
 
@@ -797,13 +865,13 @@ const Portrait = memo(function Portrait({
           num(selected.legitimacy) > 0.05 ||
           selected.identity?.cultureTag) ? (
           <p className="sim-kit">
-            {selected.creed ? `Creed : ${selected.creedLabel ?? selected.creed}` : 'Sans creed'}
+            {selected.creed ? `Conviction : ${selected.creedLabel ?? selected.creed}` : 'Sans conviction'}
             {num(selected.legitimacy) > 0.05 ? ` · légitimité ${Math.round(num(selected.legitimacy) * 100)} %` : ''}
             {num(selected.grievance) > 0.25 ? ` · grief ${Math.round(num(selected.grievance) * 100)} %` : ''}
             {(selected.circleNames?.length ?? 0) > 0 ? ` · ${selected.circleNames!.join(', ')}` : ''}
           </p>
         ) : (
-          <p className="sim-empty">Pas encore de cercle ni de creed.</p>
+          <p className="sim-empty">Pas encore de cercle ni de conviction.</p>
         )}
         {selected.identity?.cultureTag && (
           <p className="sim-kit">
@@ -1005,12 +1073,16 @@ const Portrait = memo(function Portrait({
                 const bits: string[] = []
                 if (respect > 0.4 && label !== 'admiré') bits.push('respect')
                 if (grudge > 0.3 && label !== 'rival' && label !== 'ennemi') bits.push('rancune')
+                const lastTalk = Array.isArray(rel.history)
+                  ? [...rel.history].reverse().find((h) => h?.topic && (h.kind === 'talk' || h.kind === 'gossip'))
+                  : null
                 return (
                   <li key={id}>
                     <span>{nameOf(id)}</span>
                     <em style={{ color }}>
                       {label}
                       {bits.length > 0 ? ` · ${bits.join(' · ')}` : ''}
+                      {lastTalk?.topic ? ` · « ${lastTalk.topic} »` : ''}
                     </em>
                   </li>
                 )
@@ -1036,53 +1108,83 @@ const Portrait = memo(function Portrait({
       </div>
 
       <div className="sim-portrait-block sim-cognition">
-        <h4>Cognition</h4>
+        <div className="sim-cog-head">
+          <h4>Cognition</h4>
+          <div className="sim-cog-modes" role="group" aria-label="Mode de lecture">
+            <button
+              type="button"
+              className={cogView === 'observer' ? 'is-on' : undefined}
+              onClick={() => setCogView('observer')}
+            >
+              Observateur
+            </button>
+            <button
+              type="button"
+              className={cogView === 'scientist' ? 'is-on' : undefined}
+              onClick={() => setCogView('scientist')}
+            >
+              Scientifique
+            </button>
+          </div>
+        </div>
         {selected.cognition ? (
           <>
             <p className="sim-ambition">
-              {selected.cognition.processMode ? `${selected.cognition.processMode} · ` : ''}
+              {cogView === 'scientist' && selected.cognition.processMode
+                ? `${selected.cognition.processMode} · `
+                : null}
               But : {selected.cognition.goal ?? '—'}
-              {selected.cognition.plan ? ` · plan ${selected.cognition.plan}` : ''}
+              {cogView === 'scientist' && selected.cognition.plan
+                ? ` · plan ${selected.cognition.plan}`
+                : null}
             </p>
-            {selected.cognition.selfModel ? (
+            {cogView === 'scientist' && selected.cognition.selfModel ? (
               <p className="sim-kit">Soi : {selected.cognition.selfModel}</p>
             ) : null}
             {selected.cognition.conscience ? (
               <div className="sim-conscience">
-                <h5>Conscience</h5>
-                <p className="sim-kit">
-                  {selected.cognition.conscience.mode}
-                  {selected.cognition.conscience.process
-                    ? ` · ${selected.cognition.conscience.process}`
-                    : ''}
-                  {typeof selected.cognition.conscience.clarity === 'number'
-                    ? ` · clarté ${Math.round(selected.cognition.conscience.clarity * 100)}%`
-                    : ''}
-                  {typeof selected.cognition.conscience.accessGain === 'number'
-                    ? ` · accès ${Math.round(selected.cognition.conscience.accessGain * 100)}%`
-                    : ''}
-                </p>
+                {cogView === 'scientist' ? <h5>Conscience</h5> : null}
+                {cogView === 'scientist' ? (
+                  <p className="sim-kit">
+                    {selected.cognition.conscience.mode}
+                    {selected.cognition.conscience.process
+                      ? ` · ${selected.cognition.conscience.process}`
+                      : ''}
+                    {typeof selected.cognition.conscience.clarity === 'number'
+                      ? ` · clarté ${Math.round(selected.cognition.conscience.clarity * 100)}%`
+                      : ''}
+                    {typeof selected.cognition.conscience.accessGain === 'number'
+                      ? ` · accès ${Math.round(selected.cognition.conscience.accessGain * 100)}%`
+                      : ''}
+                  </p>
+                ) : null}
                 {selected.cognition.conscience.narrativeJe ? (
                   <p className="sim-ambition">{selected.cognition.conscience.narrativeJe}</p>
                 ) : null}
-                {selected.cognition.conscience.goalAwareness ? (
+                {cogView === 'scientist' && selected.cognition.conscience.goalAwareness ? (
                   <p className="sim-kit">{selected.cognition.conscience.goalAwareness}</p>
                 ) : null}
                 {selected.cognition.conscience.feltAffect ? (
-                  <p className="sim-kit">Affect ressenti : {selected.cognition.conscience.feltAffect}</p>
+                  <p className="sim-kit">
+                    {cogView === 'observer' ? 'Humeur' : 'Affect ressenti'} :{' '}
+                    {selected.cognition.conscience.feltAffect}
+                  </p>
                 ) : null}
-                {(selected.cognition.conscience.awareOf?.length ?? 0) > 0 && (
+                {cogView === 'scientist' && (selected.cognition.conscience.awareOf?.length ?? 0) > 0 && (
                   <p className="sim-kit">Conscient de : {selected.cognition.conscience.awareOf!.join(' · ')}</p>
                 )}
                 {(selected.cognition.conscience.innerSpeech?.length ?? 0) > 0 && (
-                  <p className="sim-kit">Parole intérieure : « {selected.cognition.conscience.innerSpeech!.join(' » · « ')} »</p>
+                  <p className="sim-kit">
+                    {cogView === 'observer' ? 'Se dit' : 'Parole intérieure'} : «{' '}
+                    {selected.cognition.conscience.innerSpeech!.join(' » · « ')} »
+                  </p>
                 )}
               </div>
             ) : null}
-            {(selected.cognition.factorWhy?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.factorWhy?.length ?? 0) > 0 && (
               <p className="sim-kit">Facteurs : {selected.cognition.factorWhy!.join(' · ')}</p>
             )}
-            {(selected.cognition.reasons?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.reasons?.length ?? 0) > 0 && (
               <ul className="sim-why">
                 {selected.cognition.reasons!.map((r, i) => (
                   <li key={i}>{r}</li>
@@ -1098,7 +1200,7 @@ const Portrait = memo(function Portrait({
                   .join(' · ')}
               </p>
             )}
-            {(selected.cognition.predictionErrors?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.predictionErrors?.length ?? 0) > 0 && (
               <p className="sim-kit">Erreurs de prédiction : {selected.cognition.predictionErrors!.join(' · ')}</p>
             )}
             {(selected.cognition.emotions?.length ?? 0) > 0 && (
@@ -1110,37 +1212,45 @@ const Portrait = memo(function Portrait({
                   .join(' · ')}
               </p>
             )}
-            {(selected.cognition.workspace?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.workspace?.length ?? 0) > 0 && (
               <p className="sim-kit">Espace de travail : {selected.cognition.workspace!.join(' · ')}</p>
             )}
-            {(selected.cognition.working?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.working?.length ?? 0) > 0 && (
               <p className="sim-kit">Mémoire de travail : {selected.cognition.working!.join(' · ')}</p>
             )}
-            {typeof selected.cognition.executive === 'number' ? (
+            {cogView === 'scientist' && typeof selected.cognition.executive === 'number' ? (
               <p className="sim-kit">Contrôle exécutif : {Math.round(selected.cognition.executive * 100)}%</p>
             ) : null}
-            {(selected.cognition.memories?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.memories?.length ?? 0) > 0 && (
               <p className="sim-kit">Épisodes : {selected.cognition.memories!.join(' · ')}</p>
             )}
-            {(selected.cognition.beliefs?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.beliefs?.length ?? 0) > 0 && (
               <p className="sim-kit">Croyances : {selected.cognition.beliefs!.join(' · ')}</p>
             )}
-            {(selected.cognition.skills?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.skills?.length ?? 0) > 0 && (
               <p className="sim-kit">Savoir-faire : {selected.cognition.skills!.join(' · ')}</p>
             )}
-            {(selected.cognition.preferences?.length ?? 0) > 0 && (
+            {cogView === 'scientist' && (selected.cognition.preferences?.length ?? 0) > 0 && (
               <p className="sim-kit">Goûts de travail : {selected.cognition.preferences!.join(' · ')}</p>
             )}
             {(selected.cognition.laborThoughts?.length ?? 0) > 0 && (
-              <p className="sim-kit">Pensées de labeur : {selected.cognition.laborThoughts!.join(' · ')}</p>
+              <p className="sim-kit">
+                {cogView === 'observer' ? 'Pensées' : 'Pensées de labeur'} :{' '}
+                {selected.cognition.laborThoughts!.join(' · ')}
+              </p>
             )}
             {(selected.cognition.thoughts?.length ?? 0) > 0 && (
-              <p className="sim-kit">Pensées : {selected.cognition.thoughts!.join(' · ')}</p>
+              <p className="sim-kit">
+                {cogView === 'observer' && (selected.cognition.laborThoughts?.length ?? 0) > 0
+                  ? 'Aussi'
+                  : 'Pensées'}{' '}
+                : {selected.cognition.thoughts!.join(' · ')}
+              </p>
             )}
             {typeof selected.cognition.stress === 'number' && selected.cognition.stress > 0.08 ? (
               <p className="sim-kit">Stress : {Math.round(selected.cognition.stress * 100)}%</p>
             ) : null}
-            {selected.cognition.depthHint ? (
+            {cogView === 'scientist' && selected.cognition.depthHint ? (
               <p className={selected.cognition.depthHint.includes('formation') ? 'sim-empty' : 'sim-kit'}>
                 {selected.cognition.depthHint}
               </p>
@@ -1150,7 +1260,6 @@ const Portrait = memo(function Portrait({
           <p className="sim-empty">Esprit pas encore initialisé.</p>
         )}
       </div>
-
       <button type="button" className={following ? 'sim-follow is-on' : 'sim-follow'} onClick={onFollow}>
         {following ? 'Ne plus suivre' : `Suivre ${selected.name || displayName}`}
       </button>

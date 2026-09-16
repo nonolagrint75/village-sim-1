@@ -3,9 +3,12 @@ import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent }
 import { SimPanel } from '@/components/SimPanel'
 import { StartMenu } from '@/components/StartMenu'
 import { SimToolbar } from '@/components/SimToolbar'
-import { dayNightVisual } from '@/lib/sim/calendar'
-import { TILE_PX, drawCloseupTerrain, tilePixel32 } from '@/lib/sim/tileArt'
+import { TILE_PX, drawCloseupTerrain } from '@/lib/sim/tileArt'
 import { drawWornWays } from '@/lib/sim/roadView'
+import { WorldGlRenderer } from '@/lib/render/WorldGlRenderer'
+import { drawOrganicCloseup } from '@/lib/render/organicCloseup'
+import { BuildChunkRenderer } from '@/lib/render/buildChunkMesher'
+import { drawVillagerSprite } from '@/lib/render/villagerSprites'
 import {
   EMPTY_STATS,
   type ActorVillager,
@@ -19,10 +22,25 @@ import {
 } from '@/lib/sim/snapshot'
 import { DEFAULT_SIM_CONFIG, type SimConfig } from '@/lib/sim/simConfig'
 import { setWorldSize, type SimStats } from '@/lib/sim/types'
+import {
+  commitArchive,
+  createLiveRecorder,
+  finalizeArchive,
+  loadArchives,
+  pushSample,
+  type LiveRunRecorder,
+  type SimRunArchive,
+  type TelemetryPoint,
+} from '@/lib/sim/runTelemetry'
 
-const DISPLAY_SIZE = 760
-const MAX_ZOOM = 6
-const DEFAULT_ZOOM = 2
+/** Canvas / FBO side — multiple of 4 (was 760) for framebuffer alignment. */
+const DISPLAY_SIZE = 768
+/**
+ * Zoom = screen px per world px. Scaled with TILE_PX (was 3→16) so on-screen
+ * tile size stays ~TILE_PX_old * zoom_old (≈7.2 px/tile at default).
+ */
+const MAX_ZOOM = 1.875
+const DEFAULT_ZOOM = 0.45
 const CLICK_MAX_DRAG_PX = 6
 const CLICK_MAX_MS = 400
 const SELECT_RADIUS_TILES = 4.5
@@ -55,11 +73,10 @@ function clampNum(v: number, min: number, max: number) {
 
 export function SimulationCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const glCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const viewCtxRef = useRef<CanvasRenderingContext2D | null>(null)
-  const worldCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const worldCtxRef = useRef<CanvasRenderingContext2D | null>(null)
-  const worldPixelsRef = useRef<ImageData | null>(null)
-  const worldPackedRef = useRef<Uint32Array | null>(null)
+  const glRendererRef = useRef<WorldGlRenderer | null>(null)
+  const buildChunksRef = useRef<BuildChunkRenderer | null>(null)
   const terrainRef = useRef<Uint8Array | null>(null)
   const amountRef = useRef<Uint16Array | null>(null)
   const viewRef = useRef<DrawFrame>({
@@ -75,7 +92,7 @@ export function SimulationCanvas() {
     ticksPerSec: 0,
   })
   const workerRef = useRef<Worker | null>(null)
-  const frameRef = useRef<number>(0)
+  const frameRef = useRef(0)
 
   const camRef = useRef({ x: 0, y: 0 })
   const zoomRef = useRef(DEFAULT_ZOOM)
@@ -88,6 +105,8 @@ export function SimulationCanvas() {
   const worldSizeRef = useRef(1000)
   const startedRef = useRef(false)
   const showDayNightRef = useRef(readShowDayNight())
+  const seedRef = useRef(1)
+  const recorderRef = useRef<LiveRunRecorder | null>(null)
 
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
@@ -108,6 +127,8 @@ export function SimulationCanvas() {
   const [launching, setLaunching] = useState(false)
   const [lastConfig, setLastConfig] = useState<SimConfig>(DEFAULT_SIM_CONFIG)
   const [showDayNight, setShowDayNight] = useState(readShowDayNight)
+  const [liveSeries, setLiveSeries] = useState<TelemetryPoint[]>([])
+  const [archives, setArchives] = useState<SimRunArchive[]>(() => loadArchives())
 
   useEffect(() => {
     showDayNightRef.current = showDayNight
@@ -119,30 +140,37 @@ export function SimulationCanvas() {
   }, [showDayNight])
 
   useEffect(() => {
+    const onUnload = () => {
+      const rec = recorderRef.current
+      if (!rec || rec.series.length < 2) return
+      try {
+        commitArchive(finalizeArchive(rec, 'unload'))
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
+  }, [])
+
+  useEffect(() => {
     followRef.current = following
   }, [following])
 
-  const ensureWorldBuffer = useCallback((size = worldSizeRef.current) => {
-    let canvas = worldCanvasRef.current
-    if (!canvas) {
-      canvas = document.createElement('canvas')
-      worldCanvasRef.current = canvas
-      worldCtxRef.current = canvas.getContext('2d', { alpha: false, desynchronized: true })
+  const ensureGl = useCallback(() => {
+    const canvas = glCanvasRef.current
+    if (!canvas) return null
+    if (!glRendererRef.current) {
+      try {
+        glRendererRef.current = new WorldGlRenderer(canvas)
+        glRendererRef.current.setSeed(seedRef.current)
+      } catch (err) {
+        console.error('WebGL2 init failed', err)
+        return null
+      }
     }
-    if (canvas.width !== size || canvas.height !== size) {
-      canvas.width = size
-      canvas.height = size
-      worldPixelsRef.current = null
-      worldPackedRef.current = null
-    }
-    const ctx = worldCtxRef.current
-    if (!ctx) return null
-    if (!worldPixelsRef.current || worldPixelsRef.current.width !== size) {
-      const image = ctx.createImageData(size, size)
-      worldPixelsRef.current = image
-      worldPackedRef.current = new Uint32Array(image.data.buffer)
-    }
-    return ctx
+    glRendererRef.current.resize(DISPLAY_SIZE, DISPLAY_SIZE)
+    return glRendererRef.current
   }, [])
 
   useEffect(() => {
@@ -151,55 +179,30 @@ export function SimulationCanvas() {
     workerRef.current?.postMessage({ type: 'select', id: selectedId })
   }, [selectedId])
 
-  const paintBuffers = useCallback((terrain: Uint8Array, amount: Uint16Array) => {
-    const size = worldSizeRef.current
-    const ctx = ensureWorldBuffer(size)
-    const packed = worldPackedRef.current
-    const image = worldPixelsRef.current
-    if (!ctx || !packed || !image) return
-    for (let y = 0; y < size; y++) {
-      const row = y * size
-      for (let x = 0; x < size; x++) {
-        const i = row + x
-        packed[i] = tilePixel32(terrain[i], amount[i], x, y)
-      }
-    }
-    ctx.putImageData(image, 0, 0)
-  }, [ensureWorldBuffer])
+  const uploadWorld = useCallback((terrain: Uint8Array, amount: Uint16Array, size: number) => {
+    const gl = ensureGl()
+    if (!gl) return
+    gl.setSeed(seedRef.current)
+    gl.setWorld(terrain, amount, size)
+    if (!buildChunksRef.current) buildChunksRef.current = new BuildChunkRenderer()
+    buildChunksRef.current.setWorld(terrain, size)
+  }, [ensureGl])
 
   const flushDirty = useCallback((dirty: DirtyFrame) => {
-    const ctx = worldCtxRef.current
-    const packed = worldPackedRef.current
-    const image = worldPixelsRef.current
+    const gl = glRendererRef.current
     const terrain = terrainRef.current
     const amount = amountRef.current
-    if (!ctx || !packed || !image || !terrain || !amount) return
+    if (!gl || !terrain || !amount) return
     const w = worldSizeRef.current
     const n = dirty.indices.length
-    let minX = w
-    let minY = w
-    let maxX = 0
-    let maxY = 0
     for (let k = 0; k < n; k++) {
       const i = dirty.indices[k]
       terrain[i] = dirty.terrain[k]
       amount[i] = dirty.amount[k]
-      const x = i % w
-      const y = (i / w) | 0
-      packed[i] = tilePixel32(terrain[i], amount[i], x, y)
-      if (x < minX) minX = x
-      if (y < minY) minY = y
-      if (x > maxX) maxX = x
-      if (y > maxY) maxY = y
     }
-    if (n === 0) return
-    if (n >= DIRTY_FULL_FLUSH || maxX - minX > 80 || maxY - minY > 80) {
-      ctx.putImageData(image, 0, 0)
-    } else {
-      const bw = maxX - minX + 1
-      const bh = maxY - minY + 1
-      ctx.putImageData(image, 0, 0, minX, minY, bw, bh)
-    }
+    gl.patchDirty(dirty.indices, dirty.terrain, dirty.amount)
+    buildChunksRef.current?.markDirtyIndices(dirty.indices, w)
+    void DIRTY_FULL_FLUSH
   }, [])
 
   useEffect(() => {
@@ -237,14 +240,17 @@ export function SimulationCanvas() {
         const size = msg.width
         worldSizeRef.current = size
         setWorldSize(size)
-        ensureWorldBuffer(size)
+        if (msg.config?.seed) seedRef.current = msg.config.seed
         terrainRef.current = new Uint8Array(msg.terrain)
         amountRef.current = new Uint16Array(msg.amount)
-        paintBuffers(terrainRef.current, amountRef.current)
+        uploadWorld(terrainRef.current, amountRef.current, size)
         const visible = DISPLAY_SIZE / zoomRef.current
         camRef.current = { x: worldPxOf(size) / 2 - visible / 2, y: worldPxOf(size) / 2 - visible / 2 }
         if (typeof msg.playing === 'boolean') setPlaying(msg.playing)
-        if (msg.config) setLastConfig(msg.config)
+        if (msg.config) {
+          setLastConfig(msg.config)
+          seedRef.current = msg.config.seed
+        }
         setWorldReady(true)
         setLaunching(false)
         setMenuOpen(false)
@@ -269,6 +275,11 @@ export function SimulationCanvas() {
         if (frame.cultures && frame.cultures.length > 0) setCultures(frame.cultures)
         if (frame.creeds && frame.creeds.length > 0) setCreeds(frame.creeds)
         setSimTps(frame.ticksPerSec)
+        // Live Atlas series — one sample per sim-day.
+        if (recorderRef.current && frame.stats.tick > 0) {
+          pushSample(recorderRef.current, frame.stats, frame.chronicle)
+          setLiveSeries(recorderRef.current.series.slice())
+        }
         // Ignore stale UI packs from before a newer local click/deselect.
         // Do not clear local selection when selected is null — packSelected can fail
         // transiently while selectedId still matches; wiping would look like a dead click.
@@ -283,8 +294,12 @@ export function SimulationCanvas() {
     return () => {
       worker.terminate()
       workerRef.current = null
+      glRendererRef.current?.destroy()
+      glRendererRef.current = null
+      buildChunksRef.current?.destroy()
+      buildChunksRef.current = null
     }
-  }, [ensureWorldBuffer, flushDirty, paintBuffers])
+  }, [flushDirty, uploadWorld])
 
   const clampCamera = useCallback(() => {
     const visible = DISPLAY_SIZE / zoomRef.current
@@ -295,13 +310,12 @@ export function SimulationCanvas() {
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
-    const world = worldCanvasRef.current
-    if (!canvas || !world) return
+    if (!canvas) return
     let ctx = viewCtxRef.current
     if (!ctx) {
       ctx =
-        canvas.getContext('2d', { alpha: false, desynchronized: true }) ??
-        canvas.getContext('2d', { alpha: false })
+        canvas.getContext('2d', { alpha: true, desynchronized: true }) ??
+        canvas.getContext('2d', { alpha: true })
       viewCtxRef.current = ctx
     }
     if (!ctx) return
@@ -318,64 +332,72 @@ export function SimulationCanvas() {
     }
 
     const zoom = zoomRef.current
-    const camX = camRef.current.x
-    const camY = camRef.current.y
+    // Snap camera to screen pixels so GL terrain + 2D overlays stay locked while panning.
+    const camX = Math.round(camRef.current.x * zoom) / zoom
+    const camY = Math.round(camRef.current.y * zoom) / zoom
     const visible = DISPLAY_SIZE / zoom
+    const now = performance.now()
 
+    const gl = ensureGl()
+    if (gl && terrainRef.current) {
+      gl.draw({
+        camX,
+        camY,
+        zoom,
+        displaySize: DISPLAY_SIZE,
+        season: viewRef.current.season,
+        hour: viewRef.current.hour ?? 12,
+        showDayNight: showDayNightRef.current,
+        timeMs: now,
+      })
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
     ctx.imageSmoothingEnabled = false
-    ctx.drawImage(
-      world,
-      camX / TILE_PX,
-      camY / TILE_PX,
-      visible / TILE_PX,
-      visible / TILE_PX,
-      0,
-      0,
-      DISPLAY_SIZE,
-      DISPLAY_SIZE,
-    )
-
-    const season = viewRef.current.season
-    if (season === 'winter') {
-      ctx.fillStyle = 'rgba(186, 210, 228, 0.16)'
-      ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
-    } else if (season === 'autumn') {
-      ctx.fillStyle = 'rgba(198, 128, 52, 0.08)'
-      ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
-    } else if (season === 'spring') {
-      ctx.fillStyle = 'rgba(140, 190, 110, 0.045)'
-      ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
-    } else if (season === 'summer') {
-      ctx.fillStyle = 'rgba(255, 220, 140, 0.035)'
+    // Single visible surface: blit WebGL terrain into the 2D canvas, then draw overlays.
+    // Avoids dual-CSS-canvas parallax / layer drift while dragging.
+    if (glCanvasRef.current && gl) {
+      ctx.drawImage(glCanvasRef.current, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
+    } else {
+      ctx.fillStyle = '#0a120c'
       ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
     }
+    // Stay nearest-neighbor — Minecraft pixel look, no blur.
+    ctx.imageSmoothingEnabled = false
 
     const { villagers, sheep, horses, boats, wolves } = viewRef.current
     const tileS = TILE_PX * zoom
     const terrain = terrainRef.current
     const amount = amountRef.current
     if (terrain) {
-      // roadView early-outs when zoomed far; close-up pass only when tiles are large enough.
       drawWornWays(ctx, terrain, camX, camY, zoom, visible, TILE_PX)
-      if (amount && tileS >= 5.5) {
-        drawCloseupTerrain(ctx, terrain, amount, camX, camY, zoom, visible, TILE_PX, performance.now())
+      // Chunk-meshed house cutaways (floors+walls+furniture) — not per-block draws.
+      buildChunksRef.current?.draw(ctx, camX, camY, zoom, visible, TILE_PX)
+      // Vegetation / mills / props (buildings skipped — handled above).
+      if (amount) {
+        drawOrganicCloseup(ctx, terrain, amount, camX, camY, zoom, visible, TILE_PX, now)
+      }
+      // Extra shore foam / dirt mounds only — buildings handled above.
+      if (amount && tileS >= 7) {
+        drawCloseupTerrain(ctx, terrain, amount, camX, camY, zoom, visible, TILE_PX, now)
       }
     }
 
-    const size = Math.max(2.4, tileS * 1.35)
-    const shadows = size >= 7
+    // Villagers ≈ ¾ tile — houses must read larger.
+    const size = Math.max(2.5, tileS * 0.78)
+    const shadows = size >= 4.5
     const tx = (x: number) => (x * TILE_PX + TILE_PX / 2 - camX) * zoom
     const ty = (y: number) => (y * TILE_PX + TILE_PX / 2 - camY) * zoom
     const off = (sx: number, sy: number) => sx < -size || sy < -size || sx > DISPLAY_SIZE + size || sy > DISPLAY_SIZE + size
     const shadow = (sx: number, sy: number, rx: number, ry: number) => {
       if (!shadows) return
       ctx.fillStyle = 'rgba(0,0,0,0.28)'
-      ctx.beginPath()
-      ctx.ellipse(sx + rx * 0.15, sy + ry * 0.85, rx, ry * 0.45, 0, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.fillRect(sx - rx, sy + ry * 0.35, rx * 2, ry)
     }
 
-    const simpleSprites = size < 4.5
+    const simpleSprites = tileS < 2.5
 
     for (const s of sheep) {
       if (!s.alive) continue
@@ -514,115 +536,23 @@ export function SimulationCanvas() {
         const bx = boat?.sx ?? sx
         const by = boat?.sy ?? sy
         const bs = boat?.bs ?? size
-        if (simpleSprites) {
-          ctx.fillStyle = `hsl(${v.hue}, 50%, 48%)`
-          ctx.fillRect(bx - 1, by - bs * 0.35, 2, 2)
-          continue
-        }
-        ctx.fillStyle = `hsl(${v.hue}, 48%, 40%)`
-        ctx.fillRect(bx - bs * 0.12, by - bs * 0.42, bs * 0.24, bs * 0.28)
-        ctx.fillStyle = `hsl(${v.hue}, 55%, 62%)`
-        ctx.beginPath()
-        ctx.arc(bx, by - bs * 0.5, bs * 0.14, 0, Math.PI * 2)
-        ctx.fill()
-        if (v.id === sel) {
-          ctx.strokeStyle = '#e8d078'
-          ctx.lineWidth = 1.4
-          ctx.beginPath()
-          ctx.arc(bx, by - bs * 0.2, bs * 0.55, 0, Math.PI * 2)
-          ctx.stroke()
-        }
+        drawVillagerSprite(ctx, v, bx, by - bs * 0.15, {
+          selected: v.id === sel,
+          size: Math.max(2.8, size * 0.85),
+          simple: simpleSprites,
+          timeMs: now,
+        })
         continue
       }
 
-      if (simpleSprites) {
-        ctx.fillStyle = `hsl(${v.hue}, 46%, 42%)`
-        ctx.fillRect(sx - 1, sy - 2, 3, 4)
-        continue
-      }
-
-      if (!v.mounted) shadow(sx, sy + size * 0.15, size * 0.38, size * 0.22)
-
-      if (v.mounted) {
-        if (v.hasCart) {
-          shadow(sx - size * 0.9, sy + size * 0.2, size * 0.4, size * 0.2)
-          ctx.fillStyle = '#6e4a28'
-          ctx.fillRect(sx - size * 1.4, sy + size * 0.02, size * 0.75, size * 0.44)
-          ctx.fillStyle = '#a88858'
-          ctx.fillRect(sx - size * 1.32, sy + size * 0.08, size * 0.58, size * 0.18)
-          ctx.fillStyle = '#2a2118'
-          ctx.beginPath()
-          ctx.arc(sx - size * 1.25, sy + size * 0.52, size * 0.15, 0, Math.PI * 2)
-          ctx.arc(sx - size * 0.82, sy + size * 0.52, size * 0.15, 0, Math.PI * 2)
-          ctx.fill()
-        }
-        shadow(sx, sy + size * 0.35, size * 0.62, size * 0.26)
-        ctx.fillStyle = '#8a6a45'
-        ctx.beginPath()
-        ctx.ellipse(sx, sy + size * 0.22, size * 0.72, size * 0.3, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#6e5234'
-        ctx.fillRect(sx + size * 0.48, sy - size * 0.28, size * 0.16, size * 0.42)
-      }
-
-      const bodyW = size * 0.62
-      const bodyH = size * 0.46
-      const lift = v.mounted ? size * 0.28 : 0
-      ctx.fillStyle = `hsl(${v.hue}, 48%, 34%)`
-      ctx.fillRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
-      ctx.fillStyle = `hsl(${v.hue}, 42%, 28%)`
-      ctx.fillRect(sx - bodyW / 2, sy + bodyH * 0.55 - lift, bodyW, bodyH * 0.28)
-      ctx.fillStyle = `hsl(${v.hue}, 55%, 62%)`
-      ctx.beginPath()
-      ctx.arc(sx, sy - size * 0.24 - lift, size * 0.24, 0, Math.PI * 2)
-      ctx.fill()
-      if (v.toolTier !== 'none') {
-        ctx.strokeStyle = v.toolTier === 'iron' ? '#c87840' : v.toolTier === 'stone' ? '#d8d4c8' : '#2a2118'
-        ctx.lineWidth = Math.max(0.7, size * 0.09)
-        ctx.strokeRect(sx - bodyW / 2, sy - size * 0.02 - lift, bodyW, bodyH)
-      }
-      if (v.grudgeTarget !== null) {
-        ctx.fillStyle = '#c43834'
-        ctx.beginPath()
-        ctx.arc(sx + size * 0.38, sy - size * 0.5 - lift, size * 0.13, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      if (v.id === sel) {
-        ctx.strokeStyle = '#e8d078'
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.arc(sx, sy - lift * 0.3, size * 0.88, 0, Math.PI * 2)
-        ctx.stroke()
-      }
+      drawVillagerSprite(ctx, v, sx, sy, {
+        selected: v.id === sel,
+        size,
+        simple: simpleSprites,
+        timeMs: now,
+      })
     }
-
-    // Visual day/night only — sleep / temp / activity biases keep running in the worker.
-    if (showDayNightRef.current) {
-      const { night, warm } = dayNightVisual(viewRef.current.hour ?? 12)
-      if (warm > 0.02) {
-        ctx.fillStyle = `rgba(255, 148, 72, ${warm * 0.2})`
-        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
-      }
-      if (night > 0.04) {
-        const prev = ctx.globalCompositeOperation
-        ctx.globalCompositeOperation = 'multiply'
-        const g = ctx.createRadialGradient(
-          DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.42,
-          DISPLAY_SIZE * 0.12,
-          DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.5,
-          DISPLAY_SIZE * 0.78,
-        )
-        g.addColorStop(0, `rgba(28, 36, 72, ${0.08 + night * 0.22})`)
-        g.addColorStop(0.55, `rgba(10, 14, 36, ${0.22 + night * 0.42})`)
-        g.addColorStop(1, `rgba(2, 4, 14, ${0.45 + night * 0.5})`)
-        ctx.fillStyle = g
-        ctx.fillRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE)
-        ctx.globalCompositeOperation = prev
-      }
-    }
-  }, [clampCamera])
+  }, [clampCamera, ensureGl])
 
   useEffect(() => {
     let cancelled = false
@@ -662,6 +592,12 @@ export function SimulationCanvas() {
   }, [draw])
 
   const handleReset = useCallback(() => {
+    const rec = recorderRef.current
+    if (rec && rec.series.length >= 1) {
+      setArchives(commitArchive(finalizeArchive(rec, 'reset', stats)))
+    }
+    recorderRef.current = null
+    setLiveSeries([])
     setPlaying(false)
     workerRef.current?.postMessage({ type: 'play', playing: false })
     selectedRef.current = null
@@ -670,10 +606,17 @@ export function SimulationCanvas() {
     setFollowing(false)
     setMenuOpen(true)
     setLaunching(false)
-  }, [])
+  }, [stats])
 
   const handleLaunch = useCallback((config: SimConfig) => {
+    const prev = recorderRef.current
+    if (prev && prev.series.length >= 1) {
+      setArchives(commitArchive(finalizeArchive(prev, 'relaunch', stats)))
+    }
+    recorderRef.current = createLiveRecorder(config.seed)
+    setLiveSeries([])
     setLastConfig(config)
+    seedRef.current = config.seed
     setLaunching(true)
     setWorldReady(false)
     selectedRef.current = null
@@ -691,7 +634,7 @@ export function SimulationCanvas() {
     const kind = startedRef.current ? 'reset' : 'start'
     workerRef.current?.postMessage({ type: kind, seed: config.seed, config })
     workerRef.current?.postMessage({ type: 'speed', speed })
-  }, [speed])
+  }, [speed, stats])
 
   const applyZoom = useCallback(
     (factor: number, screenX: number, screenY: number) => {
@@ -840,7 +783,15 @@ export function SimulationCanvas() {
       <div className={menuOpen ? 'sim-stage is-dimmed' : 'sim-stage'}>
         <div className="sim-map">
           <canvas
+            ref={glCanvasRef}
+            className="sim-gl"
+            width={DISPLAY_SIZE}
+            height={DISPLAY_SIZE}
+            aria-hidden
+          />
+          <canvas
             ref={canvasRef}
+            className="sim-actors"
             width={DISPLAY_SIZE}
             height={DISPLAY_SIZE}
             onWheel={handleWheel}
@@ -884,6 +835,8 @@ export function SimulationCanvas() {
           following={following}
           onFollow={handleFollow}
           onCloseSelected={handleCloseSelected}
+          liveSeries={liveSeries}
+          archives={archives}
         />
       )}
     </div>

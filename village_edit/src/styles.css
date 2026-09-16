@@ -136,13 +136,29 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: grab;
-  image-rendering: pixelated;
   touch-action: none;
   user-select: none;
 }
 
-.sim-map canvas:active {
+.sim-map canvas.sim-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  image-rendering: auto;
+}
+
+.sim-map canvas.sim-actors {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  image-rendering: auto;
+  background: #0a120c;
+}
+
+.sim-map canvas.sim-actors:active {
   cursor: grabbing;
 }
 
@@ -565,8 +581,129 @@ body {
   font-size: 11px;
 }
 
+.sim-hero-stats-tight {
+  margin-top: 8px;
+}
+
+.sim-hero-stats-tight b {
+  font-size: 16px;
+}
+
+.sim-atlas-lead {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #b8c2aa;
+}
+
+.sim-atlas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sim-chart {
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(214, 196, 140, 0.1);
+}
+
+.sim-chart-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #e8e0c8;
+}
+
+.sim-chart-head p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #9aa68c;
+}
+
+.sim-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+
+.sim-chart-axis {
+  fill: rgba(236, 231, 214, 0.35);
+  font-size: 9px;
+}
+
+.sim-chart-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+}
+
+.sim-chart-legend li {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: #c8d0bc;
+}
+
+.sim-chart-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.sim-chart-legend strong {
+  font-variant-numeric: tabular-nums;
+  color: #ece7d6;
+}
+
+.sim-archives {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sim-archives li {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(214, 196, 140, 0.1);
+}
+
+.sim-archives header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sim-archives header span {
+  color: #b8c2aa;
+}
+
+.sim-archives p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #c8d0bc;
+}
+
+.sim-archive-causes {
+  color: #d6c48c !important;
+}
+
 .sim-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 12px 16px 0;
   position: sticky;
@@ -639,6 +776,45 @@ body {
   padding-top: 10px;
   border-top: 1px solid rgba(214, 196, 140, 0.1);
 }
+.sim-cog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sim-cog-head h4 {
+  margin: 0;
+}
+
+.sim-cog-modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(214, 196, 140, 0.22);
+  border-radius: 4px;
+}
+
+.sim-cog-modes button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #9aa58d;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.sim-cog-modes button.is-on {
+  background: rgba(196, 178, 122, 0.22);
+  color: #e8d7a3;
+}
+
 
 .sim-inv {
   margin: 6px 0 0;

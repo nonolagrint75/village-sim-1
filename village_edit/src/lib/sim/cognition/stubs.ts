@@ -46,15 +46,30 @@ const CULTURE_FROM_CIRCLE: Record<string, string> = {
 }
 
 const HABIT_FRIENDS: Partial<Record<TaskKind, TaskKind[]>> = {
-  gatherWood: ['clearLand', 'buildHouse', 'buildWorkbench'],
-  gatherFood: ['eat', 'giveFood', 'storeChest'],
+  gatherWood: ['clearLand', 'buildHouse', 'buildWorkbench', 'buildBench'],
+  gatherFood: ['eat', 'giveFood', 'storeChest', 'fish'],
   harvestWheat: ['grindFlour', 'bakeBread', 'sowField'],
   mineGold: ['mintCoins', 'tradeRun'],
   tradeRun: ['buyMaterial', 'buildCart', 'buildPort'],
   craftIronTool: ['gatherIron', 'buildWorkbench'],
-  socialise: ['giveFood', 'rest'],
+  socialise: ['giveFood', 'rest', 'entertain'],
   fight: ['defend', 'craftSpear', 'buildWall'],
+  flee: ['rest', 'tendHearth', 'buildPlazaFire'],
   fish: ['buildBoat', 'buildPort'],
+  drink: ['gatherFood', 'rest'],
+  buildBed: ['buildCradle', 'buildHearth', 'buildTable'],
+  buildChest: ['buildShelf', 'buildCupboard', 'storeChest'],
+  buildWorkbench: ['buildLoom', 'craftIronTool'],
+  tendHearth: ['gatherFuel', 'rest', 'placeCandle'],
+  buildPlazaFire: ['tendPlazaFire', 'gatherFuel'],
+  experiment: ['craftGoods', 'teachCraft'],
+  useMedicine: ['rest', 'gatherFood'],
+  entertain: ['socialise', 'rest'],
+  teachCraft: ['craftGoods', 'socialise'],
+  makeCharcoal: ['gatherWood', 'craftGoods'],
+  craftGoods: ['storeChest', 'tradeRun'],
+  feedHorse: ['mount', 'tameHorse'],
+  buildPen: ['captureSheep', 'feedPen'],
 }
 
 export type CulturePeer = {
@@ -185,43 +200,68 @@ export function tickReligionDepth(state: SimState, mind: CognitiveState, v: Vill
     return
   }
 
-  let sx = mind.sacredX
-  let sy = mind.sacredY
-  if (faith.length > 0) {
-    const c = faith[0]
-    let ax = 0
-    let ay = 0
-    let n = 0
-    for (const id of c.memberIds) {
-      const m = state.villagers.find((o) => o.id === id && o.alive)
-      if (!m) continue
-      ax += m.x
-      ay += m.y
-      n++
+  // Lieu figé une fois établi — plus de centroid mobile type forage.
+  const locked = mind.sacredConf >= 0.32
+  if (!locked) {
+    let sx = mind.sacredX
+    let sy = mind.sacredY
+    if (faith.length > 0) {
+      const c = faith[0]
+      let ax = 0
+      let ay = 0
+      let n = 0
+      // Ancrage sur foyers / positions stables des membres, pas le barycentre vivant.
+      for (const id of c.memberIds) {
+        const m = state.villagers.find((o) => o.id === id && o.alive)
+        if (!m) continue
+        if (m.hasHome) {
+          ax += m.homeX
+          ay += m.homeY
+        } else {
+          ax += m.x
+          ay += m.y
+        }
+        n++
+      }
+      if (n > 0) {
+        sx = Math.round(ax / n)
+        sy = Math.round(ay / n)
+      }
+    } else if (v.hasHome) {
+      sx = v.homeX
+      sy = v.homeY
+    } else if (v.hasWorkbench) {
+      sx = v.workbenchX
+      sy = v.workbenchY
+    } else {
+      sx = Math.round(v.x)
+      sy = Math.round(v.y)
     }
-    if (n > 0) {
-      sx = Math.round(ax / n)
-      sy = Math.round(ay / n)
-    }
-  } else if (v.hasHome) {
-    sx = v.homeX
-    sy = v.homeY
-  } else {
-    sx = v.x
-    sy = v.y
+    mind.sacredX = sx
+    mind.sacredY = sy
   }
 
-  mind.sacredX = sx
-  mind.sacredY = sy
-  const near = distance(v.x, v.y, sx, sy) < 14
+  const near = distance(v.x, v.y, mind.sacredX, mind.sacredY) < 10
   const rite =
-    near && (v.task?.kind === 'socialise' || v.task?.kind === 'rest' || v.task?.kind === 'giveFood')
+    near &&
+    (v.task?.kind === 'pray' ||
+      v.task?.kind === 'counsel' ||
+      v.task?.kind === 'socialise' ||
+      v.task?.kind === 'rest')
   if (rite) {
     mind.sacredConf = clamp01(mind.sacredConf + 0.06 + pol.beliefs.piety * 0.04)
     pol.beliefs.piety = clamp01(pol.beliefs.piety + 0.008)
     mind.emotions.stress = clamp01(mind.emotions.stress - 0.04)
     mind.emotions.affection = clamp01(mind.emotions.affection + 0.03)
-    upsertSemantic(mind.semantic, 'good_forage', 'lieu de recueillement', mind.sacredConf, state.tick, sx, sy)
+    upsertSemantic(
+      mind.semantic,
+      'sacred_site',
+      'lieu sacré',
+      mind.sacredConf,
+      state.tick,
+      mind.sacredX,
+      mind.sacredY,
+    )
   } else {
     mind.sacredConf = clamp01(mind.sacredConf + (near ? 0.01 : -0.01) * pol.beliefs.piety)
   }
@@ -330,7 +370,10 @@ export function religionTaskBias(mind: CognitiveState, kind: TaskKind, x: number
   if (mind.sacredConf < 0.2) return 1
   const d = distance(x, y, mind.sacredX, mind.sacredY)
   const near = d < 18
-  if (kind === 'socialise' || kind === 'giveFood' || kind === 'rest') {
+  if (kind === 'pray') {
+    return near ? 1 + mind.sacredConf * 0.85 : 1 + mind.sacredConf * 0.15
+  }
+  if (kind === 'socialise' || kind === 'giveFood' || kind === 'rest' || kind === 'counsel') {
     return near ? 1 + mind.sacredConf * 0.55 : 1 + mind.sacredConf * 0.08
   }
   if (kind === 'steal' || kind === 'confront') {
