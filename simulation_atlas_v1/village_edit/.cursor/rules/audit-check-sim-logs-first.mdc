@@ -1,0 +1,17 @@
+---
+description: Before any audit, read the user's live simulation logs first
+alwaysApply: true
+---
+
+# Audits — logs de simulation d'abord
+
+Quand l'utilisateur demande un **audit** (cerveau, interconnexion, survie, total, second pass, etc.) :
+
+1. **Premier réflexe** : consulter les logs des simulations qu'il a lancées lui-même — **avant** de relancer des probes/scripts ou de conclure depuis le code seul.
+2. Sources à checker (dans l'ordre) :
+   - Terminaux Cursor actifs (`terminals/`) : `npm run app`, Vite, sorties console
+   - Chronique / `state.log` exportée ou fichiers `*log*` / `*_run_log*` dans le repo ou le workspace
+   - Tout dump/rapport que l'utilisateur a ouvert ou mentionné
+3. S'appuyer sur ces logs pour : morts, AFK, métiers, famine, moisson, bandits, incohérences observables.
+4. Ensuite seulement : grep code, probes headless, correctifs.
+5. Dans le rapport d'audit : section courte **« Logs utilisateur »** (ce qui a été lu, ou « aucun log live trouvé » + où chercher).

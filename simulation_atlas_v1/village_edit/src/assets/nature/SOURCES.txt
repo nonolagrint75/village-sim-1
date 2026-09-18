@@ -1,0 +1,14 @@
+CC0 nature + build sources (environment AND human blocks):
+
+- Puny World 16x16 overworld tileset by Shade
+  https://opengameart.org/content/16x16-puny-world-tileset
+  Used for: path-in-grass ribbons (top-row autotile), props cues.
+- 16x16 Block Texture Set by ARoachIFoundOnMyPillow
+  https://opengameart.org/content/16x16-block-texture-set
+  Used for: oak/pine/beech/maple planks, logs, cobble/limestone/mud bricks,
+  gravel, dirt — floors, walls, furniture accents, wells, campfires, fences.
+- 16x16 Block Textures by ARoachIFoundOnMyPillow
+  https://opengameart.org/content/1616-block-textures
+
+Rule: always prefer pack tiles; adapt (crop / tint / soft ribbon) when needed.
+Construction remains 1 sim cell = 1 block. Villagers use villagerSprites (untouched).

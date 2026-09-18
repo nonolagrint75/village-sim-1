@@ -1,0 +1,6 @@
+seed=1 tps=116.2 sliceMin=93.3 pass=true atTarget=true
+seed=7 tps=93.6 sliceMin=90.5 pass=true atTarget=false
+seed=1 tps=105.2 sliceMin=69.6 pass=true atTarget=true
+seed=7 tps=89.4 sliceMin=65.6 pass=true atTarget=false
+seed=1 tps=104.2 sliceMin=95 pass=true atTarget=true
+seed=7 tps=74 sliceMin=70.5 pass=false atTarget=false

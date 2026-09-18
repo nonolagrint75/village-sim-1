@@ -1,0 +1,10 @@
+import fs from "fs"
+const s = fs.readFileSync("src/lib/render/nature/shorePaint.ts","utf8")
+console.log("len", s.length, "lines", s.split(/\n/).length)
+console.log("head", s.slice(0,200))
+const exports = [...s.matchAll(/^export function (\w+)/gm)].map(m=>m[1])
+console.log("exports", exports)
+console.log("has domainWarp", s.includes("domainWarp"))
+console.log("has shoreWarp", s.includes("function shoreWarp"))
+console.log("has paintViewportShoreStrip", s.includes("paintViewportShoreStrip"))
+console.log("syntax check via node --check after esbuild...")

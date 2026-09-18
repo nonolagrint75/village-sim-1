@@ -1,0 +1,74 @@
+{
+    "mode":  "stress_fill_500",
+    "honesty":  "TEST SETUP: cloned founders to target after create (initialVillagers clamp max=120). Not organic grow.",
+    "seed":  7,
+    "wallSec":  8,
+    "adaptWarmSec":  5,
+    "targetPop":  500,
+    "fill":  {
+                 "before":  120,
+                 "added":  380,
+                 "after":  500
+             },
+    "popAtMeasureStart":  500,
+    "popEnd":  470,
+    "ticks":  720,
+    "elapsedSec":  8.049,
+    "measuredTps":  89.5,
+    "sliceMinTps":  87,
+    "sliceMaxTps":  123.8,
+    "targetTps":  100,
+    "passBar":  80,
+    "budget":  {
+                   "uiLight":  false,
+                   "climatePeriodMul":  1,
+                   "uiIntervalMs":  380,
+                   "popScale":  1,
+                   "pathScale":  1.014,
+                   "headroom":  0.74,
+                   "thinkCooldownExtra":  0,
+                   "commercePeriodMul":  1,
+                   "preferGpu":  true,
+                   "drawIntervalMs":  24,
+                   "politicsStagger":  false,
+                   "deepPeriod":  12,
+                   "deepShare":  0.46,
+                   "lastTps":  91.11
+               },
+    "tpsPass":  true,
+    "tpsNearTarget":  false,
+    "tpsAtTarget":  false,
+    "scaleOk":  true,
+    "confirm":  {
+                    "seed1":  {
+                                  "tpsPass":  true,
+                                  "measuredTps":  90.6,
+                                  "sliceMin":  88.1,
+                                  "tpsNearTarget":  true
+                              },
+                    "firstPass":  81.6,
+                    "seed7":  {
+                                  "tpsPass":  true,
+                                  "measuredTps":  89.5,
+                                  "sliceMin":  87
+                              },
+                    "priorFail":  53.2
+                },
+    "draw":  {
+                 "villagers":  470,
+                 "villages":  8
+             },
+    "stats":  {
+                  "firms":  21,
+                  "pop":  470,
+                  "markets":  4,
+                  "villages":  8,
+                  "kingdoms":  8
+              },
+    "bulletin":  {
+                     "moyenne":  77.1,
+                     "visuelHold":  69.5,
+                     "note":  "Perf raised severe to measuredTps; Visuel HOLD; soft refuse 90+ global",
+                     "performanceMatiere":  89.5
+                 }
+}

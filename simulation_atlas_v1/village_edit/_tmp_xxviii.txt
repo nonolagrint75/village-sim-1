@@ -1,0 +1,102 @@
+XXVIII. LIVRABLE FINAL
+
+Le rapport final doit être structuré exactement comme ceci :
+
+```text
+# NONO_SIMU_2D — BULLETIN D'AUDIT
+
+## MOYENNE GÉNÉRALE
+
+XX.X / 100
+
+## BULLETIN SYNTHÉTIQUE
+
+[tableau des 15 matières]
+
+---
+
+# 1. INTELLIGENCE DES PNJ
+[notes + détails]
+
+# 2. VIE ET FAMILLES
+[notes + détails]
+
+# 3. RELATIONS SOCIALES
+[notes + détails]
+
+# 4. GROUPES ET INSTITUTIONS
+[notes + détails]
+
+# 5. ÉCONOMIE
+[notes + détails]
+
+# 6. MÉTIERS
+[notes + détails]
+
+# 7. POLITIQUE
+[notes + détails]
+
+# 8. RELIGION ET CULTURE
+[notes + détails]
+
+# 9. CONFLITS
+[notes + détails]
+
+# 10. MONDE
+[notes + détails]
+
+# 11. VILLES
+[notes + détails]
+
+# 12. HISTOIRE
+[notes + détails]
+
+# 13. ÉMERGENCE GLOBALE
+[notes + détails]
+
+# 14. VISUEL
+[notes + détails]
+
+# 15. PERFORMANCE
+[notes + détails]
+
+---
+
+# TOP 10 PROBLÈMES
+
+---
+
+# TOP 10 POINTS FORTS
+
+---
+
+# DIAGNOSTIC FINAL
+
+---
+
+# PRIORITÉS D'AMÉLIORATION
+
+P1 — ...
+P2 — ...
+P3 — ...
+...
+```
+
+IMPORTANT :
+
+**Ne modifie pas le projet pendant l'audit sauf si une instrumentation temporaire est absolument nécessaire pour mesurer quelque chose.**
+
+Je veux d'abord obtenir **une photographie extrêmement précise de l'état actuel de `nono_simu_2d`**.
+
+Le rapport doit être suffisamment détaillé pour qu'après lecture, je puisse savoir exactement :
+
+* ce qui fonctionne ;
+* ce qui ne fonctionne pas ;
+* ce qui est seulement superficiel ;
+* ce qui est réellement émergent ;
+* où sont les goulets d'étranglement ;
+* pourquoi chaque note a été attribuée ;
+* et quelles améliorations auraient le plus d'impact sur la simulation.
+
+**Ne te contente jamais d'une analyse statique si un comportement peut être testé directement.**
+</user_query>

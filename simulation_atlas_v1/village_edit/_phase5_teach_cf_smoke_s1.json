@@ -1,0 +1,20 @@
+{
+  "phase": 5,
+  "dp": "DP4",
+  "induced": false,
+  "seed": 1,
+  "days": 6,
+  "ticks": 432,
+  "elapsedMs": 12001,
+  "decisionExactTotal": 5095,
+  "teachEvents": 0,
+  "teachSkillChanges": 0,
+  "teachLaterUsesProxyDebug": 0,
+  "teachTrueLaterUses": 0,
+  "teachNpcCount": 0,
+  "teachChain": "NOT_TESTED",
+  "sec22Status": "PARTIAL",
+  "samples": [],
+  "acceptance": "PENDING",
+  "note": "CODE wired smoke — true chain instrumented; acceptance PENDING; never PASS from this smoke"
+}

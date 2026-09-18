@@ -1,0 +1,75 @@
+{
+  "phase": 4,
+  "cp": "CP1",
+  "induced": false,
+  "seed": 1,
+  "days": 5,
+  "ticks": 360,
+  "elapsedMs": 7562,
+  "decisionExactTotal": 3982,
+  "decisionExactBySource": {
+    "chooseTask": 1928,
+    "HARD": 148,
+    "setTask": 0,
+    "other": 1906
+  },
+  "decisionSetTaskAssigns": 3213,
+  "decisionNoteChosenActions": 3982,
+  "decisionOrphanSetTask": 0,
+  "coveragePctNoteChosenVsSetTask": 100,
+  "sampleRingLen": 48,
+  "sampleRingTail": [
+    {
+      "seed": 1,
+      "tick": 345,
+      "day": 4,
+      "villagerId": 94,
+      "kind": "rest",
+      "source": "other",
+      "whyTag": "extra:reprise après repas",
+      "prevKind": "rest"
+    },
+    {
+      "seed": 1,
+      "tick": 347,
+      "day": 4,
+      "villagerId": 30,
+      "kind": "harvestWheat",
+      "source": "chooseTask",
+      "whyTag": "n=4",
+      "prevKind": null
+    },
+    {
+      "seed": 1,
+      "tick": 348,
+      "day": 4,
+      "villagerId": 32,
+      "kind": "rest",
+      "source": "other",
+      "whyTag": "extra:nuit — abri improvisé",
+      "prevKind": "buildProject"
+    },
+    {
+      "seed": 1,
+      "tick": 348,
+      "day": 4,
+      "villagerId": 79,
+      "kind": "rest",
+      "source": "other",
+      "whyTag": "extra:nuit — lit — rentre se r",
+      "prevKind": "sowField"
+    },
+    {
+      "seed": 1,
+      "tick": 357,
+      "day": 4,
+      "villagerId": 83,
+      "kind": "rest",
+      "source": "other",
+      "whyTag": "extra:nuit — abri improvisé",
+      "prevKind": "buildProject"
+    }
+  ],
+  "residual": "Orphan setTask (no noteChosenAction): night home-rest retarget; any future setTask without note. Reprise paths call noteChosenAction without setTask (counted as exact other/HARD).",
+  "passSmoke": true
+}

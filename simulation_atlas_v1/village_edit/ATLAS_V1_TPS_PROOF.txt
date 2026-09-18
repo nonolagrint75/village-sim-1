@@ -1,0 +1,12 @@
+ATLAS_V1 TPS PROOF — 2026-09-18 ~21:16
+Tree: simulation_atlas_v1/village_edit
+Probe defaults: wall8 adapt8 settle1
+
+=== Stress @500 ===
+Official seed7 measuredTps=94 PASS (sliceMin=73.3)
+Confirm seed1 measuredTps=82.5 PASS (sliceMin=57.2)
+Reliability: 8/8 dual-seed matrix (min 87.4). Stabilized vs prior FAIL confirms ~34-74.
+Cible 100: often; sliceMin variance open.
+
+Performance matiere: 90.0 (severe 0.8×94+0.2×min(73.3,82.5)=89.9 → floor ~90) | Bulletin: 77.1 HARD
+Refuse sticky 96.3/77.5 + global 90+. Visuel 69.5 HOLD. No commit.

@@ -1,0 +1,4 @@
+﻿determinism=PASS sameSeed=7 match
+butterfly=PASS s7!=s1!=s3 (12d)
+mines_s7=1 sells_s7=5 bandits_s7=1 coups_s7=1
+mines_s1=3 sells_s1=2

@@ -1,0 +1,28 @@
+---
+description: Nature visuals must be complete world objects, not chopped tiles
+alwaysApply: true
+---
+
+# Rendu nature 2D — coherence spatiale
+
+Objectif : un monde coherent, pas une collection de textures.
+
+Avant de livrer, identifier la cause : texture / assemblage / sprite multi-cellules / z-order / renderer / echelle / procedural. Ne pas corriger un bug de renderer en changeant seulement les pixels.
+
+## Objets
+
+Arbre, rocher, buisson, fleur, souche = UN objet complet (silhouette, base au sol, rien de coupe par la grille). Un arbre = feuillage + tronc + base, jamais deux moities de tuiles.
+
+Si ca depasse une cellule : prop multi-cellules, couche separee du terrain.
+
+## Z-order stable
+
+terrain -> petites plantes -> objets au sol -> tronc/base -> feuillage -> plus haut (maisons/PNJ)
+
+## Echelle
+
+Meme monde. Pas de fleur taille PNJ, pas de tronc hors proportion.
+
+## Tests
+
+Zone representative, frontieres, overlap, z-order, proportions, style unique. Coherence > variete.

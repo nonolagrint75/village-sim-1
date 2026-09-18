@@ -1,0 +1,93 @@
+=== CIVILIZATION AUDIT REPORT ===
+seeds 1,3,7 | 60 days | world 600×600
+mean elapsed 94s/seed
+
+── Per-seed checkpoints ──
+
+[seed 1] startPop=26 startTrees=28121
+  d30 | pop 23(+0/-3) | vg 4 | inst 16 | creed 14 | faith 4 | shrine 4 | bands 0/0 | fort 4o3 | hall 0 | Δtree -24 | way t242/p19/r1 | pol 4 ch1 k3
+  d60 | pop 17(+0/-5) | vg 4 | inst 18 | creed 14 | faith 4 | shrine 4 | bands 1/4 | fort 4o4 | hall 0 | Δtree -106 | way t297/p29/r2 | pol 4 ch3 k1
+  walls 1:wood 2:stone 3:wood 4:stone | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin] | creedIds {"partage":6,"commerce_libre":8}
+  chronicle inst=7 creed=196 bandit=0 fort=18 hall=0 kingdom=63 succession=9 territory=11 road=7 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j1·8h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+    · [1·j3·0h] piété croissante de Modan → creed : « le partage avant tout »
+    · [1·j3·0h] Première voie de foi : « le partage avant tout » (portée par Modan)
+    · [1·j3·12h] Une vraie route apparaît
+    · [1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Clair »
+
+[seed 3] startPop=26 startTrees=30226
+  d30 | pop 36(+10/-0) | vg 4 | inst 21 | creed 18 | faith 5 | shrine 4 | bands 0/0 | fort 6o4 | hall 0 | Δtree -120 | way t313/p56/r1 | pol 4 ch1 k3
+  d60 | pop 34(+18/-6) | vg 4 | inst 28 | creed 26 | faith 5 | shrine 4 | bands 1/4 | fort 7o4 | hall 0 | Δtree -164 | way t448/p41/r4 | pol 4 ch0 k4
+  walls 1:stone 2:stone 3:stone 4:none | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin] | creedIds {"changement":19,"piete":7}
+  chronicle inst=10 creed=155 bandit=0 fort=43 hall=0 kingdom=50 succession=6 territory=2 road=19 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j1·20h] Une vraie route apparaît
+    · [1·j2·8h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+    · [1·j3·0h] piété croissante de Tavic → creed : « le partage avant tout »
+    · [1·j3·0h] Première voie de foi : « le partage avant tout » (portée par Tavic)
+    · [1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Kareson »
+
+[seed 7] startPop=26 startTrees=14459
+  d30 | pop 27(+1/-0) | vg 4 | inst 17 | creed 15 | faith 5 | shrine 4 | bands 0/0 | fort 2o4 | hall 0 | Δtree -201 | way t305/p75/r0 | pol 4 ch1 k3
+  d60 | pop 28(+6/-0) | vg 4 | inst 17 | creed 16 | faith 4 | shrine 4 | bands 1/4 | fort 2o4 | hall 1 | Δtree -376 | way t469/p4/r5 | pol 4 ch2 k2
+  walls 1:wood 2:stone 3:stone 4:none | forts [palissade / fortin, palissade / fortin] | creedIds {"partage":15,"piete":1}
+  chronicle inst=7 creed=176 bandit=0 fort=43 hall=0 kingdom=51 succession=2 territory=6 road=19 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de fort de pierre (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de fort de pierre (sécurité du village) (#3)
+    · [1·j3·0h] piété croissante de Sawen → creed : « le commerce libre »
+    · [1·j3·0h] Première voie de foi : « le commerce libre » (portée par Sawen)
+    · [1·j3·8h] loups / menace → projet de fort de pierre (loups / menace) (#4)
+    · [1·j3·9h] sécurité du village → palissade / fortin (tours) achevé (#1)
+    · [1·j3·9h] palissade / fortin (tours) achevé → premier donjon / keep achevé — siège de pouvoir
+
+── Aggregate (end of run) ──
+popΔ mean 0.3 [-9,8,2] | births mean 8.0
+institutions mean 21.0 | creeds 18.7 | faith 4.3 | shrines 4.0
+bands mean 1.0 (bandits 4.0) | forts done 4.3 | halls 0.3
+trees cleared mean 215 | path+road mean 28 | villages mean 4.0
+chiefdoms mean 1.7 | kingdoms mean 2.3
+
+── Systems: EXIST in code vs FIRE in 30–90d window ──
+STATUS  | SYSTEM                                     | seedsHit | evidence
+FIRES   | institutions                               |  3/3 | total=87
+FIRES   | circles (politics)                         |  3/3 | total=74
+FIRES   | creeds / religion                          |  3/3 | total=586
+FIRES   | faith circles                              |  3/3 | total=13
+FIRES   | shrines / autels                           |  3/3 | total=15
+FIRES   | rituals                                    |  3/3 | total=285
+FIRES   | bandit groups                              |  3/3 | total=18
+RARE    | bandit raids                               |  2/3 | total=2
+FIRES   | fortify / castles                          |  3/3 | total=129
+FIRES   | village wallTier wood/stone                |  3/3 | total=10
+RARE    | halls (gather purpose)                     |  1/3 | total=1
+FIRES   | forest clearing (TREE loss / clearLand)    |  3/3 | total=2420
+FIRES   | roads (trail/path/road)                    |  3/3 | total=2598
+FIRES   | polities substrate                         |  3/3 | total=12
+FIRES   | chiefdoms                                  |  2/3 | total=5
+FIRES   | kingdoms                                   |  3/3 | total=7
+FIRES   | succession / authority contest             |  3/3 | total=17
+FIRES   | territory / absorption                     |  3/3 | total=19
+NEVER   | civil war (deferred soft)                  |  0/3 | total=0 (explicitly soft/deferred — confront bias only)
+FIRES   | guilds                                     |  3/3 | total=13
+FIRES   | population growth (births)                 |  2/3 | total=24
+FIRES   | multi-village founding                     |  3/3 | total=9
+
+── NEVER FIRE (coded but invisible in this window) ──
+  • civil war (deferred soft) — politics.ts comment: deferred — explicitly soft/deferred — confront bias only
+
+── RARE (fires on ≤ few events) ──
+  • bandit raids — perSeed=[1,1,0]
+  • halls (gather purpose) — perSeed=[0,0,1]
+
+── Verdict ──
+Civilization feel gaps: civil war (deferred soft); halls (gather purpose).
+FIRES=19 RARE=2 NEVER=1. Bandits gated to day 40+; creeds need piety/sacred thresholds.

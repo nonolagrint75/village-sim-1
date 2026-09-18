@@ -1,0 +1,6 @@
+/**
+ * Atlas life-systems tick — wires staging packs into live SimState without day scripts.
+ * HOT: wool_industry → herder/weaver (S9/S10). Hold: credit_bank (S20), kin_multigen (S50).
+ * READY bridges: guild_formation, merchant_network, succession_civil, religion_schism,
+ * agri_invention, military_dynasty.
+ */

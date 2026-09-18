@@ -1,0 +1,6 @@
+Forced re-optimization of dependencies
+Port 5188 is in use, trying another one...
+
+  VITE v5.4.21  ready in 1171 ms
+
+  ➜  Local:   http://127.0.0.1:5189/

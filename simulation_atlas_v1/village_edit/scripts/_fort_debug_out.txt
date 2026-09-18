@@ -1,0 +1,10 @@
+seed 3 alive=6 bp=484 sw=0 ww=0 forts=0
+seed 7 alive=14 bp=959 sw=0 ww=0 forts=1
+  {"id":2,"phase":"build","mat":"wood","rx":3,"towers":true,"pending":38,"wallN":30,"stamped":0,"built":false,"label":"palissade / fortin (institution cercle de garde (gardes))"}
+seed 11 alive=19 bp=642 sw=0 ww=54 forts=3
+  {"id":1,"phase":"build","mat":"wood","rx":3,"towers":false,"pending":16,"wallN":27,"stamped":11,"built":false,"label":"palissade / fortin (loups / menace)"}
+  {"id":2,"phase":"done","mat":"wood","rx":3,"towers":true,"pending":0,"wallN":27,"stamped":35,"built":true,"label":"palissade / fortin (loups / menace)"}
+  {"id":3,"phase":"gather","mat":"wood","rx":3,"towers":true,"pending":35,"wallN":27,"stamped":0,"built":false,"label":"palissade / fortin (loups / menace)"}
+seed 42 alive=15 bp=3488 sw=0 ww=46 forts=2
+  {"id":2,"phase":"gather","mat":"wood","rx":3,"towers":false,"pending":8,"wallN":27,"stamped":19,"built":false,"label":"palissade / fortin (loups / menace)"}
+  {"id":3,"phase":"build","mat":"wood","rx":3,"towers":true,"pending":11,"wallN":27,"stamped":24,"built":false,"label":"palissade / fortin (loups / menace)"}

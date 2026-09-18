@@ -1,0 +1,20 @@
+const fs = require('fs');
+const p = 'src/lib/render/nature/shorePaint.ts';
+let t = fs.readFileSync(p, 'utf8');
+const si = t.indexOf('export function paintViewportShoreStrip');
+const di = t.indexOf('export function paintViewportDirtStrip');
+let shore = t.slice(si, di);
+if (shore.includes('if (f < 0.5) {')) {
+  shore = shore.replace('if (f < 0.5) {', 'if (shoreAlpha(f, wx, wy) < 1) {');
+  console.log('fixed shore');
+}
+t = t.slice(0, si) + shore + t.slice(di);
+const di2 = t.indexOf('export function paintViewportDirtStrip');
+let dirt = t.slice(di2);
+if (dirt.includes('if (f < 0.5) {') && !dirt.includes('dirtAlpha(f, wx, wy)')) {
+  dirt = dirt.replace('if (f < 0.5) {', 'if (dirtAlpha(f, wx, wy) < 1) {');
+  t = t.slice(0, di2) + dirt;
+  console.log('fixed dirt');
+}
+fs.writeFileSync(p, t);
+console.log('sAlpha', t.includes('shoreAlpha(f, wx, wy) < 1'), 'dAlpha', t.includes('dirtAlpha(f, wx, wy) < 1'));

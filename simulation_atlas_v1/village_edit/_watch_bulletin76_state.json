@@ -1,0 +1,22 @@
+﻿{
+    "tpsPass":  true,
+    "hold":  "77.1",
+    "visuelStatus":  "FAIL",
+    "confirmSeed1":  82.5,
+    "perfMatiere":  90,
+    "target":  100,
+    "updatedAt":  "2026-09-18T19:19:59.5597901Z",
+    "refuse":  [
+                   "96.3",
+                   "77.5",
+                   "global-90+",
+                   "visuel-without-eye-QA"
+               ],
+    "holdMode":  "HARD",
+    "visuel":  69.5,
+    "wake":  126,
+    "matrix":  "8/8",
+    "perfStatus":  "PASS",
+    "confirmJsonStale":  73.6,
+    "measuredTps":  94
+}

@@ -1,0 +1,32 @@
+{
+  "phase": 5,
+  "dp": "DP6",
+  "induced": false,
+  "seed": 7,
+  "days": 12,
+  "ticks": 864,
+  "elapsedMs": 32626,
+  "grindLabel": "GRIND_OPEN_TASK",
+  "harvestStarts": 370,
+  "grindStarts": 172,
+  "bakeStarts": 81,
+  "grindByProfession": {
+    "farmer": 15,
+    "none": 125,
+    "forager": 25,
+    "lumberjack": 7
+  },
+  "millerAlivePeak": 0,
+  "millerPeakAlive": 0,
+  "millersEnd": 0,
+  "nonFarmFields": 0,
+  "foodChainLive": true,
+  "design": {
+    "grindOpenTask": true,
+    "millerProfessionOptional": true,
+    "forceSpawnMiller": false,
+    "status": "WONTFIX_DESIGN"
+  },
+  "acceptance": "DESIGN_DOCUMENTED",
+  "note": "grindFlour is an open task (no profession===miller gate); farmer jobBonus 2.15x; millerAlivePeak=0 expected; never PASS from millerPeak"
+}

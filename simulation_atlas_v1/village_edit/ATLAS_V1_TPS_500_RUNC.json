@@ -1,0 +1,52 @@
+{
+  "mode": "stress_fill_500",
+  "honesty": "TEST SETUP: cloned founders to target after create (initialVillagers clamp max=120). Not organic grow.",
+  "seed": 7,
+  "wallSec": 4,
+  "adaptWarmSec": 2,
+  "targetPop": 500,
+  "fill": {
+    "before": 120,
+    "after": 500,
+    "added": 380
+  },
+  "popAtMeasureStart": 500,
+  "popEnd": 500,
+  "ticks": 183,
+  "elapsedSec": 4,
+  "measuredTps": 45.7,
+  "sliceMinTps": 48,
+  "sliceMaxTps": 62.6,
+  "targetTps": 100,
+  "budget": {
+    "deepPeriod": 22,
+    "popScale": 1,
+    "deepShare": 0.18,
+    "lastTps": 54.24664484134576,
+    "headroom": 0.26604746315246974,
+    "preferGpu": true,
+    "pathScale": 0.5319256955782964,
+    "climatePeriodMul": 2,
+    "commercePeriodMul": 1.65,
+    "politicsStagger": true,
+    "uiLight": true,
+    "uiIntervalMs": 650,
+    "drawIntervalMs": 52,
+    "thinkCooldownExtra": 6
+  },
+  "tpsPass": false,
+  "tpsNearTarget": false,
+  "tpsAtTarget": false,
+  "scaleOk": true,
+  "draw": {
+    "villagers": 500,
+    "villages": 8
+  },
+  "stats": {
+    "pop": 500,
+    "villages": 8,
+    "markets": 1,
+    "firms": 21,
+    "kingdoms": 0
+  }
+}

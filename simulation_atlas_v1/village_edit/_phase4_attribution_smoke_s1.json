@@ -1,0 +1,24 @@
+{
+  "phase": 4,
+  "cp": "CP3",
+  "induced": false,
+  "seed": 1,
+  "days": 5,
+  "ticks": 360,
+  "elapsedMs": 6733,
+  "decisionExactTotal": 3982,
+  "attribution": {
+    "memoryAttributedDecisions": 296,
+    "memoryAttributedNpcs": 3,
+    "emotionAttributedDecisions": 1005,
+    "emotionAttributedNpcs": 77,
+    "personalityAttributedDecisions": 94,
+    "personalityAttributedNpcs": 29,
+    "personalityPairSamples": 29,
+    "personalityPairReady": 130,
+    "status": "WIRED"
+  },
+  "passSmoke": true,
+  "note": "CODE wired smoke only — acceptance PENDING (NOT_TESTED). Zeros are honest if no material mem/emo/pers tags on soft picks.",
+  "whyZerosIfAny": null
+}

@@ -1,0 +1,58 @@
+{
+  "name": "village-sim-local",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron/main.mjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sim": "tsx headless.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "app": "concurrently \"vite --port 5174 --strictPort --host 127.0.0.1\" \"npx wait-on tcp:127.0.0.1:5174 && npx electron .\"",
+    "app:web": "vite --port 5174 --strictPort --host 127.0.0.1",
+    "dist": "vite build && electron-builder --win portable"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "radix-ui": "^1.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.1.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^3.2.7",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.nonolagrint75.villagesim",
+    "productName": "Simulation Atlas v1",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  }
+}

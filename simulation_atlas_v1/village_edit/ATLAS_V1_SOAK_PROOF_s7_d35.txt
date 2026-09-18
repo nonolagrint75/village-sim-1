@@ -1,0 +1,33 @@
+Simulation Atlas v1 — soak proof (sells / mines / bandits / revolts / guilds / crisis / loot)
+seed=7 days=35 ticks=2520
+started=2026-09-18T17:08:22.714Z
+
+--- first appearance ---
+firstSellDay=5
+firstMineDay=0
+firstBanditDay=11 unlockPath=n/a
+firstCoupDay=10
+firstGuildDay=0
+firstCrisisDay=23 firstRebuildDay=-1
+
+--- final counters ---
+firms=4 produces=4 sells=16 consumes=15 hires=79
+mines=2 mineStickyDays=2469 depositBag=48 markets=2
+banditsAlive=2 bands=1
+wars active=1 battles=7 coups=8 polities=1
+guilds=2 institutions=9
+crisis={"stable":2,"crisis":0,"collapse":0,"rebuild":0,"dynasties":2}
+lootPeak=55 lootFinal=55
+pop=5 deaths=13 roads=726
+
+--- verdict ---
+sells>0: PASS (16)
+mines emerge: PASS (mines=2)
+mines sticky: PASS (stickyDays=2469)
+bandits emerge: PASS (alive=2, day=11)
+revolts/coups: PASS (coups=8)
+guilds: PASS (guilds=2, day=0)
+crisis cycle: PASS (first=23, rebuild=-1)
+ground loot: PASS (peak=55, final=55)
+soakCore: PASS
+done=2026-09-18T17:09:01.072Z

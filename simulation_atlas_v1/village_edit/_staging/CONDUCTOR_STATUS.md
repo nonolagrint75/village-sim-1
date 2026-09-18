@@ -1,0 +1,1 @@
+﻿HARD on · scenarios 50/0/0 · bulletin 77.1 · life 20/20 LIVE · Visuel 69.5 HOLD · Perf@500 PASS official 94/82.5 matrix 8/8 · Performance matiere 90.0 · soft refuse sticky 96.3/77.5 + global 90+ · cible 100 open · no commit

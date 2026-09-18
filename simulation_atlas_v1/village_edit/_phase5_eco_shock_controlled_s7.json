@@ -1,0 +1,234 @@
+{
+  "phase": 5,
+  "dp": "DP9",
+  "test": "P9-eco-shock-controlled",
+  "channel": "MECHANISM",
+  "induced": true,
+  "testSetup": "TEST SETUP: P9-wheat-stock-cut — wheat stock cut only",
+  "seed": 7,
+  "warmDays": 4,
+  "daysAfter": 8,
+  "ticks": 864,
+  "elapsedMs": 23243,
+  "decisionExactTotal": 12011,
+  "decisionsAfterShock": 9354,
+  "chain": "shock->decision->supply/demand->price->taskShift|professionShift",
+  "chainStages": {
+    "shock": true,
+    "decision": true,
+    "supply_demand": true,
+    "price": true,
+    "taskShift": true,
+    "professionShift": true
+  },
+  "supplyDemand": {
+    "wheatStockBefore": 415,
+    "wheatStockAfterCut": 0,
+    "wheatStockEnd": 85,
+    "priceWheatDelta": 1.8,
+    "priceFlourDelta": 4.1,
+    "priceBreadDelta": 1.4
+  },
+  "prices": {
+    "before": {
+      "wheat": 1.5,
+      "flour": 3,
+      "bread": 2,
+      "food": 1.5
+    },
+    "after": {
+      "wheat": 3.3,
+      "flour": 7.1,
+      "bread": 3.4,
+      "food": 0.9
+    }
+  },
+  "professions": {
+    "before": {
+      "farmer": 9,
+      "forager": 9,
+      "fisher": 0,
+      "herder": 0,
+      "miller": 0
+    },
+    "after": {
+      "farmer": 21,
+      "forager": 8,
+      "fisher": 0,
+      "herder": 0,
+      "miller": 0
+    }
+  },
+  "liveTasks": {
+    "before": {
+      "grindFlour": 0,
+      "bakeBread": 0,
+      "harvest": 0,
+      "sowField": 0,
+      "tradeRun": 0,
+      "giveFood": 0
+    },
+    "after": {
+      "grindFlour": 0,
+      "bakeBread": 0,
+      "harvest": 0,
+      "sowField": 0,
+      "tradeRun": 0,
+      "giveFood": 0
+    }
+  },
+  "counters": {
+    "priceDeltaEvents": 178,
+    "priceTaskShifts": 34,
+    "priceProfessionShifts": 44,
+    "priceNpcCount": 51,
+    "priceShockTaggedDeltas": 178,
+    "priceShockLinkedTaskShifts": 34,
+    "priceShockLinkedProfessionShifts": 44
+  },
+  "npcIds": [
+    12,
+    28,
+    63,
+    22,
+    16,
+    95,
+    77,
+    71,
+    97,
+    23,
+    59,
+    53,
+    76,
+    47,
+    35,
+    29,
+    25,
+    17,
+    96,
+    11,
+    90,
+    5,
+    84,
+    7,
+    30,
+    78,
+    72,
+    66
+  ],
+  "sampleCounts": {
+    "delta": 27,
+    "task": 15,
+    "profession": 22
+  },
+  "samplesTail": [
+    {
+      "tick": 810,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 17,
+      "taskKind": "grindFlour",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 810,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 90,
+      "prevProfession": "none",
+      "nextProfession": "farmer",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 811,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 17,
+      "taskKind": "bakeBread",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 815,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 5,
+      "prevProfession": "none",
+      "nextProfession": "miner",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 822,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 84,
+      "prevProfession": "none",
+      "nextProfession": "builder",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 832,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 7,
+      "taskKind": "grindFlour",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 833,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 7,
+      "taskKind": "bakeBread",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 833,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 30,
+      "taskKind": "grindFlour",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 834,
+      "day": 11,
+      "stage": "taskShift",
+      "npcId": 30,
+      "taskKind": "bakeBread",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 834,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 78,
+      "prevProfession": "none",
+      "nextProfession": "builder",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 846,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 72,
+      "prevProfession": "none",
+      "nextProfession": "lumberjack",
+      "shockId": "P9-wheat-stock-cut"
+    },
+    {
+      "tick": 858,
+      "day": 11,
+      "stage": "professionShift",
+      "npcId": 66,
+      "prevProfession": "none",
+      "nextProfession": "miner",
+      "shockId": "P9-wheat-stock-cut"
+    }
+  ],
+  "priceChainNaturalLabel": "PARTIAL",
+  "mechanismVerdict": "PARTIAL",
+  "emergence": "NOT_CLAIMED",
+  "acceptance": "PENDING",
+  "acceptanceNaturalSec32": "PENDING",
+  "note": "DONE CODE controlled MECHANISM probe — never EMERGENCE PASS; natural §32 acceptance PENDING"
+}

@@ -1,0 +1,1100 @@
+=== PHASE 5 STEP6 NATURAL CAUSALITY SOAK ===
+days=60 seeds=1,3,7 config={"initialVillagers":100,"maxPopulation":250,"preset":"standard","worldSize":1000}
+clamps: initialVillagers 4..120; maxPopulation<=500
+
+--- scalePolicy capacity ---
+suite=individual status=READY evidence=NOT_TESTED
+  floorPop=100 resolved initial=100 maxPop=250
+  requested initial=100 maxPop=250
+  canStartAtFloor=true canGrowWithinCap=true
+  clamps initialVillagers 4..120; maxPopulation <=500
+  note: individual: START@100 meets floor 100 (within clamp). Soak not run — NOT_TESTED, not PASS.
+suite=social status=UNPROVEN_GROW evidence=BLOCKED
+  floorPop=300 resolved initial=120 maxPop=400
+  requested initial=300 maxPop=400
+  canStartAtFloor=false canGrowWithinCap=true
+  clamps initialVillagers 4..120; maxPopulation <=500
+  note: social: BLOCKED capacite START@300 (initialVillagers clamp max=120 -> resolved 120). Grow cap 400>=300 OK but organic reach UNPROVEN. != FAIL emergence.
+  violation: initialVillagers requested 300 clamped to 120 (max 120) — cannot START at floor 300
+  violation: START@300 BLOCKED capacite: initialVillagers clamp max=120
+SOCIAL START@300 BLOCKED capacite (requested 300 -> clamped 120; clamp max=120)
+NATURAL path: no induce famine/profession/CREATE_*; stepSimulation only
+DP dumps: decisionExact, causality, attribution CF, profession MF, migrate stages, help, seq, creed, sec22
+
+
+>>> START seed=1
+  seed=1 d10 alive=100 deaths=0 leaves=1 exact=10111 taskDeltaPROXY=5471 profDelta=77
+  seed=1 d20 alive=108 deaths=0 leaves=2 exact=26581 taskDeltaPROXY=22773 profDelta=131
+  seed=1 d30 alive=116 deaths=0 leaves=2 exact=67209 taskDeltaPROXY=43745 profDelta=187
+  seed=1 d40 alive=125 deaths=1 leaves=2 exact=133033 taskDeltaPROXY=53290 profDelta=241
+  seed=1 d50 alive=131 deaths=3 leaves=2 exact=183005 taskDeltaPROXY=65506 profDelta=291
+  seed=1 d60 alive=123 deaths=9 leaves=2 exact=259935 taskDeltaPROXY=70470 profDelta=312
+>>> DONE seed=1 status=ok elapsedMs=244017 -> C:\Users\kamel\village-sim-1\_wt_rhythm\village_edit\_phase5_soak_s1.json
+    exact=259935 memCF=819 emoCF=1663 persCF=676 teachTrue=80 profMF=276/276 sec22=PARTIAL migrate=PARTIAL foundCamps=0 labor=14
+
+>>> START seed=3
+  seed=3 d10 alive=100 deaths=0 leaves=2 exact=11462 taskDeltaPROXY=5532 profDelta=53
+  seed=3 d20 alive=101 deaths=0 leaves=5 exact=60906 taskDeltaPROXY=14970 profDelta=86
+  seed=3 d30 alive=94 deaths=0 leaves=6 exact=100998 taskDeltaPROXY=31872 profDelta=97
+  seed=3 d40 alive=85 deaths=9 leaves=8 exact=147427 taskDeltaPROXY=47039 profDelta=112
+  seed=3 d50 alive=67 deaths=19 leaves=11 exact=184862 taskDeltaPROXY=62372 profDelta=119
+  seed=3 d60 alive=50 deaths=28 leaves=11 exact=215756 taskDeltaPROXY=69349 profDelta=123
+>>> DONE seed=3 status=ok elapsedMs=266037 -> C:\Users\kamel\village-sim-1\_wt_rhythm\village_edit\_phase5_soak_s3.json
+    exact=215756 memCF=361 emoCF=1361 persCF=699 teachTrue=50 profMF=128/128 sec22=PARTIAL migrate=PARTIAL foundCamps=3 labor=0
+
+>>> START seed=7
+  seed=7 d10 alive=100 deaths=0 leaves=0 exact=34007 taskDeltaPROXY=5387 profDelta=42
+  seed=7 d20 alive=101 deaths=0 leaves=0 exact=86609 taskDeltaPROXY=13194 profDelta=86
+  seed=7 d30 alive=100 deaths=0 leaves=1 exact=129955 taskDeltaPROXY=25410 profDelta=113
+  seed=7 d40 alive=88 deaths=10 leaves=1 exact=180521 taskDeltaPROXY=35099 profDelta=137
+  seed=7 d50 alive=68 deaths=21 leaves=1 exact=226512 taskDeltaPROXY=42177 profDelta=152
+  seed=7 d60 alive=47 deaths=34 leaves=1 exact=259732 taskDeltaPROXY=46017 profDelta=175
+>>> DONE seed=7 status=ok elapsedMs=280015 -> C:\Users\kamel\village-sim-1\_wt_rhythm\village_edit\_phase5_soak_s7.json
+    exact=259732 memCF=1022 emoCF=837 persCF=264 teachTrue=44 profMF=175/175 sec22=PARTIAL migrate=PARTIAL foundCamps=0 labor=5
+
+=== SUMMARY -> C:\Users\kamel\village-sim-1\_wt_rhythm\village_edit\_phase5_soak_summary.json
+{
+  "seedsRequested": 3,
+  "seedsOk": 3,
+  "seedsFailed": [],
+  "decisionsProxyTotal": 185836,
+  "decisionsExactTotal": 735423,
+  "decisionsExactBySource": {
+    "chooseTask": 122009,
+    "HARD": 417230,
+    "setTask": 241,
+    "other": 195943
+  },
+  "professionChangesTotal": 610,
+  "harvestStartsTotal": 2894,
+  "grindStartsTotal": 888,
+  "bakeStartsTotal": 216,
+  "helpTotal": 27459,
+  "leavesTotal": 14,
+  "rejoinsTotal": 9,
+  "foundCampsTotal": 3,
+  "edibleTotalSum": 1513,
+  "helpCategoriesMax": 6,
+  "millerPeakMax": 0,
+  "millerAlivePeakMax": 0,
+  "grindLabel": "GRIND_OPEN_TASK",
+  "birthsTotal": 91,
+  "deathsTotal": 71,
+  "teachCraftStartsTotal": 35667,
+  "teachTrueLaterUsesTotal": 174,
+  "teachLaterUsesProxyTotal": 986,
+  "conflictsTotal": 866,
+  "circlesFormedTotal": 192,
+  "creedChangesTotal": 581,
+  "creedGen2EventsTotal": 102,
+  "creedParentChildTransmissionsTotal": 102,
+  "maxPop": 131,
+  "minAliveEnd": 47,
+  "attribution": {
+    "memoryAttributedDecisions": 16810,
+    "emotionAttributedDecisions": 88162,
+    "personalityAttributedDecisions": 65269,
+    "personalityPairSamples": 224,
+    "personalityPairReady": 2878,
+    "personalityPairDivergent": 1730,
+    "memoryCausalFlips": 2202,
+    "emotionCausalFlips": 3861,
+    "personalityCausalFlips": 1639,
+    "memoryMemorableEvents": 64372,
+    "memoryRetrievals": 38548,
+    "memoryUses": 38548,
+    "emotionChanges": 761900,
+    "emotionUses": 121145,
+    "personalityUses": 103951,
+    "professionChanges": 579,
+    "professionChangesMultiFactor": 579,
+    "professionExplainableShare": 1
+  },
+  "helpByKind": {
+    "food": 13,
+    "teach": 27160,
+    "defend": 6,
+    "build": 186,
+    "haul": 75,
+    "labor": 19
+  },
+  "defendHelpOpportunities": 33,
+  "defendHelpTaken": 6,
+  "migrateStages": {
+    "urgeCrosses": 59,
+    "leaveAttempts": 39,
+    "leaves": 14,
+    "homelessLeave": 11,
+    "housedLeave": 3,
+    "travelStarts": 11,
+    "destEvals": 38,
+    "settlementAttempts": 3,
+    "foundCamps": 3,
+    "rejoins": 9,
+    "fails": 29
+  },
+  "behaviorSeq": {
+    "trackedMax": 165,
+    "variationPctMin": 0.8727272727272727,
+    "stuckLoop14dPctMax": 0.09090909090909091,
+    "secondaryGoalStablePctMin": 0.8093500954091368,
+    "dampAppsTotal": 287553,
+    "longestSameLoopDaysMax": 30
+  },
+  "causalitySec22BySeed": [
+    {
+      "seed": 1,
+      "sec22Status": "PARTIAL",
+      "chains": {
+        "food": "PARTIAL",
+        "teach": "PARTIAL",
+        "creed": "PARTIAL",
+        "creedCulture": "PARTIAL",
+        "migrate": "PARTIAL",
+        "price": "PARTIAL",
+        "help": "PARTIAL"
+      },
+      "priorityLabels": {
+        "memory_decision": "PARTIAL",
+        "emotion_decision": "PARTIAL",
+        "personality_decision": "PARTIAL",
+        "learning_future": "PARTIAL",
+        "family_decision": "PARTIAL",
+        "price_profession": "PARTIAL",
+        "belief_behavior": "PARTIAL",
+        "relationship_help": "PARTIAL",
+        "migration_camp": "PARTIAL"
+      },
+      "underFloors": [
+        "migration_camp:{2/5evt UNDER · 5/3npc OK · 3/3seeds OK}"
+      ],
+      "allLocalFloorsMet": false,
+      "missionFloorsMet": false
+    },
+    {
+      "seed": 3,
+      "sec22Status": "PARTIAL",
+      "chains": {
+        "food": "PARTIAL",
+        "teach": "PARTIAL",
+        "creed": "PARTIAL",
+        "creedCulture": "PARTIAL",
+        "migrate": "PARTIAL",
+        "price": "PARTIAL",
+        "help": "PARTIAL"
+      },
+      "priorityLabels": {
+        "memory_decision": "PARTIAL",
+        "emotion_decision": "PARTIAL",
+        "personality_decision": "PARTIAL",
+        "learning_future": "PARTIAL",
+        "family_decision": "PARTIAL",
+        "price_profession": "PARTIAL",
+        "belief_behavior": "PARTIAL",
+        "relationship_help": "PARTIAL",
+        "migration_camp": "PARTIAL"
+      },
+      "underFloors": [
+        "family_decision:{5/15evt UNDER · 34/3npc OK · 3/3seeds OK}"
+      ],
+      "allLocalFloorsMet": false,
+      "missionFloorsMet": false
+    },
+    {
+      "seed": 7,
+      "sec22Status": "PARTIAL",
+      "chains": {
+        "food": "PARTIAL",
+        "teach": "PARTIAL",
+        "creed": "PARTIAL",
+        "creedCulture": "PARTIAL",
+        "migrate": "PARTIAL",
+        "price": "PARTIAL",
+        "help": "PARTIAL"
+      },
+      "priorityLabels": {
+        "memory_decision": "PARTIAL",
+        "emotion_decision": "PARTIAL",
+        "personality_decision": "PARTIAL",
+        "learning_future": "PARTIAL",
+        "family_decision": "PARTIAL",
+        "price_profession": "PARTIAL",
+        "belief_behavior": "PARTIAL",
+        "relationship_help": "PARTIAL",
+        "migration_camp": "PARTIAL"
+      },
+      "underFloors": [
+        "migration_camp:{1/5evt UNDER · 3/3npc OK · 3/3seeds OK}"
+      ],
+      "allLocalFloorsMet": false,
+      "missionFloorsMet": false
+    }
+  ]
+}
+
+=== HARNESS CHANNELS (WP1 honesty) ===
+MECHANISM blocks=2 PASS=1 FAIL=0
+EMERGENCE blocks=20 PASS=1 NOT_TESTED=1 (never GLOBAL PASS from harness alone)
+globalClaim: NON_DECLARED
+- [MECHANISM] phase3.soak_wire → PASS
+- [MECHANISM] phase3.sec32_controlled_shock → NOT_TESTED | TEST SETUP: controlled eco shock lives outside EMERGENCE soak
+- [EMERGENCE] phase3.sec20_individual_scale → PARTIAL
+- [EMERGENCE] phase3.survival → PARTIAL
+- [EMERGENCE] phase3.sec23_decision_diversity → PARTIAL
+- [EMERGENCE] phase3.sec22_ab_connections → PARTIAL
+- [EMERGENCE] phase3.sec24_personality → PARTIAL
+- [EMERGENCE] phase3.sec25_memory → PARTIAL
+- [EMERGENCE] phase3.sec26_emotions → PARTIAL
+- [EMERGENCE] phase3.sec27_learning → PARTIAL
+- [EMERGENCE] phase3.sec28_professions → PASS
+- [EMERGENCE] phase3.sec29_families → PARTIAL
+- [EMERGENCE] phase3.sec30_mutual_aid → PARTIAL
+- [EMERGENCE] phase3.sec31_construction → PARTIAL
+- [EMERGENCE] phase3.sec32_natural_price → PARTIAL
+- [EMERGENCE] phase3.sec33_migration → PARTIAL
+- [EMERGENCE] phase3.sec34_groups → PARTIAL
+- [EMERGENCE] phase3.sec35_institutions → PARTIAL
+- [EMERGENCE] phase3.sec36_creed → PARTIAL
+- [EMERGENCE] phase3.sec37_conflicts → PARTIAL
+- [EMERGENCE] phase3.sec38_multiseed → NOT_TESTED
+- [EMERGENCE] phase3.social_tier_300 → BLOCKED
+
+=== HARNESS JSON ===
+{
+  "mechanism": [
+    {
+      "test": "phase3.soak_wire",
+      "channel": "MECHANISM",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "Natural soak completes for >=1 seed; dumps written; no induce",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "seedsOk": 3,
+        "decisionsProxy": 185836,
+        "decisionExactTotal": 735423,
+        "maxPop": 131
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PASS",
+      "evidence": [
+        "seedsOk=3/3",
+        "crashed=[]",
+        "decisionsPROXY=185836 (ignored for PASS gate)",
+        "decisionExactTotal=735423",
+        "natural path"
+      ]
+    },
+    {
+      "test": "phase3.sec32_controlled_shock",
+      "channel": "MECHANISM",
+      "population": 131,
+      "days": 60,
+      "seeds": [],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "shock->decision->supply/demand->price (controlled probe only)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "note": "see scripts/_probe_phase5_eco_shock.ts"
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "NOT_TESTED",
+      "evidence": [
+        "TEST SETUP / MECHANISM only — refuse EMERGENCE PASS",
+        "Natural soak must not inject wheat/stock shocks"
+      ],
+      "testSetup": "TEST SETUP: controlled eco shock lives outside EMERGENCE soak"
+    }
+  ],
+  "emergence": [
+    {
+      "test": "phase3.sec20_individual_scale",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "pop>=100 days>=60 seeds>=3 decisions>=10000 exact",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "maxPop": 131,
+        "days": 60,
+        "seeds": 3,
+        "decisionsProxy": 185836,
+        "decisionExactTotal": 735423,
+        "decisionsExact": 735423
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "PROXY task-kind changes do NOT count as exact decisions for PASS",
+        "decisionExactTotal=735423 (gate uses exact only; PROXY=185836)",
+        "bySource chooseTask=122009 HARD=417230 setTask=241 other=195943",
+        "social START@300 -> clamped 120 (max 120) status=UNPROVEN_GROW",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.survival",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "aliveEnd>0 all seeds; deaths tracked (sec20 soak)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "minAliveEnd": 47,
+        "deaths": 71,
+        "births": 91
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec23_decision_diversity",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": ">=5 TaskKinds; trajectories/entropy/exact decisions instrumented via CP1 ledger",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "uniqueTaskKindsMax": 32,
+        "decisionsProxy": 185836,
+        "decisionExactTotal": 735423
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "CP1 exact ledger live (total=735423); PROXY still ignored for PASS floor",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec22_ab_connections",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "A->B chains with thresholds >=20/15/5 events, >=3 NPC, >=3 seeds — PASS only if earned (never from counters alone)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "sec22Status": "PARTIAL",
+        "decisionExactTotal": 735423,
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "causality.sec22Status=PARTIAL",
+        "chains={\"food\":\"PARTIAL\",\"teach\":\"PARTIAL\",\"creed\":\"PARTIAL\",\"creedCulture\":\"PARTIAL\",\"migrate\":\"PARTIAL\",\"price\":\"PARTIAL\",\"help\":\"PARTIAL\"}",
+        "priorityLabels={\"memory_decision\":\"PARTIAL\",\"emotion_decision\":\"PARTIAL\",\"personality_decision\":\"PARTIAL\",\"learning_future\":\"PARTIAL\",\"family_decision\":\"PARTIAL\",\"price_profession\":\"PARTIAL\",\"belief_behavior\":\"PARTIAL\",\"relationship_help\":\"PARTIAL\",\"migration_camp\":\"PARTIAL\"}",
+        "underFloors=migration_camp:{2/5evt UNDER · 5/3npc OK · 3/3seeds OK};family_decision:{5/15evt UNDER · 34/3npc OK · 3/3seeds OK};migration_camp:{1/5evt UNDER · 3/3npc OK · 3/3seeds OK}",
+        "chainBlocks=27",
+        "CONNECTION_NOT_PROVEN / PARTIAL / NOT_TESTED only — no auto PASS; DP12 floors honest",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec24_personality",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "PASS gated on personalityCausalFlips + natural pairDivergent/ready (>=50% target); personalityAttributed* DEBUG only; no trait rewrite",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "personalityCausalFlips": 1639,
+        "personalityPairReady": 2878,
+        "personalityPairDivergent": 1730,
+        "personalityPairSamples": 224,
+        "personalityAttributedDebug": 65269,
+        "personalityUses": 103951
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec25_memory",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "PASS gated on memoryCausalFlips (>=20 soak / >=10 smoke floor); memoryAttributed* DEBUG only",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "memoryCausalFlips": 2202,
+        "memoryAttributedDebug": 16810,
+        "memoryMemorableEvents": 64372,
+        "memoryRetrievals": 38548,
+        "memoryUses": 38548
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec26_emotions",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "PASS gated on emotionCausalFlips (>=15 soak); emotionAttributed* DEBUG only",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "emotionCausalFlips": 3861,
+        "emotionAttributedDebug": 88162,
+        "emotionChanges": 761900,
+        "emotionUses": 121145
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec27_learning",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "teach>=30 + progress%/true later use (teachTrueLaterUses); laterUses=DEBUG proxy",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "teachCraftStarts": 35667,
+        "teachTrueLaterUses": 174,
+        "teachLaterUsesProxyDebug": 986
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Volume + true-chain counters wired — acceptance PENDING; never auto-PASS",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec28_professions",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "changes>=20 npcs>=10 distinct>=4 seeds>=3",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "professionChanges": 610,
+        "npcs": 334,
+        "distinctProfs": 8,
+        "seedsOk": 3
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PASS",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec29_families",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "families>=30 births>=20 + eco/collective (unmeasured)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "familyCountMax": 34,
+        "births": 91
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "eco shifts / collective decisions NOT TESTED",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec30_mutual_aid",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "help>=50 categories>=3 helpers/helped unmeasured",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "helpTotal": 27459,
+        "helpCategoriesMax": 6
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec31_construction",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "builds>=30 (houses+mills proxy)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "houses": 104,
+        "mills": 9
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec32_natural_price",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "organic price/food-chain proxy only (EMERGENCE candidate; no induced shock)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "harvestStarts": 2894,
+        "grindStarts": 888,
+        "bakeStarts": 216,
+        "priceKeys": 267
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "NATURAL channel: organic priceDelta+task/prof correlational PARTIAL",
+        "Controlled shock chains live in MECHANISM probe P9-eco-shock-controlled — never aggregate into EMERGENCE PASS",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec33_migration",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "leaves>=20",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "leaves": 14,
+        "rejoins": 9,
+        "foundCamps": 3,
+        "destinations": 8
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec34_groups",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "groups formed>=20 surviving>=20d unproven fully",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "circlesFormed": 192,
+        "livingCircles": 142
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec35_institutions",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "institutions>=10 lived30d>=5",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "institutionsFormed": 177,
+        "institutionsAgeGe30d": 112
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec36_creed",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "belief changes>=10 + DP11 gen2 instrument LIVE (culture acceptance PENDING)",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "creedChanges": 581,
+        "creedFollowups": 142,
+        "creedParentChildTransmissions": 102,
+        "creedChildBehaviorInfluenced": 35,
+        "creedGenDepthMax": 2,
+        "creedGen2Events": 102,
+        "creedGen3Events": 3,
+        "creedNpcCount": 249
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec37_conflicts",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "conflicts>=20 causes>=5",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "conflictsTotal": 866,
+        "distinctCausesMax": 4
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "PARTIAL",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.sec38_multiseed",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": ">=10 seeds divergence matrix",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "seedCount": 3
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "NOT_TESTED",
+      "evidence": [
+        "sec20 gate",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    },
+    {
+      "test": "phase3.social_tier_300",
+      "channel": "EMERGENCE",
+      "population": 131,
+      "days": 60,
+      "seeds": [
+        1,
+        3,
+        7
+      ],
+      "events": 0,
+      "decisionsSampled": 735423,
+      "expected": "START@300 within clamp — capacity blocked",
+      "threshold": {
+        "minPopulation": 100,
+        "minDays": 60,
+        "minSeeds": 3,
+        "minDecisions": 10000
+      },
+      "observed": {
+        "requested": 300,
+        "clamped": 120,
+        "clampMax": 120
+      },
+      "actual": {
+        "population": 131,
+        "days": 60,
+        "seedCount": 3,
+        "decisionsSampled": 735423
+      },
+      "result": "BLOCKED",
+      "evidence": [
+        "sec20 gate",
+        "BLOCKED capacite: initialVillagers clamp max=120 (300->120)",
+        "Do not raise clamp; != FAIL emergence",
+        "Never invent PASS without thresholds + evidence"
+      ]
+    }
+  ],
+  "globalClaim": "NON_DECLARED"
+}
+
+Tee log: C:\Users\kamel\village-sim-1\_wt_rhythm\village_edit\_phase5_soak_run.txt

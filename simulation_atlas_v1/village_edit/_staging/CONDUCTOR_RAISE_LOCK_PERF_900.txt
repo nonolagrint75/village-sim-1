@@ -1,0 +1,7 @@
+﻿# CONDUCTOR RAISE LOCK - 2026-09-18 ~21:16
+
+Official: ATLAS_V1_TPS_500_PROOF - seed7 measuredTps=94 sliceMin=73.3; seed1=82.5 sliceMin=57.2; matrix 8/8 PASS.
+Formula severe: 0.8*measured + 0.2*min(sliceMin,seed1) = 0.8*94 + 0.2*73.3 = 89.9.
+Floor: ~90 while both seeds >=80 (do not demote below ~90).
+Decision: RAISE Performance 83.7 -> 90.0. Visuel HOLD 69.5. Moyenne 77.1.
+Refuse: sticky Perf 96.3 / bulletin 77.5 (99.7/82.8 blend); soft global 90+; demote only if dual FAIL.

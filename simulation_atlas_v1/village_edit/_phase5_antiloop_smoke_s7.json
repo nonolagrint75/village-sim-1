@@ -1,0 +1,34 @@
+{
+  "phase": 5,
+  "dp": "DP10",
+  "induced": false,
+  "seed": 7,
+  "days": 12,
+  "ticks": 864,
+  "elapsedMs": 22215,
+  "decisionExactTotal": 10892,
+  "counters": {
+    "seqNpcTracked": 100,
+    "seqNpcWithVariation30d": 97,
+    "seqNpcStuckLoop14d": 0,
+    "seqLongestSameLoopDays": 12,
+    "seqUniqueDaySequences": 96,
+    "seqSecondaryGoalStableSamples": 849,
+    "seqSecondaryGoalStableHits": 588,
+    "seqDayOccupancyTeach": 481,
+    "seqDayOccupancySocial": 15,
+    "seqDayOccupancyRest": 985,
+    "seqDampApplications": 8
+  },
+  "variationPct": 0.97,
+  "stuckLoop14dPct": 0,
+  "secondaryGoalStablePct": 0.6925795053003534,
+  "acceptanceTargets": {
+    "variationPctMin": 0.3,
+    "stuckLoop14dPctMax": 0.5,
+    "secondaryGoalStablePctMin": 0.2
+  },
+  "designNote": "Daytime-dominant TaskKind sequences over rolling 30d. Farm/survival multi-day runs excluded from stuck. Night rest excluded from day-dominant. Light teach/social habit damp max ~32% (no softmax rewrite).",
+  "acceptance": "PENDING",
+  "note": "DONE CODE wired smoke - never PASS from this smoke; acceptance PENDING (needs 30d soak)"
+}

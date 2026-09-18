@@ -1,0 +1,22 @@
+Simulation Atlas v1 — vision/society batch proof
+seed=7 days=35
+started=2026-09-18T16:30:28.640Z
+
+--- society cycle ---
+final phases stable=2 crisis=1 collapse=0 rebuild=2
+peak crisis=3 collapse=0 rebuild=2 dynasties=0
+guilds=1 (peak 3) coups=9 battles=21
+
+--- draw frame (sim-backed) ---
+ruins=9 kinds=raid,battle,ruin aged=7
+groundItems=0 civBlobs=5 crisisBlobs=3
+pop=10 markets=5 roads=835
+
+--- verdict ---
+civBlobs>0: PASS (5)
+groundItems packed: PASS (0)
+societyCycle wired: PASS
+absolute-rule actors: PASS
+guilds soft: PASS (1)
+visionBatch: PASS
+done=2026-09-18T16:31:02.301Z

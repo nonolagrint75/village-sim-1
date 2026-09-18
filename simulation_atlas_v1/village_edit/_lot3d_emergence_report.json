@@ -1,0 +1,301 @@
+{
+  "seed": 7,
+  "elapsedMs": 133941,
+  "ticks": 10000,
+  "horizons": [
+    {
+      "label": "t1000",
+      "tick": 1000,
+      "npcsAlive": 37,
+      "homeless": 27,
+      "openWorkOrders": 20,
+      "assignedWorkOrders": 4,
+      "completedWorkOrders": 0,
+      "failedWorkOrders": 5,
+      "cancelledWorkOrders": 0,
+      "expiredWorkOrders": 2,
+      "blocksBuilt": 33,
+      "materialsMoved": 0,
+      "wagesPaidCoins": 0,
+      "homesStarted": 0,
+      "homesCompleted": 0,
+      "sitesOpen": 13,
+      "npcsOnBuildTasks": 0,
+      "taskSwitches": 972,
+      "foodCrisis": 0,
+      "meanHunger": 3.519956485332726,
+      "professionNone": 6,
+      "builders": 1,
+      "coinTotal": 146,
+      "recentChains": [
+        "t996 task #23 sowField→rest",
+        "t996 task #24 gatherFood→rest",
+        "t996 task #25 harvestWheat→rest",
+        "t996 task #28 gatherStone→rest",
+        "t996 task #29 gatherFood→rest",
+        "t996 task #30 buildHouse→rest",
+        "t996 task #33 buildMill→rest",
+        "t996 task #35 sowField→rest",
+        "t996 task #36 grindFlour→rest",
+        "t997 task #10 buildHouse→rest",
+        "t998 task #12 rest→eat",
+        "t1000 task #26 buildHouse→rest"
+      ],
+      "villages": 6,
+      "deaths": 0
+    },
+    {
+      "label": "t5000",
+      "tick": 5000,
+      "npcsAlive": 25,
+      "homeless": 3,
+      "openWorkOrders": 7,
+      "assignedWorkOrders": 0,
+      "completedWorkOrders": 0,
+      "failedWorkOrders": 8,
+      "cancelledWorkOrders": 25,
+      "expiredWorkOrders": 36,
+      "blocksBuilt": 44,
+      "materialsMoved": 0,
+      "wagesPaidCoins": 0,
+      "homesStarted": 0,
+      "homesCompleted": 0,
+      "sitesOpen": 3,
+      "npcsOnBuildTasks": 0,
+      "taskSwitches": 6636,
+      "foodCrisis": 1,
+      "meanHunger": 2.818559760978821,
+      "professionNone": 0,
+      "builders": 0,
+      "coinTotal": 77,
+      "recentChains": [
+        "t4978 task #15 rest→flee",
+        "t4980 task #15 rest→flee",
+        "t4982 task #15 rest→flee",
+        "t4984 task #15 rest→flee",
+        "t4986 task #15 rest→flee",
+        "t4988 task #15 rest→flee",
+        "t4990 task #15 rest→flee",
+        "t4992 task #15 rest→flee",
+        "t4994 task #15 rest→flee",
+        "t4996 task #15 rest→flee",
+        "t4998 task #15 rest→flee",
+        "t5000 task #15 rest→flee"
+      ],
+      "villages": 4,
+      "deaths": 3
+    },
+    {
+      "label": "t10000",
+      "tick": 10000,
+      "npcsAlive": 0,
+      "homeless": 0,
+      "openWorkOrders": 0,
+      "assignedWorkOrders": 0,
+      "completedWorkOrders": 0,
+      "failedWorkOrders": 8,
+      "cancelledWorkOrders": 32,
+      "expiredWorkOrders": 36,
+      "blocksBuilt": 44,
+      "materialsMoved": 0,
+      "wagesPaidCoins": 0,
+      "homesStarted": 0,
+      "homesCompleted": 0,
+      "sitesOpen": 0,
+      "npcsOnBuildTasks": 0,
+      "taskSwitches": 7000,
+      "foodCrisis": 0,
+      "meanHunger": 0,
+      "professionNone": 0,
+      "builders": 0,
+      "coinTotal": 0,
+      "recentChains": [
+        "t6531 task #168 harvestWheat→eat",
+        "t6540 task #116 harvestWheat→rest",
+        "t6540 task #133 harvestWheat→rest",
+        "t6540 task #165 harvestWheat→rest",
+        "t6540 task #168 harvestWheat→rest",
+        "t6551 task #168 harvestWheat→rest",
+        "t6553 task #116 rest→flee",
+        "t6553 task #122 rest→flee",
+        "t6553 task #165 rest→flee",
+        "t6553 task #168 rest→flee",
+        "t6989 task #168 harvestWheat→takeFromChest",
+        "t7044 task #168 harvestWheat→rest"
+      ],
+      "villages": 0,
+      "deaths": 3
+    }
+  ],
+  "final": {
+    "label": "t10000",
+    "tick": 10000,
+    "npcsAlive": 0,
+    "homeless": 0,
+    "openWorkOrders": 0,
+    "assignedWorkOrders": 0,
+    "completedWorkOrders": 0,
+    "failedWorkOrders": 8,
+    "cancelledWorkOrders": 32,
+    "expiredWorkOrders": 36,
+    "blocksBuilt": 44,
+    "materialsMoved": 0,
+    "wagesPaidCoins": 0,
+    "homesStarted": 0,
+    "homesCompleted": 0,
+    "sitesOpen": 0,
+    "npcsOnBuildTasks": 0,
+    "taskSwitches": 7000,
+    "foodCrisis": 0,
+    "meanHunger": 0,
+    "professionNone": 0,
+    "builders": 0,
+    "coinTotal": 0,
+    "recentChains": [
+      "t6531 task #168 harvestWheat→eat",
+      "t6540 task #116 harvestWheat→rest",
+      "t6540 task #133 harvestWheat→rest",
+      "t6540 task #165 harvestWheat→rest",
+      "t6540 task #168 harvestWheat→rest",
+      "t6551 task #168 harvestWheat→rest",
+      "t6553 task #116 rest→flee",
+      "t6553 task #122 rest→flee",
+      "t6553 task #165 rest→flee",
+      "t6553 task #168 rest→flee",
+      "t6989 task #168 harvestWheat→takeFromChest",
+      "t7044 task #168 harvestWheat→rest"
+    ],
+    "villages": 0,
+    "deaths": 3
+  },
+  "taskKindTop": [
+    [
+      "rest",
+      68328
+    ],
+    [
+      "flee",
+      64167
+    ],
+    [
+      "teachCraft",
+      12690
+    ],
+    [
+      "harvestWheat",
+      12154
+    ],
+    [
+      "gatherStone",
+      11213
+    ],
+    [
+      "gatherFood",
+      10055
+    ],
+    [
+      "idle",
+      5850
+    ],
+    [
+      "clearLand",
+      5659
+    ],
+    [
+      "socialise",
+      5409
+    ],
+    [
+      "gatherWood",
+      4410
+    ],
+    [
+      "buildProject",
+      4379
+    ],
+    [
+      "grindFlour",
+      3456
+    ],
+    [
+      "buildMill",
+      2261
+    ],
+    [
+      "gatherFuel",
+      1904
+    ],
+    [
+      "sowField",
+      1326
+    ]
+  ],
+  "professionSwitches": [
+    "t1 #2 none→farmer",
+    "t1 #9 none→miner",
+    "t1 #16 none→miner",
+    "t1 #17 none→forager",
+    "t1 #20 none→miner",
+    "t1 #33 none→miner",
+    "t1 #36 none→miner",
+    "t103 #31 none→lumberjack",
+    "t110 #2 farmer→forager",
+    "t110 #17 forager→farmer",
+    "t127 #19 none→lumberjack",
+    "t151 #7 none→miner",
+    "t266 #32 none→miner",
+    "t302 #14 none→miner",
+    "t314 #8 none→miner",
+    "t326 #2 forager→lumberjack",
+    "t398 #2 lumberjack→forager",
+    "t441 #27 none→miner",
+    "t453 #21 none→lumberjack",
+    "t465 #15 none→miner"
+  ],
+  "chains": [
+    "t6474 task #133 harvestWheat→rest",
+    "t6481 task #150 gatherFood→eat",
+    "t6486 task #168 harvestWheat→rest",
+    "t6491 task #165 harvestWheat→rest",
+    "t6495 task #116 harvestWheat→rest",
+    "t6498 task #122 rest→craftGear",
+    "t6521 task #165 harvestWheat→eat",
+    "t6528 task #116 harvestWheat→eat",
+    "t6531 task #168 harvestWheat→eat",
+    "t6540 task #116 harvestWheat→rest",
+    "t6540 task #133 harvestWheat→rest",
+    "t6540 task #165 harvestWheat→rest",
+    "t6540 task #168 harvestWheat→rest",
+    "t6551 task #168 harvestWheat→rest",
+    "t6553 task #116 rest→flee",
+    "t6553 task #122 rest→flee",
+    "t6553 task #165 rest→flee",
+    "t6553 task #168 rest→flee",
+    "t6989 task #168 harvestWheat→takeFromChest",
+    "t7044 task #168 harvestWheat→rest"
+  ],
+  "failTests": [
+    {
+      "name": "FAIL_NO_WOOD_SOURCE",
+      "ok": true,
+      "detail": "keep=false failedWO=0"
+    },
+    {
+      "name": "FAIL_HUNGER_BLOCKS_COLLAB",
+      "ok": true,
+      "detail": "opts=0"
+    },
+    {
+      "name": "FAIL_HIRE_NO_CRASH",
+      "ok": true,
+      "detail": "helperTask=helpBuild"
+    }
+  ],
+  "audit": {
+    "forcedLoopSuspected": false,
+    "buildTaskTicks": 1745,
+    "eatTicks": 315,
+    "gatherTicks": 14465,
+    "workOrderPath": "need→WO→chooseTask→reserve→execute→progress"
+  }
+}

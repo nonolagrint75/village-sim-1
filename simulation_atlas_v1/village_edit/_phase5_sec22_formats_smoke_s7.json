@@ -1,0 +1,168 @@
+{
+  "phase": 5,
+  "dp": "DP12",
+  "induced": false,
+  "seed": 7,
+  "days": 12,
+  "ticks": 864,
+  "elapsedMs": 68074,
+  "decisionExactTotal": 10814,
+  "missionFloors": {
+    "eventsHigh": 20,
+    "eventsMid": 15,
+    "eventsLow": 5,
+    "npcs": 3,
+    "seeds": 3
+  },
+  "chainsLegacy": {
+    "food": "PARTIAL",
+    "teach": "PARTIAL",
+    "creed": "PARTIAL",
+    "creedCulture": "NOT_TESTED",
+    "migrate": "NOT_TESTED",
+    "price": "PARTIAL",
+    "help": "PARTIAL"
+  },
+  "sec22Status": "PARTIAL",
+  "priorityLabels": {
+    "memory_decision": "PARTIAL",
+    "emotion_decision": "PARTIAL",
+    "personality_decision": "PARTIAL",
+    "learning_future": "PARTIAL",
+    "family_decision": "NOT_TESTED",
+    "price_profession": "PARTIAL",
+    "belief_behavior": "PARTIAL",
+    "relationship_help": "PARTIAL",
+    "migration_camp": "NOT_TESTED"
+  },
+  "chainBlocks": [
+    "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=26/20evt OK · 8/3npc OK · 1/3seeds UNDER | id=memory_decision",
+    "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=142/15evt OK · 100/3npc OK · 1/3seeds UNDER | id=emotion_decision",
+    "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=2086/20evt OK · 73/3npc OK · 1/3seeds UNDER | id=personality_decision",
+    "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=6/20evt UNDER · 14/3npc OK · 1/3seeds UNDER | id=learning_future",
+    "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> decision -> action -> world | label=NOT_TESTED | floors=0/15evt UNDER · 0/3npc UNDER · 1/3seeds UNDER | id=family_decision",
+    "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=88/5evt OK · 56/3npc OK · 1/3seeds UNDER | id=price_profession",
+    "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=14/5evt OK · 44/3npc OK · 1/3seeds UNDER | id=belief_behavior",
+    "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=414/20evt OK · 35/3npc OK · 1/3seeds UNDER | id=relationship_help",
+    "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=NOT_TESTED | floors=0/5evt UNDER · 0/3npc UNDER · 1/3seeds UNDER | id=migration_camp"
+  ],
+  "sampleRing": [
+    {
+      "id": "memory_decision",
+      "label": "PARTIAL",
+      "floors": "26/20evt OK · 8/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=26/20evt OK · 8/3npc OK · 1/3seeds UNDER | id=memory_decision",
+      "samples": [
+        "mem_cf v70 d4 gatherFood->eat util=1048.46",
+        "mem_cf v31 d7 gatherFood->rest util=580.15",
+        "mem_cf v16 d7 gatherFood->rest util=571.87"
+      ]
+    },
+    {
+      "id": "emotion_decision",
+      "label": "PARTIAL",
+      "floors": "142/15evt OK · 100/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=142/15evt OK · 100/3npc OK · 1/3seeds UNDER | id=emotion_decision",
+      "samples": [
+        "emo_cf v6 d9 teachCraft->eat",
+        "emo_cf v68 d9 gatherFuel->eat",
+        "emo_cf v7 d10 rest->clearLand"
+      ]
+    },
+    {
+      "id": "personality_decision",
+      "label": "PARTIAL",
+      "floors": "2086/20evt OK · 73/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=2086/20evt OK · 73/3npc OK · 1/3seeds UNDER | id=personality_decision",
+      "samples": [
+        "pers_cf v96 gatherWood->gatherFood",
+        "pers_cf v51 buildProject->harvestWheat",
+        "pers_cf v22 teachCraft->gatherFood"
+      ]
+    },
+    {
+      "id": "learning_future",
+      "label": "PARTIAL",
+      "floors": "6/20evt UNDER · 14/3npc OK · 1/3seeds UNDER",
+      "localOk": false,
+      "chainBlock": "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=6/20evt UNDER · 14/3npc OK · 1/3seeds UNDER | id=learning_future",
+      "samples": [
+        "teach_true t49->r81 farm 0.335->0.35600000000000004 act=gatherFood de=#8903",
+        "teach_true t65->r89 farm 0.47500000000000014->0.49620000000000014 act=gatherFood de=#9480",
+        "teach_true t65->r89 farm 0.49620000000000014->0.5176600000000001 act=gatherFood de=#9949"
+      ]
+    },
+    {
+      "id": "family_decision",
+      "label": "NOT_TESTED",
+      "floors": "0/15evt UNDER · 0/3npc UNDER · 1/3seeds UNDER",
+      "localOk": false,
+      "chainBlock": "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> decision -> action -> world | label=NOT_TESTED | floors=0/15evt UNDER · 0/3npc UNDER · 1/3seeds UNDER | id=family_decision",
+      "samples": []
+    },
+    {
+      "id": "price_profession",
+      "label": "PARTIAL",
+      "floors": "88/5evt OK · 56/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=88/5evt OK · 56/3npc OK · 1/3seeds UNDER | id=price_profession",
+      "samples": [
+        "price_prof v28 none->builder",
+        "price_prof v16 none->lumberjack",
+        "price_prof v89 none->lumberjack"
+      ]
+    },
+    {
+      "id": "belief_behavior",
+      "label": "PARTIAL",
+      "floors": "14/5evt OK · 44/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=14/5evt OK · 44/3npc OK · 1/3seeds UNDER | id=belief_behavior",
+      "samples": [
+        "creed_peer changes=71 followups=14 npcs=44",
+        "creed_culture tx=0 childBeh=0 genMax=0"
+      ]
+    },
+    {
+      "id": "relationship_help",
+      "label": "PARTIAL",
+      "floors": "414/20evt OK · 35/3npc OK · 1/3seeds UNDER",
+      "localOk": true,
+      "chainBlock": "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=414/20evt OK · 35/3npc OK · 1/3seeds UNDER | id=relationship_help",
+      "samples": [
+        "help_byKind {\"food\":0,\"teach\":319,\"defend\":0,\"build\":85,\"haul\":1,\"labor\":9}",
+        "defend opp=0 taken=0",
+        "help teach helper=6 d11 outcome=false"
+      ]
+    },
+    {
+      "id": "migration_camp",
+      "label": "NOT_TESTED",
+      "floors": "0/5evt UNDER · 0/3npc UNDER · 1/3seeds UNDER",
+      "localOk": false,
+      "chainBlock": "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=NOT_TESTED | floors=0/5evt UNDER · 0/3npc UNDER · 1/3seeds UNDER | id=migration_camp",
+      "samples": [
+        "migrate urge=0 attempts=0 leaves=0 travel=0",
+        "migrate destEval=0 settle=0 camps=0 rejoins=0 fails=0"
+      ]
+    }
+  ],
+  "underFloors": [
+    "learning_future:{6/20evt UNDER · 14/3npc OK · 1/3seeds UNDER}",
+    "family_decision:{0/15evt UNDER · 0/3npc UNDER · 1/3seeds UNDER}",
+    "migration_camp:{0/5evt UNDER · 0/3npc UNDER · 1/3seeds UNDER}"
+  ],
+  "allLocalFloorsMet": false,
+  "missionFloorsMet": false,
+  "family": {
+    "uses": 0,
+    "npcs": 0
+  },
+  "helpNpcCount": 35,
+  "migrateNpcCount": 0,
+  "acceptance": "PENDING",
+  "note": "DONE CODE wired smoke — never PASS; acceptance PENDING (STEP6 multi-seed soak next)"
+}

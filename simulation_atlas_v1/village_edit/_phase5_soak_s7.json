@@ -1,0 +1,3425 @@
+{
+  "seed": 7,
+  "days": 60,
+  "status": "ok",
+  "configResolved": {
+    "worldSize": 1000,
+    "initialVillagers": 100,
+    "maxPopulation": 250,
+    "sheepCount": 40,
+    "horseCount": 14,
+    "wolfCount": 3,
+    "preset": "standard",
+    "startPaused": false,
+    "seed": 7
+  },
+  "startPop": 100,
+  "aliveEnd": 47,
+  "deaths": 34,
+  "births": 16,
+  "deathsByWolf": 0,
+  "deathsByBandit": 0,
+  "peakAlive": 102,
+  "decisionsExact": {
+    "decisionExactTotal": 259732,
+    "decisionExactBySource": {
+      "chooseTask": 28912,
+      "HARD": 138154,
+      "setTask": 144,
+      "other": 92522
+    },
+    "decisionSetTaskAssigns": 213274,
+    "decisionNoteChosenActions": 259588,
+    "decisionOrphanSetTask": 144,
+    "coveragePct": 99.93
+  },
+  "decisionsProxy": {
+    "label": "PROXY_task_kind_change",
+    "taskKindChanges": 46017,
+    "factorWhySeen": 382043,
+    "uniqueTaskKinds": 31,
+    "taskKindHistogram": {
+      "sowField": 1803,
+      "idle": 133,
+      "buildHouse": 3463,
+      "buildProject": 32494,
+      "gatherFuel": 2876,
+      "tendHearth": 203,
+      "gatherFood": 13286,
+      "experiment": 1355,
+      "rest": 93245,
+      "buildMill": 2063,
+      "gatherStone": 11173,
+      "gatherWood": 3576,
+      "buildBoat": 11,
+      "fish": 1780,
+      "socialise": 14642,
+      "grindFlour": 6576,
+      "bakeBread": 417,
+      "buildWall": 834,
+      "eat": 460,
+      "harvestWheat": 10166,
+      "tradeRun": 116,
+      "clearLand": 1923,
+      "teachCraft": 29926,
+      "craftGear": 25,
+      "ritual": 41,
+      "flee": 133540,
+      "fight": 2243,
+      "defend": 6,
+      "buildBridge": 16,
+      "takeFromChest": 109,
+      "giveFood": 28
+    },
+    "taskStartHistogram": {
+      "sowField": 248,
+      "idle": 24,
+      "buildHouse": 258,
+      "buildProject": 2230,
+      "gatherFuel": 233,
+      "tendHearth": 6,
+      "gatherFood": 1281,
+      "experiment": 156,
+      "rest": 7121,
+      "buildMill": 126,
+      "gatherStone": 585,
+      "gatherWood": 332,
+      "buildBoat": 3,
+      "fish": 103,
+      "socialise": 8449,
+      "grindFlour": 433,
+      "bakeBread": 86,
+      "buildWall": 104,
+      "eat": 456,
+      "harvestWheat": 1421,
+      "tradeRun": 12,
+      "clearLand": 210,
+      "teachCraft": 7302,
+      "craftGear": 4,
+      "ritual": 1,
+      "flee": 957,
+      "fight": 348,
+      "defend": 1,
+      "buildBridge": 1,
+      "takeFromChest": 15,
+      "giveFood": 16
+    },
+    "entropyStarts": 3.0553,
+    "entropyOccupancy": 2.871
+  },
+  "causality": {
+    "teachProgressPct": 0.09938988388112577,
+    "teachTrueConversion": 0.08712871287128712,
+    "counters": {
+      "foodHarvestProduces": 306,
+      "foodGrindConsumes": 118,
+      "foodBakeConsumes": 100,
+      "foodEatConsequences": 1740,
+      "foodStockConsequences": 0,
+      "foodNpcCount": 115,
+      "teachEvents": 5081,
+      "teachSkillChanges": 505,
+      "teachLaterUses": 231,
+      "teachTrueLaterUses": 44,
+      "teachNpcCount": 58,
+      "teachTrueLaterSamples": [
+        {
+          "tick": 11,
+          "day": 0,
+          "teacherId": 8,
+          "receiverId": 48,
+          "skill": "chop",
+          "skillBefore": 0.7280000000000003,
+          "skillAfter": 0.7580000000000003,
+          "learningEventId": 544,
+          "futureAction": "gatherFuel",
+          "futureSkillUse": "chop",
+          "decisionExactId": 248
+        },
+        {
+          "tick": 122,
+          "day": 1,
+          "teacherId": 76,
+          "receiverId": 28,
+          "skill": "farm",
+          "skillBefore": 0.46800000000000014,
+          "skillAfter": 0.49800000000000016,
+          "learningEventId": 625,
+          "futureAction": "grindFlour",
+          "futureSkillUse": "farm",
+          "decisionExactId": 927
+        },
+        {
+          "tick": 123,
+          "day": 1,
+          "teacherId": 76,
+          "receiverId": 28,
+          "skill": "farm",
+          "skillBefore": 0.49800000000000016,
+          "skillAfter": 0.5280000000000001,
+          "learningEventId": 626,
+          "futureAction": "bakeBread",
+          "futureSkillUse": "farm",
+          "decisionExactId": 930
+        },
+        {
+          "tick": 190,
+          "day": 2,
+          "teacherId": 82,
+          "receiverId": 77,
+          "skill": "farm",
+          "skillBefore": 0.8040000000000004,
+          "skillAfter": 0.8266502000000004,
+          "learningEventId": 596,
+          "futureAction": "gatherFood",
+          "futureSkillUse": "farm",
+          "decisionExactId": 1487
+        },
+        {
+          "tick": 191,
+          "day": 2,
+          "teacherId": 82,
+          "receiverId": 77,
+          "skill": "farm",
+          "skillBefore": 0.8266502000000004,
+          "skillAfter": 0.8495604000000004,
+          "learningEventId": 598,
+          "futureAction": "gatherFood",
+          "futureSkillUse": "farm",
+          "decisionExactId": 1495
+        }
+      ],
+      "creedChanges": 214,
+      "creedFollowups": 56,
+      "creedNpcCount": 106,
+      "creedParentChildTransmissions": 37,
+      "creedChildBehaviorInfluenced": 14,
+      "creedGenDepthMax": 1,
+      "creedGen2Events": 37,
+      "creedGen3Events": 0,
+      "migrateUrgeCrosses": 8,
+      "migrateLeaveAttempts": 6,
+      "migrateLeaves": 1,
+      "migrateFoundCamps": 0,
+      "migrateHomelessLeave": 1,
+      "migrateHousedLeave": 0,
+      "migrateTravelStarts": 1,
+      "migrateDestEvals": 1,
+      "migrateSettlementAttempts": 0,
+      "migrateRejoins": 1,
+      "migrateFails": 0,
+      "migrateDestReasons": {
+        "group": 1
+      },
+      "migrateSettleReasons": {},
+      "priceDeltaEvents": 1151,
+      "priceTaskShifts": 35,
+      "priceProfessionShifts": 153,
+      "priceNpcCount": 91,
+      "priceChainSamples": [
+        {
+          "tick": 4200,
+          "day": 58,
+          "stage": "priceDelta",
+          "resource": "brick",
+          "priceBefore": 15.8,
+          "priceAfter": 16.1,
+          "shockId": null
+        },
+        {
+          "tick": 4200,
+          "day": 58,
+          "stage": "priceDelta",
+          "resource": "mortar",
+          "priceBefore": 11.3,
+          "priceAfter": 11.5,
+          "shockId": null
+        },
+        {
+          "tick": 4200,
+          "day": 58,
+          "stage": "priceDelta",
+          "resource": "mushrooms",
+          "priceBefore": 6.1,
+          "priceAfter": 5.8,
+          "shockId": null
+        },
+        {
+          "tick": 4200,
+          "day": 58,
+          "stage": "priceDelta",
+          "resource": "herbs",
+          "priceBefore": 5.4,
+          "priceAfter": 5.1,
+          "shockId": null
+        },
+        {
+          "tick": 4200,
+          "day": 58,
+          "stage": "priceDelta",
+          "resource": "honey",
+          "priceBefore": 18,
+          "priceAfter": 18.3,
+          "shockId": null
+        }
+      ],
+      "priceActiveShockId": null,
+      "priceShockTaggedDeltas": 0,
+      "priceShockLinkedTaskShifts": 0,
+      "priceShockLinkedProfessionShifts": 0,
+      "helpEvents": 5117,
+      "helpOutcomes": 541,
+      "helpEventsByKind": {
+        "food": 1,
+        "teach": 5081,
+        "defend": 2,
+        "build": 15,
+        "haul": 13,
+        "labor": 5
+      },
+      "helpOutcomesByKind": {
+        "food": 1,
+        "teach": 505,
+        "defend": 2,
+        "build": 15,
+        "haul": 13,
+        "labor": 5
+      },
+      "defendHelpOpportunities": 5,
+      "defendHelpTaken": 2,
+      "helpNpcCount": 59,
+      "helpChainSamples": [
+        {
+          "tick": 3926,
+          "day": 54,
+          "kind": "teach",
+          "helperId": 81,
+          "outcome": false
+        },
+        {
+          "tick": 3928,
+          "day": 54,
+          "kind": "teach",
+          "helperId": 57,
+          "outcome": false
+        },
+        {
+          "tick": 3928,
+          "day": 54,
+          "kind": "teach",
+          "helperId": 81,
+          "outcome": false
+        },
+        {
+          "tick": 3930,
+          "day": 54,
+          "kind": "teach",
+          "helperId": 57,
+          "outcome": false
+        },
+        {
+          "tick": 3930,
+          "day": 54,
+          "kind": "teach",
+          "helperId": 81,
+          "outcome": false
+        }
+      ],
+      "familyDecisionUses": 1249,
+      "familyDecisionNpcCount": 13,
+      "familyDecisionSamples": [
+        {
+          "tick": 3780,
+          "day": 52,
+          "npcId": 192,
+          "kind": "teachCraft",
+          "kinship": 0.7,
+          "familyValue": 0.591445732578278
+        },
+        {
+          "tick": 3780,
+          "day": 52,
+          "npcId": 215,
+          "kind": "socialise",
+          "kinship": 0.7,
+          "familyValue": 0.63764695871553
+        },
+        {
+          "tick": 3781,
+          "day": 52,
+          "npcId": 183,
+          "kind": "teachCraft",
+          "kinship": 0.7,
+          "familyValue": 0.5332867704163536
+        },
+        {
+          "tick": 3781,
+          "day": 52,
+          "npcId": 207,
+          "kind": "teachCraft",
+          "kinship": 0.7,
+          "familyValue": 0.768386376852781
+        },
+        {
+          "tick": 3782,
+          "day": 52,
+          "npcId": 192,
+          "kind": "teachCraft",
+          "kinship": 0.7,
+          "familyValue": 0.591445732578278
+        }
+      ],
+      "migrateNpcCount": 3,
+      "migrateChainSamples": [
+        {
+          "tick": 709,
+          "day": 9,
+          "stage": "urge",
+          "npcId": 23
+        },
+        {
+          "tick": 810,
+          "day": 11,
+          "stage": "urge",
+          "npcId": 30
+        },
+        {
+          "tick": 901,
+          "day": 12,
+          "stage": "urge",
+          "npcId": 23
+        },
+        {
+          "tick": 901,
+          "day": 12,
+          "stage": "leaveAttempt",
+          "npcId": 23
+        },
+        {
+          "tick": 949,
+          "day": 13,
+          "stage": "leaveAttempt",
+          "npcId": 23
+        }
+      ]
+    },
+    "chains": {
+      "food": "PARTIAL",
+      "teach": "PARTIAL",
+      "creed": "PARTIAL",
+      "creedCulture": "PARTIAL",
+      "migrate": "PARTIAL",
+      "price": "PARTIAL",
+      "help": "PARTIAL"
+    },
+    "sec22Status": "PARTIAL",
+    "decisionExactTotal": 259732
+  },
+  "attribution": {
+    "memoryAttributedDecisions": 4218,
+    "memoryAttributedNpcs": 48,
+    "emotionAttributedDecisions": 19799,
+    "emotionAttributedNpcs": 113,
+    "personalityAttributedDecisions": 14432,
+    "personalityAttributedNpcs": 98,
+    "personalityPairSamples": 96,
+    "personalityPairReady": 1263,
+    "personalityPairDivergent": 638,
+    "memoryMemorableEvents": 21073,
+    "memoryRetrievals": 10529,
+    "memoryUses": 10529,
+    "memoryCausalFlips": 1022,
+    "memoryMaterialNoFlip": 9507,
+    "memoryCausalSamples": [
+      {
+        "tick": 4003,
+        "day": 55,
+        "villagerId": 100,
+        "beforeKind": "harvestWheat",
+        "afterKind": "harvestWheat",
+        "utilBefore": 200055.453125,
+        "utilAfter": 303939.8125,
+        "runnerUpKind": "harvestWheat",
+        "runnerUpUtilBefore": 84987.1640625,
+        "spotKind": "danger",
+        "flipped": true
+      },
+      {
+        "tick": 4004,
+        "day": 55,
+        "villagerId": 100,
+        "beforeKind": "harvestWheat",
+        "afterKind": "harvestWheat",
+        "utilBefore": 200351.515625,
+        "utilAfter": 304234.65625,
+        "runnerUpKind": "harvestWheat",
+        "runnerUpUtilBefore": 85069.609375,
+        "spotKind": "danger",
+        "flipped": true
+      },
+      {
+        "tick": 4005,
+        "day": 55,
+        "villagerId": 100,
+        "beforeKind": "harvestWheat",
+        "afterKind": "harvestWheat",
+        "utilBefore": 200682.515625,
+        "utilAfter": 304582,
+        "runnerUpKind": "harvestWheat",
+        "runnerUpUtilBefore": 85166.7265625,
+        "spotKind": "danger",
+        "flipped": true
+      },
+      {
+        "tick": 4006,
+        "day": 55,
+        "villagerId": 100,
+        "beforeKind": "harvestWheat",
+        "afterKind": "harvestWheat",
+        "utilBefore": 200094.875,
+        "utilAfter": 303535.21875,
+        "runnerUpKind": "harvestWheat",
+        "runnerUpUtilBefore": 84874.03125,
+        "spotKind": "danger",
+        "flipped": true
+      },
+      {
+        "tick": 4007,
+        "day": 55,
+        "villagerId": 100,
+        "beforeKind": "harvestWheat",
+        "afterKind": "harvestWheat",
+        "utilBefore": 207950.984375,
+        "utilAfter": 315201.28125,
+        "runnerUpKind": "harvestWheat",
+        "runnerUpUtilBefore": 88136.078125,
+        "spotKind": "danger",
+        "flipped": true
+      }
+    ],
+    "emotionChanges": 243920,
+    "emotionUses": 28516,
+    "emotionCausalFlips": 837,
+    "emotionMaterialNoFlip": 27679,
+    "emotionCausalSamples": [
+      {
+        "tick": 3715,
+        "day": 51,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6927.92333984375,
+        "utilAfter": 6763.19580078125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6863.71484375,
+        "flipped": true
+      },
+      {
+        "tick": 3717,
+        "day": 51,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6926.0751953125,
+        "utilAfter": 6820.24853515625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6906.4296875,
+        "flipped": true
+      },
+      {
+        "tick": 3719,
+        "day": 51,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5250.0732421875,
+        "utilAfter": 4220.74169921875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 4246.52978515625,
+        "flipped": true
+      },
+      {
+        "tick": 3721,
+        "day": 51,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5401.513671875,
+        "utilAfter": 4265.63525390625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 4293.46728515625,
+        "flipped": true
+      },
+      {
+        "tick": 3723,
+        "day": 51,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5541.0673828125,
+        "utilAfter": 4303.92724609375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 4332.0087890625,
+        "flipped": true
+      }
+    ],
+    "personalityUses": 24588,
+    "personalityCausalFlips": 264,
+    "personalityMaterialNoFlip": 24324,
+    "personalityCausalSamples": [
+      {
+        "tick": 3372,
+        "day": 46,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 966.7512817382812,
+        "utilAfter": 946.5115966796875,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 946.5115966796875,
+        "flipped": true
+      },
+      {
+        "tick": 3379,
+        "day": 46,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 980.0579833984375,
+        "utilAfter": 957.4597778320312,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 957.4597778320312,
+        "flipped": true
+      },
+      {
+        "tick": 3393,
+        "day": 47,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 999.2888793945312,
+        "utilAfter": 979.6309814453125,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 979.6309814453125,
+        "flipped": true
+      },
+      {
+        "tick": 3400,
+        "day": 47,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 1027.09423828125,
+        "utilAfter": 982.4116821289062,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 982.4116821289062,
+        "flipped": true
+      },
+      {
+        "tick": 3409,
+        "day": 47,
+        "villagerId": 212,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1437.3326416015625,
+        "utilAfter": 1421.828369140625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1421.828369140625,
+        "flipped": true
+      }
+    ],
+    "personalityPairMatchSamples": [
+      {
+        "aId": 27,
+        "bId": 43,
+        "traitDist": 3.581,
+        "contextDist": 0.293,
+        "histDist": 0.065,
+        "modeA": "flee",
+        "modeB": "flee",
+        "divergent": false,
+        "totalA": 2000,
+        "totalB": 1763
+      },
+      {
+        "aId": 27,
+        "bId": 10,
+        "traitDist": 3.493,
+        "contextDist": 0.088,
+        "histDist": 0.11,
+        "modeA": "flee",
+        "modeB": "flee",
+        "divergent": false,
+        "totalA": 2000,
+        "totalB": 1594
+      },
+      {
+        "aId": 27,
+        "bId": 20,
+        "traitDist": 3.691,
+        "contextDist": 0.472,
+        "histDist": 0.044,
+        "modeA": "flee",
+        "modeB": "flee",
+        "divergent": false,
+        "totalA": 2000,
+        "totalB": 1350
+      },
+      {
+        "aId": 27,
+        "bId": 8,
+        "traitDist": 0.723,
+        "contextDist": 0.299,
+        "histDist": 0.078,
+        "modeA": "flee",
+        "modeB": "flee",
+        "divergent": false,
+        "totalA": 2000,
+        "totalB": 1115
+      },
+      {
+        "aId": 27,
+        "bId": 13,
+        "traitDist": 2.944,
+        "contextDist": 0.145,
+        "histDist": 0.037,
+        "modeA": "flee",
+        "modeB": "flee",
+        "divergent": false,
+        "totalA": 2000,
+        "totalB": 1690
+      }
+    ],
+    "familyUses": 5162,
+    "familyCausalFlips": 53,
+    "familyMaterialNoFlip": 5109,
+    "familyCausalSamples": [
+      {
+        "tick": 2036,
+        "day": 28,
+        "villagerId": 87,
+        "beforeKind": "teachCraft",
+        "afterKind": "experiment",
+        "utilBefore": 590.1640625,
+        "utilAfter": 514.5806884765625,
+        "runnerUpKind": "experiment",
+        "runnerUpUtilBefore": 514.5806884765625,
+        "kinship": 0.9,
+        "familyValue": 0.7305529965764799,
+        "flipped": true
+      },
+      {
+        "tick": 2038,
+        "day": 28,
+        "villagerId": 87,
+        "beforeKind": "teachCraft",
+        "afterKind": "eat",
+        "utilBefore": 697.2197265625,
+        "utilAfter": 647.3084106445312,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 647.3084106445312,
+        "kinship": 0.9,
+        "familyValue": 0.7305529965764799,
+        "flipped": true
+      },
+      {
+        "tick": 2076,
+        "day": 28,
+        "villagerId": 187,
+        "beforeKind": "socialise",
+        "afterKind": "socialise",
+        "utilBefore": 2839.799072265625,
+        "utilAfter": 2505.8125,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 2744.019287109375,
+        "kinship": 0.7,
+        "familyValue": 0.6342955157920027,
+        "flipped": true
+      },
+      {
+        "tick": 2195,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5498.46044921875,
+        "utilAfter": 4982.82568359375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 4982.82568359375,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2197,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5432.7060546875,
+        "utilAfter": 5012.20703125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5012.20703125,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2199,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5579.04345703125,
+        "utilAfter": 5082.37939453125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5082.37939453125,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2201,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5676.15087890625,
+        "utilAfter": 5218.92578125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5218.92578125,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2203,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5632.60888671875,
+        "utilAfter": 5207.89404296875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5207.89404296875,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2203,
+        "day": 30,
+        "villagerId": 187,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3643.170654296875,
+        "utilAfter": 3487.480712890625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 3487.480712890625,
+        "kinship": 0.7,
+        "familyValue": 0.6342955157920027,
+        "flipped": true
+      },
+      {
+        "tick": 2205,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5722.2939453125,
+        "utilAfter": 5328.82080078125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5328.82080078125,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2207,
+        "day": 30,
+        "villagerId": 183,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5739.0107421875,
+        "utilAfter": 5387.31494140625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 5387.31494140625,
+        "kinship": 0.7,
+        "familyValue": 0.5332867704163536,
+        "flipped": true
+      },
+      {
+        "tick": 2207,
+        "day": 30,
+        "villagerId": 187,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3750.890625,
+        "utilAfter": 3574.70458984375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 3574.70458984375,
+        "kinship": 0.7,
+        "familyValue": 0.6342955157920027,
+        "flipped": true
+      },
+      {
+        "tick": 2250,
+        "day": 31,
+        "villagerId": 87,
+        "beforeKind": "teachCraft",
+        "afterKind": "fish",
+        "utilBefore": 586.8544311523438,
+        "utilAfter": 558.219482421875,
+        "runnerUpKind": "fish",
+        "runnerUpUtilBefore": 558.219482421875,
+        "kinship": 0.9,
+        "familyValue": 0.7305529965764799,
+        "flipped": true
+      },
+      {
+        "tick": 2360,
+        "day": 32,
+        "villagerId": 87,
+        "beforeKind": "teachCraft",
+        "afterKind": "rest",
+        "utilBefore": 1189.887939453125,
+        "utilAfter": 1059.323974609375,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 1059.323974609375,
+        "kinship": 0.9,
+        "familyValue": 0.7305529965764799,
+        "flipped": true
+      },
+      {
+        "tick": 2394,
+        "day": 33,
+        "villagerId": 187,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 2798.767822265625,
+        "utilAfter": 2469.79638671875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 2469.79638671875,
+        "kinship": 0.7,
+        "familyValue": 0.6342955157920027,
+        "flipped": true
+      },
+      {
+        "tick": 2635,
+        "day": 36,
+        "villagerId": 173,
+        "beforeKind": "teachCraft",
+        "afterKind": "rest",
+        "utilBefore": 2797.688232421875,
+        "utilAfter": 2552.729736328125,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 2552.729736328125,
+        "kinship": 0.7,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 2637,
+        "day": 36,
+        "villagerId": 173,
+        "beforeKind": "teachCraft",
+        "afterKind": "rest",
+        "utilBefore": 2723.391845703125,
+        "utilAfter": 2444.907958984375,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 2444.907958984375,
+        "kinship": 0.7,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 2639,
+        "day": 36,
+        "villagerId": 173,
+        "beforeKind": "teachCraft",
+        "afterKind": "rest",
+        "utilBefore": 2672.6025390625,
+        "utilAfter": 2372.041015625,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 2372.041015625,
+        "kinship": 0.7,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 2639,
+        "day": 36,
+        "villagerId": 190,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 468.1051330566406,
+        "utilAfter": 438.78350830078125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 438.78350830078125,
+        "kinship": 0.7,
+        "familyValue": 0.5330894882877697,
+        "flipped": true
+      },
+      {
+        "tick": 2641,
+        "day": 36,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3172.797119140625,
+        "utilAfter": 3091.49365234375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 3141.3115234375,
+        "kinship": 0.7,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 2643,
+        "day": 36,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3152.471923828125,
+        "utilAfter": 3116.76708984375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 3116.76708984375,
+        "kinship": 0.7,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 2645,
+        "day": 36,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3145.053466796875,
+        "utilAfter": 3130.6689453125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 3130.6689453125,
+        "kinship": 0.7,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 2671,
+        "day": 37,
+        "villagerId": 198,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 161.93621826171875,
+        "utilAfter": 151.86788940429688,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 157.60336303710938,
+        "kinship": 0.9,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 2701,
+        "day": 37,
+        "villagerId": 192,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 2645.805908203125,
+        "utilAfter": 2407.970458984375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 2407.970458984375,
+        "kinship": 0.7,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 2932,
+        "day": 40,
+        "villagerId": 201,
+        "beforeKind": "teachCraft",
+        "afterKind": "fish",
+        "utilBefore": 159.9962921142578,
+        "utilAfter": 142.7667236328125,
+        "runnerUpKind": "fish",
+        "runnerUpUtilBefore": 142.7667236328125,
+        "kinship": 0.7,
+        "familyValue": 0.570841202809174,
+        "flipped": true
+      },
+      {
+        "tick": 3328,
+        "day": 46,
+        "villagerId": 198,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 281.5043640136719,
+        "utilAfter": 279.9620056152344,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 279.9620056152344,
+        "kinship": 0.9,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3330,
+        "day": 46,
+        "villagerId": 207,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 1780.0225830078125,
+        "utilAfter": 1757.2650146484375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1757.2650146484375,
+        "kinship": 0.7,
+        "familyValue": 0.768386376852781,
+        "flipped": true
+      },
+      {
+        "tick": 3372,
+        "day": 46,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 966.7512817382812,
+        "utilAfter": 946.5115966796875,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 946.5115966796875,
+        "kinship": 0.7,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 3379,
+        "day": 46,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 980.0579833984375,
+        "utilAfter": 957.4597778320312,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 957.4597778320312,
+        "kinship": 0.9,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 3393,
+        "day": 47,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 999.2888793945312,
+        "utilAfter": 979.6309814453125,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 979.6309814453125,
+        "kinship": 0.9,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 3400,
+        "day": 47,
+        "villagerId": 173,
+        "beforeKind": "socialise",
+        "afterKind": "sowField",
+        "utilBefore": 1027.09423828125,
+        "utilAfter": 982.4116821289062,
+        "runnerUpKind": "sowField",
+        "runnerUpUtilBefore": 982.4116821289062,
+        "kinship": 0.9,
+        "familyValue": 0.5370761017582719,
+        "flipped": true
+      },
+      {
+        "tick": 3409,
+        "day": 47,
+        "villagerId": 212,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1437.3326416015625,
+        "utilAfter": 1421.828369140625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1421.828369140625,
+        "kinship": 0.9,
+        "familyValue": 0.9519712276241293,
+        "flipped": true
+      },
+      {
+        "tick": 3485,
+        "day": 48,
+        "villagerId": 212,
+        "beforeKind": "socialise",
+        "afterKind": "socialise",
+        "utilBefore": 6553.76025390625,
+        "utilAfter": 5778.0234375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 6448.6572265625,
+        "kinship": 0.7,
+        "familyValue": 0.9519712276241293,
+        "flipped": true
+      },
+      {
+        "tick": 3573,
+        "day": 49,
+        "villagerId": 201,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 1161.1800537109375,
+        "utilAfter": 1108.295654296875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1108.295654296875,
+        "kinship": 0.7,
+        "familyValue": 0.570841202809174,
+        "flipped": true
+      },
+      {
+        "tick": 3604,
+        "day": 50,
+        "villagerId": 192,
+        "beforeKind": "socialise",
+        "afterKind": "socialise",
+        "utilBefore": 27741.119140625,
+        "utilAfter": 24841.263671875,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 27202.716796875,
+        "kinship": 0.9,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 3611,
+        "day": 50,
+        "villagerId": 192,
+        "beforeKind": "socialise",
+        "afterKind": "socialise",
+        "utilBefore": 29181.05078125,
+        "utilAfter": 26002.72265625,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 28474.587890625,
+        "kinship": 0.9,
+        "familyValue": 0.591445732578278,
+        "flipped": true
+      },
+      {
+        "tick": 3648,
+        "day": 50,
+        "villagerId": 215,
+        "beforeKind": "teachCraft",
+        "afterKind": "socialise",
+        "utilBefore": 3587.806396484375,
+        "utilAfter": 3169.958740234375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 3475.0400390625,
+        "kinship": 0.7,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3715,
+        "day": 51,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6927.92333984375,
+        "utilAfter": 6863.71484375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6863.71484375,
+        "kinship": 0.7,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3717,
+        "day": 51,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6926.0751953125,
+        "utilAfter": 6906.4296875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6906.4296875,
+        "kinship": 0.7,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3780,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1675.0311279296875,
+        "utilAfter": 1627.1658935546875,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1627.1658935546875,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3782,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1748.869873046875,
+        "utilAfter": 1672.9251708984375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1672.9251708984375,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3784,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1802.2928466796875,
+        "utilAfter": 1719.515625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1719.515625,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3786,
+        "day": 52,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6924.31396484375,
+        "utilAfter": 6119.3994140625,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6119.3994140625,
+        "kinship": 0.7,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3786,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1848.0068359375,
+        "utilAfter": 1767.7843017578125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1767.7843017578125,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3788,
+        "day": 52,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6742.16455078125,
+        "utilAfter": 6041.8359375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6041.8359375,
+        "kinship": 0.7,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3788,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1893.78759765625,
+        "utilAfter": 1792.6690673828125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 1792.6690673828125,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      },
+      {
+        "tick": 3790,
+        "day": 52,
+        "villagerId": 198,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 6764.79248046875,
+        "utilAfter": 6116.3896484375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 6116.3896484375,
+        "kinship": 0.7,
+        "familyValue": 0.6492376837521474,
+        "flipped": true
+      },
+      {
+        "tick": 3790,
+        "day": 52,
+        "villagerId": 215,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 1942.373046875,
+        "utilAfter": 1818.74658203125,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 1869.4071044921875,
+        "kinship": 0.9,
+        "familyValue": 0.63764695871553,
+        "flipped": true
+      }
+    ],
+    "familyAttributedNpcs": 35,
+    "relationUses": 24179,
+    "relationCausalFlips": 2758,
+    "relationMaterialNoFlip": 21421,
+    "relationCausalSamples": [
+      {
+        "tick": 3793,
+        "day": 52,
+        "villagerId": 55,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 1386.4385986328125,
+        "utilAfter": 654.1689453125,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 922.8616943359375,
+        "affinity": 0.33600000000000024,
+        "trust": 0.41800000000000015,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3794,
+        "day": 52,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 4901.2841796875,
+        "utilAfter": 2775.88330078125,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 2786.648681640625,
+        "affinity": 0.36800000000000027,
+        "trust": 0.43400000000000016,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3796,
+        "day": 52,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 4949.25048828125,
+        "utilAfter": 2773.787109375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 2880.55615234375,
+        "affinity": 0.44000000000000034,
+        "trust": 0.4700000000000002,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3798,
+        "day": 52,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 6916.59375,
+        "utilAfter": 2665.8466796875,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 2953.889404296875,
+        "affinity": 0.5760000000000004,
+        "trust": 0.5380000000000003,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3800,
+        "day": 52,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 6578.56787109375,
+        "utilAfter": 2650.6005859375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 2958.345458984375,
+        "affinity": 0.5760000000000004,
+        "trust": 0.5380000000000003,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3804,
+        "day": 52,
+        "villagerId": 39,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 363.98931884765625,
+        "utilAfter": 222.4546661376953,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 222.4546661376953,
+        "affinity": 0.33609743777749196,
+        "trust": 0.43400000000000016,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3812,
+        "day": 52,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "rest",
+        "utilBefore": 4648.75244140625,
+        "utilAfter": 1862.5693359375,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 1862.5693359375,
+        "affinity": 0.8000000000000006,
+        "trust": 0.6500000000000004,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3813,
+        "day": 52,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 66.87676239013672,
+        "utilAfter": 36.2072639465332,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 36.2072639465332,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3815,
+        "day": 52,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 91.49803161621094,
+        "utilAfter": 76.46881866455078,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 76.46881866455078,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3816,
+        "day": 53,
+        "villagerId": 23,
+        "beforeKind": "socialise",
+        "afterKind": "rest",
+        "utilBefore": 4347.03564453125,
+        "utilAfter": 1613.0955810546875,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 1613.0955810546875,
+        "affinity": 0.8000000000000006,
+        "trust": 0.6500000000000004,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3817,
+        "day": 53,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 91.8912124633789,
+        "utilAfter": 76.83377838134766,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 76.83377838134766,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3819,
+        "day": 53,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 142.69105529785156,
+        "utilAfter": 69.99630737304688,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 69.99630737304688,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3821,
+        "day": 53,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 151.37744140625,
+        "utilAfter": 78.84317016601562,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 78.84317016601562,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3823,
+        "day": 53,
+        "villagerId": 28,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 151.026123046875,
+        "utilAfter": 69.9952392578125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 69.9952392578125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3876,
+        "day": 53,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 155.24664306640625,
+        "utilAfter": 129.57334899902344,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 129.57334899902344,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3879,
+        "day": 53,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "gatherFood",
+        "utilBefore": 246.6786346435547,
+        "utilAfter": 182.05018615722656,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 179.56834411621094,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3917,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 18147.36328125,
+        "utilAfter": 6954.205078125,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 14551.673828125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3919,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 18160.107421875,
+        "utilAfter": 6827.7109375,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 14286.984375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3921,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 18025.2265625,
+        "utilAfter": 6672.1435546875,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 13961.4599609375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3925,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 15638.7470703125,
+        "utilAfter": 7341.36376953125,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 15361.8037109375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3931,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 14302.4453125,
+        "utilAfter": 6523.25390625,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 13649.908203125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3935,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 14269.50390625,
+        "utilAfter": 6753.06494140625,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 14130.7880859375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3939,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 13529.625,
+        "utilAfter": 6445.470703125,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 13487.1474609375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3943,
+        "day": 54,
+        "villagerId": 57,
+        "beforeKind": "socialise",
+        "afterKind": "teachCraft",
+        "utilBefore": 10821.8681640625,
+        "utilAfter": 5126.92138671875,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 10728.0830078125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3961,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 273.27923583984375,
+        "utilAfter": 101.86983489990234,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 101.86983489990234,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3963,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 276.7400817871094,
+        "utilAfter": 103.9093017578125,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 103.9093017578125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3965,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 309.5361328125,
+        "utilAfter": 121.65042114257812,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 121.65042114257812,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3967,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 295.6850280761719,
+        "utilAfter": 116.7095947265625,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 116.7095947265625,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3969,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 276.4471740722656,
+        "utilAfter": 115.0163803100586,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 115.0163803100586,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3971,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 271.3040771484375,
+        "utilAfter": 113.85782623291016,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 113.85782623291016,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3973,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 285.4608459472656,
+        "utilAfter": 120.96267700195312,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 120.96267700195312,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3975,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 289.1210021972656,
+        "utilAfter": 123.77377319335938,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 123.77377319335938,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 3977,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 276.8166198730469,
+        "utilAfter": 119.78275299072266,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 119.78275299072266,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4020,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 404.9534606933594,
+        "utilAfter": 188.8015899658203,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 188.8015899658203,
+        "affinity": 0.6750594060216157,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4021,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 263.6506652832031,
+        "utilAfter": 188.07577514648438,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 188.07577514648438,
+        "affinity": 0.6750594060216157,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4023,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 272.5950622558594,
+        "utilAfter": 192.43765258789062,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 192.43765258789062,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4025,
+        "day": 55,
+        "villagerId": 71,
+        "beforeKind": "socialise",
+        "afterKind": "rest",
+        "utilBefore": 5891.99267578125,
+        "utilAfter": 2462.279052734375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 3923.40234375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4025,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 265.9073486328125,
+        "utilAfter": 186.42117309570312,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 186.42117309570312,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4027,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 271.49468994140625,
+        "utilAfter": 189.5824737548828,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 189.5824737548828,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4029,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 296.0686950683594,
+        "utilAfter": 192.47544860839844,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 192.47544860839844,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4031,
+        "day": 55,
+        "villagerId": 71,
+        "beforeKind": "socialise",
+        "afterKind": "rest",
+        "utilBefore": 5970.0595703125,
+        "utilAfter": 2398.851318359375,
+        "runnerUpKind": "socialise",
+        "runnerUpUtilBefore": 3941.709228515625,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4031,
+        "day": 55,
+        "villagerId": 81,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 288.1776123046875,
+        "utilAfter": 187.4014892578125,
+        "runnerUpKind": "eat",
+        "runnerUpUtilBefore": 187.4014892578125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4034,
+        "day": 56,
+        "villagerId": 71,
+        "beforeKind": "socialise",
+        "afterKind": "rest",
+        "utilBefore": 5081.27685546875,
+        "utilAfter": 4254.24072265625,
+        "runnerUpKind": "rest",
+        "runnerUpUtilBefore": 4254.24072265625,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4122,
+        "day": 57,
+        "villagerId": 64,
+        "beforeKind": "socialise",
+        "afterKind": "eat",
+        "utilBefore": 345.3125915527344,
+        "utilAfter": 132.0289764404297,
+        "runnerUpKind": "teachCraft",
+        "runnerUpUtilBefore": 268.8207092285156,
+        "affinity": 1,
+        "trust": 0.8568500000000006,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4122,
+        "day": 57,
+        "villagerId": 94,
+        "beforeKind": "teachCraft",
+        "afterKind": "buildProject",
+        "utilBefore": 1777.3145751953125,
+        "utilAfter": 1676.901611328125,
+        "runnerUpKind": "buildProject",
+        "runnerUpUtilBefore": 1676.901611328125,
+        "affinity": 0.5051619000000003,
+        "trust": 0.5380000000000001,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4194,
+        "day": 58,
+        "villagerId": 71,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 5566.23193359375,
+        "utilAfter": 2787.219970703125,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 2787.219970703125,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4194,
+        "day": 58,
+        "villagerId": 84,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3304.162353515625,
+        "utilAfter": 2597.5458984375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 2597.5458984375,
+        "affinity": 1,
+        "trust": 1,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      },
+      {
+        "tick": 4266,
+        "day": 59,
+        "villagerId": 84,
+        "beforeKind": "teachCraft",
+        "afterKind": "gatherFood",
+        "utilBefore": 3741.404296875,
+        "utilAfter": 2717.80224609375,
+        "runnerUpKind": "gatherFood",
+        "runnerUpUtilBefore": 2717.80224609375,
+        "affinity": 1,
+        "trust": 0.7671000000000003,
+        "kinship": 0,
+        "flipped": true,
+        "helpMenu": true
+      }
+    ],
+    "relationAttributedNpcs": 116,
+    "professionChanges": 175,
+    "professionChangesMultiFactor": 175,
+    "professionExplainableShare": 1,
+    "professionFactorSamples": [
+      {
+        "tick": 2433,
+        "day": 33,
+        "villagerId": 21,
+        "prev": "none",
+        "next": "farmer",
+        "factors": [
+          {
+            "name": "foodNeed",
+            "delta": 41.2
+          },
+          {
+            "name": "skills",
+            "delta": 28.39
+          },
+          {
+            "name": "previousExperience",
+            "delta": 15.57
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.8955875,
+        "source": "softProfession"
+      },
+      {
+        "tick": 2476,
+        "day": 34,
+        "villagerId": 82,
+        "prev": "lumberjack",
+        "next": "farmer",
+        "factors": [
+          {
+            "name": "skills",
+            "delta": 44
+          },
+          {
+            "name": "foodNeed",
+            "delta": 38.44
+          },
+          {
+            "name": "previousExperience",
+            "delta": 23.25
+          },
+          {
+            "name": "location",
+            "delta": 8.46
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.8357217592592592,
+        "source": "softProfession"
+      },
+      {
+        "tick": 2500,
+        "day": 34,
+        "villagerId": 70,
+        "prev": "lumberjack",
+        "next": "farmer",
+        "factors": [
+          {
+            "name": "skills",
+            "delta": 38.49
+          },
+          {
+            "name": "foodNeed",
+            "delta": 25.19
+          },
+          {
+            "name": "location",
+            "delta": 23.7
+          },
+          {
+            "name": "previousExperience",
+            "delta": 19.15
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.5476725,
+        "source": "softProfession"
+      },
+      {
+        "tick": 2522,
+        "day": 35,
+        "villagerId": 38,
+        "prev": "farmer",
+        "next": "forager",
+        "factors": [
+          {
+            "name": "location",
+            "delta": 336.6
+          },
+          {
+            "name": "skills",
+            "delta": 26.11
+          },
+          {
+            "name": "foodNeed",
+            "delta": 10.58
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.5476725,
+        "source": "review"
+      },
+      {
+        "tick": 2536,
+        "day": 35,
+        "villagerId": 52,
+        "prev": "none",
+        "next": "lumberjack",
+        "factors": [
+          {
+            "name": "location",
+            "delta": 113.7
+          },
+          {
+            "name": "skills",
+            "delta": 17.34
+          },
+          {
+            "name": "personality",
+            "delta": 16.41
+          },
+          {
+            "name": "demand",
+            "delta": 15.2
+          },
+          {
+            "name": "previousExperience",
+            "delta": 14.89
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.7271291666666667,
+        "source": "softProfession"
+      },
+      {
+        "tick": 2560,
+        "day": 35,
+        "villagerId": 174,
+        "prev": "forager",
+        "next": "farmer",
+        "factors": [
+          {
+            "name": "location",
+            "delta": 79.06
+          },
+          {
+            "name": "foodNeed",
+            "delta": 34.43
+          },
+          {
+            "name": "skills",
+            "delta": 33.35
+          },
+          {
+            "name": "previousExperience",
+            "delta": 28.71
+          },
+          {
+            "name": "personality",
+            "delta": 8.28
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.7484046296296296,
+        "source": "claimFarmer"
+      },
+      {
+        "tick": 2657,
+        "day": 36,
+        "villagerId": 198,
+        "prev": "none",
+        "next": "fisher",
+        "factors": [
+          {
+            "name": "location",
+            "delta": 66
+          },
+          {
+            "name": "skills",
+            "delta": 20.39
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.45285955882352946,
+        "source": "firstAssign"
+      },
+      {
+        "tick": 2785,
+        "day": 38,
+        "villagerId": 175,
+        "prev": "forager",
+        "next": "lumberjack",
+        "factors": [
+          {
+            "name": "location",
+            "delta": -60
+          },
+          {
+            "name": "previousExperience",
+            "delta": 28
+          },
+          {
+            "name": "skills",
+            "delta": 20.68
+          },
+          {
+            "name": "demand",
+            "delta": 15.2
+          }
+        ],
+        "multiFactor": true,
+        "foodNeed": 0.49152565789473684,
+        "source": "softProfession"
+      }
+    ],
+    "floors": {
+      "memorable": {
+        "value": 21073,
+        "floor": 50,
+        "ok": true
+      },
+      "retrievals": {
+        "value": 10529,
+        "floor": 30,
+        "ok": true
+      },
+      "uses": {
+        "value": 10529,
+        "floor": 20,
+        "ok": true
+      },
+      "causalFlips": {
+        "value": 1022,
+        "floor": 10,
+        "ok": true
+      },
+      "emotionChanges": {
+        "value": 243920,
+        "floor": 50,
+        "ok": true
+      },
+      "emotionUses": {
+        "value": 28516,
+        "floor": 30,
+        "ok": true
+      },
+      "emotionCausalFlips": {
+        "value": 837,
+        "floor": 15,
+        "ok": true
+      },
+      "personalityUses": {
+        "value": 24588,
+        "floor": 20,
+        "ok": true
+      },
+      "personalityCausalFlips": {
+        "value": 264,
+        "floor": 10,
+        "ok": true
+      },
+      "personalityPairReady": {
+        "value": 1263,
+        "floor": 10,
+        "ok": true
+      },
+      "personalityDivergentRatio": {
+        "value": 0.505,
+        "floor": 0.5,
+        "ok": true,
+        "ready": 1263,
+        "divergent": 638
+      },
+      "professionMultiFactorShare": {
+        "value": 1,
+        "floor": 0.7,
+        "ok": true,
+        "changes": 175,
+        "multi": 175
+      }
+    },
+    "status": "WIRED"
+  },
+  "sec22Evidence": {
+    "sec22Status": "PARTIAL",
+    "priorityLabels": {
+      "memory_decision": "PARTIAL",
+      "emotion_decision": "PARTIAL",
+      "personality_decision": "PARTIAL",
+      "learning_future": "PARTIAL",
+      "family_decision": "PARTIAL",
+      "price_profession": "PARTIAL",
+      "belief_behavior": "PARTIAL",
+      "relationship_help": "PARTIAL",
+      "migration_camp": "PARTIAL"
+    },
+    "underFloors": [
+      "migration_camp:{1/5evt UNDER · 3/3npc OK · 3/3seeds OK}"
+    ],
+    "allLocalFloorsMet": false,
+    "missionFloorsMet": false,
+    "chainBlocks": [
+      "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=1022/20evt OK · 48/3npc OK · 3/3seeds OK | id=memory_decision",
+      "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=837/15evt OK · 113/3npc OK · 3/3seeds OK | id=emotion_decision",
+      "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=638/20evt OK · 98/3npc OK · 3/3seeds OK | id=personality_decision",
+      "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=44/20evt OK · 58/3npc OK · 3/3seeds OK | id=learning_future",
+      "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> kind_flip -> action -> world | label=PARTIAL | floors=53/15evt OK · 35/3npc OK · 3/3seeds OK | id=family_decision",
+      "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=188/5evt OK · 91/3npc OK · 3/3seeds OK | id=price_profession",
+      "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=56/5evt OK · 106/3npc OK · 3/3seeds OK | id=belief_behavior",
+      "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=5117/20evt OK · 59/3npc OK · 3/3seeds OK | id=relationship_help",
+      "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=PARTIAL | floors=1/5evt UNDER · 3/3npc OK · 3/3seeds OK | id=migration_camp"
+    ],
+    "priorities": [
+      {
+        "id": "memory_decision",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 1022,
+          "eventFloor": 20,
+          "eventsOk": true,
+          "npcs": 48,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "1022/20evt OK · 48/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "mem_cf v100 d55 harvestWheat->harvestWheat util=200055.45",
+          "mem_cf v100 d55 harvestWheat->harvestWheat util=200351.52",
+          "mem_cf v100 d55 harvestWheat->harvestWheat util=200682.52"
+        ]
+      },
+      {
+        "id": "emotion_decision",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 837,
+          "eventFloor": 15,
+          "eventsOk": true,
+          "npcs": 113,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "837/15evt OK · 113/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "emo_cf v198 d51 teachCraft->gatherFood",
+          "emo_cf v198 d51 teachCraft->gatherFood",
+          "emo_cf v192 d51 teachCraft->gatherFood"
+        ]
+      },
+      {
+        "id": "personality_decision",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 638,
+          "eventFloor": 20,
+          "eventsOk": true,
+          "npcs": 98,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "638/20evt OK · 98/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "pers_cf v173 socialise->sowField",
+          "pers_cf v173 socialise->sowField",
+          "pers_cf v173 socialise->sowField"
+        ]
+      },
+      {
+        "id": "learning_future",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 44,
+          "eventFloor": 20,
+          "eventsOk": true,
+          "npcs": 58,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "44/20evt OK · 58/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "teach_true t8->r48 chop 0.7280000000000003->0.7580000000000003 act=gatherFuel de=#248",
+          "teach_true t76->r28 farm 0.46800000000000014->0.49800000000000016 act=grindFlour de=#927",
+          "teach_true t76->r28 farm 0.49800000000000016->0.5280000000000001 act=bakeBread de=#930"
+        ]
+      },
+      {
+        "id": "family_decision",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 53,
+          "eventFloor": 15,
+          "eventsOk": true,
+          "npcs": 35,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "53/15evt OK · 35/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "family_cf v87 d28 teachCraft->experiment kin=0.90",
+          "family_cf v87 d28 teachCraft->eat kin=0.90",
+          "family_cf v187 d28 socialise->socialise kin=0.70"
+        ]
+      },
+      {
+        "id": "price_profession",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 188,
+          "eventFloor": 5,
+          "eventsOk": true,
+          "npcs": 91,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "188/5evt OK · 91/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "price_prof v38 forager->farmer",
+          "price_prof v192 fisher->forager",
+          "price_prof v38 farmer->forager"
+        ]
+      },
+      {
+        "id": "belief_behavior",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 56,
+          "eventFloor": 5,
+          "eventsOk": true,
+          "npcs": 106,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "56/5evt OK · 106/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "creed_peer changes=214 followups=56 npcs=106",
+          "creed_culture tx=37 childBeh=14 genMax=1"
+        ]
+      },
+      {
+        "id": "relationship_help",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 5117,
+          "eventFloor": 20,
+          "eventsOk": true,
+          "npcs": 59,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": true,
+          "missionOk": true,
+          "label": "5117/20evt OK · 59/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "help_byKind {\"food\":1,\"teach\":5081,\"defend\":2,\"build\":15,\"haul\":13,\"labor\":5}",
+          "defend opp=5 taken=2",
+          "help teach helper=81 d54 outcome=false"
+        ]
+      },
+      {
+        "id": "migration_camp",
+        "label": "PARTIAL",
+        "floors": {
+          "events": 1,
+          "eventFloor": 5,
+          "eventsOk": false,
+          "npcs": 3,
+          "npcFloor": 3,
+          "npcsOk": true,
+          "seeds": 3,
+          "seedFloor": 3,
+          "seedsOk": true,
+          "localOk": false,
+          "missionOk": false,
+          "label": "1/5evt UNDER · 3/3npc OK · 3/3seeds OK"
+        },
+        "sampleLines": [
+          "migrate urge=8 attempts=6 leaves=1 travel=1",
+          "migrate destEval=1 settle=0 camps=0 rejoins=1 fails=0",
+          "migrate urge npc=23 d9"
+        ]
+      }
+    ]
+  },
+  "behaviorSeq": {
+    "counters": {
+      "seqNpcTracked": 116,
+      "seqNpcWithVariation30d": 109,
+      "seqNpcStuckLoop14d": 6,
+      "seqLongestSameLoopDays": 28,
+      "seqUniqueDaySequences": 105,
+      "seqSecondaryGoalStableSamples": 21249,
+      "seqSecondaryGoalStableHits": 17714,
+      "seqDayOccupancyTeach": 14717,
+      "seqDayOccupancySocial": 4723,
+      "seqDayOccupancyRest": 40752,
+      "seqDampApplications": 163104
+    },
+    "variationPct": 0.9396551724137931,
+    "stuckLoop14dPct": 0.05172413793103448,
+    "secondaryGoalStablePct": 0.8336392300814156,
+    "acceptanceTargets": {
+      "variationPctMin": 0.3,
+      "stuckLoop14dPctMax": 0.5,
+      "secondaryGoalStablePctMin": 0.2
+    },
+    "note": "Measure-first DP10 - farm multi-day runs excluded from stuck; night rest excluded from day-dominant; never PASS from short smoke"
+  },
+  "professionsEnd": {
+    "none": 10,
+    "forager": 8,
+    "farmer": 14,
+    "fisher": 3,
+    "miller": 0,
+    "lumberjack": 6,
+    "mason": 0,
+    "guard": 0,
+    "builder": 3,
+    "herder": 0,
+    "trader": 1,
+    "weaver": 0,
+    "blacksmith": 0,
+    "miner": 2
+  },
+  "professionChanges": 175,
+  "professionChangeNpcs": 97,
+  "professionsInvolved": [
+    "none",
+    "farmer",
+    "forager",
+    "lumberjack",
+    "fisher",
+    "miner",
+    "builder",
+    "trader"
+  ],
+  "foodChain": {
+    "harvestStarts": 1421,
+    "grindStarts": 433,
+    "bakeStarts": 86,
+    "sowStarts": 248,
+    "buildMillStarts": 126,
+    "grindByProfession": {
+      "farmer": 144,
+      "none": 104,
+      "forager": 142,
+      "lumberjack": 38,
+      "fisher": 1,
+      "builder": 4
+    },
+    "millerPeakAlive": 0,
+    "millerAlivePeak": 0,
+    "grindLabel": "GRIND_OPEN_TASK"
+  },
+  "helpCounters": {
+    "food": 1,
+    "teach": 5081,
+    "defend": 2,
+    "build": 15,
+    "haul": 13,
+    "labor": 5
+  },
+  "helpCategoryCount": 6,
+  "helpTotal": 5117,
+  "society": {
+    "counters": {
+      "circlesFormed": 77,
+      "circlesDissolved": 22,
+      "circlePeakAgeTicks": 4230,
+      "institutionsFormed": 69,
+      "institutionsDissolved": 20,
+      "institutionPeakAgeTicks": 4230,
+      "institutionsLived30d": 15,
+      "circleJoins": 346,
+      "circleDrops": 195,
+      "creedChanges": 214,
+      "creedBehaviorFollowups": 56,
+      "conflictsTotal": 316,
+      "conflictsByCause": {
+        "raid": 9,
+        "confront": 0,
+        "theft_feud": 0,
+        "succession": 162,
+        "rivalry": 140,
+        "territory_absorb": 5,
+        "schism": 0,
+        "exclusion": 0
+      },
+      "banditUnlockCalendar": 0,
+      "banditUnlockPressure": 1
+    },
+    "livingCircles": 46,
+    "livingInstitutions": 40,
+    "livingInstitutionKinds": [
+      "faith",
+      "elder",
+      "village",
+      "guild",
+      "kin",
+      "threat",
+      "hunger"
+    ],
+    "institutionsAgeGe30d": 26,
+    "circlePeakAgeDays": 58.75,
+    "institutionPeakAgeDays": 58.75,
+    "distinctConflictCauses": 4,
+    "identifiableConflictShare": 1,
+    "creedFollowupRate": 0.262
+  },
+  "migration": {
+    "counters": {
+      "urgeSamples": 7959,
+      "urgeMax": 1,
+      "urgeCross070": 4,
+      "urgeCross086": 3,
+      "urgeCross094": 1,
+      "leaveAttempts": 6,
+      "leaves": 1,
+      "leavesByCause": {
+        "famine": 0,
+        "low_sol": 0,
+        "unemployment": 0,
+        "crowding": 0,
+        "cohesion": 0,
+        "oppression": 0,
+        "pull_elsewhere": 0,
+        "grievance": 0,
+        "mixed": 1
+      },
+      "blockedBy": {
+        "below_threshold": 0,
+        "home_loyalty": 0,
+        "elder": 4,
+        "low_curiosity": 1,
+        "job_field": 0
+      },
+      "rejoins": 1,
+      "foundCamps": 0,
+      "distinctDestinations": 1,
+      "migrateHomelessLeave": 1,
+      "migrateHousedLeave": 0,
+      "migrateTravelStarts": 1,
+      "migrateDestEvals": 1,
+      "migrateSettlementAttempts": 0,
+      "migrateFails": 0,
+      "destReasons": {
+        "resources": 0,
+        "space": 0,
+        "group": 1,
+        "safety": 0,
+        "needs": 0,
+        "relations": 0,
+        "colony": 0,
+        "distance": 0,
+        "hasHome": 0,
+        "no_home": 0,
+        "score_low": 0,
+        "no_candidate": 0,
+        "mixed": 0
+      },
+      "settleBlockReasons": {
+        "resources": 0,
+        "space": 0,
+        "group": 0,
+        "safety": 0,
+        "needs": 0,
+        "relations": 0,
+        "colony": 0,
+        "distance": 0,
+        "hasHome": 0,
+        "no_home": 1,
+        "score_low": 0,
+        "no_candidate": 0,
+        "mixed": 0
+      }
+    },
+    "leaveActs": 2,
+    "identifiableCauseShare": 1,
+    "topLeaveCauses": [
+      "mixed:1"
+    ],
+    "topBlocks": [
+      "elder:4",
+      "low_curiosity:1"
+    ]
+  },
+  "families": {
+    "familyCount": 18,
+    "withMembers": 18,
+    "births": 16
+  },
+  "buildings": {
+    "mills": 4,
+    "wheatTiles": 43,
+    "ripe": 43,
+    "houses": 19,
+    "fields": 5
+  },
+  "prices": {
+    "wood": 3,
+    "stone": 12.4,
+    "iron": 27,
+    "gold": 34.9,
+    "food": 1.1,
+    "wheat": 3.3,
+    "flour": 13.8,
+    "bread": 9.3,
+    "wool": 9.5,
+    "cloth": 18.9,
+    "clothing": 42.6,
+    "hide": 13.6,
+    "leather": 32,
+    "fur": 36.6,
+    "charcoal": 16.1,
+    "copper": 22.6,
+    "tin": 24,
+    "lead": 18.3,
+    "silver": 30.5,
+    "bronze": 36.6,
+    "coal": 13,
+    "clay": 6.9,
+    "salt": 18.9,
+    "flint": 11.5,
+    "limestone": 9.2,
+    "sand": 3.7,
+    "peat": 5.5,
+    "brick": 16.1,
+    "mortar": 11.5,
+    "mushrooms": 5.8,
+    "herbs": 5.1,
+    "honey": 18.3,
+    "beeswax": 8.6,
+    "resin": 6,
+    "pitch": 16.1,
+    "bark": 3.6,
+    "acorns": 4.7,
+    "chestnuts": 7.4,
+    "hazelnuts": 9.2,
+    "reeds": 4.7,
+    "nettles": 2.6,
+    "willow": 6.9,
+    "basket": 13.6,
+    "fish": 9.1,
+    "game": 13.1,
+    "milk": 6.9,
+    "cheese": 16.1,
+    "eggs": 8.2,
+    "tallow": 9.2,
+    "soap": 13.6,
+    "candle": 11.5,
+    "rye": 6.2,
+    "barley": 6.4,
+    "oats": 5.9,
+    "flax": 7.1,
+    "hemp": 3.8,
+    "linen": 22.9,
+    "rope": 16.1,
+    "cabbage": 5.4,
+    "turnip": 3.4,
+    "pea": 6.6,
+    "bean": 4.2,
+    "onion": 5.4,
+    "garlic": 7.5,
+    "leek": 5.1,
+    "carrot": 5.5,
+    "beet": 5,
+    "apple": 4.8,
+    "pear": 7.7,
+    "plum": 6.9,
+    "grape": 9.8,
+    "hop": 11,
+    "sage": 4.1,
+    "mint": 3.4,
+    "lavender": 5.1,
+    "woad": 13.6,
+    "madder": 12.3,
+    "dye": 20.6,
+    "medicine": 22.9,
+    "ale": 11.5,
+    "wine": 18.3,
+    "preserved": 16.1,
+    "firewood": 4.7,
+    "oil": 13.6,
+    "torch": 13.6,
+    "oil_lamp": 22.9,
+    "lantern": 32,
+    "sconce": 27.5,
+    "chandelier": 61.1
+  },
+  "foodStock": {
+    "food": 267,
+    "wheat": 35,
+    "flour": 0,
+    "bread": 5,
+    "meat": 0,
+    "edibleTotal": 343
+  },
+  "creeds": {
+    "partage": 15,
+    "changement": 6,
+    "commerce_libre": 17,
+    "ordre": 1,
+    "tradition": 1,
+    "piete": 1
+  },
+  "creedHolders": 41,
+  "groups": {
+    "circles": 46,
+    "institutions": 40,
+    "guilds": 6,
+    "polities": 3,
+    "villages": 7
+  },
+  "teachCraftStarts": 7302,
+  "elapsedMs": 280015,
+  "daySnapshots": [
+    {
+      "day": 1,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 2,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 3,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 4,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 5,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 6,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 7,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 8,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 9,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 10,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 11,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 12,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 13,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 14,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 15,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 16,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 17,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 18,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 19,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 20,
+      "alive": 101,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 21,
+      "alive": 102,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 22,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 23,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 24,
+      "alive": 98,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 25,
+      "alive": 99,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 26,
+      "alive": 98,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 27,
+      "alive": 99,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 28,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 29,
+      "alive": 99,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 30,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 31,
+      "alive": 100,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 32,
+      "alive": 99,
+      "deaths": 2,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 33,
+      "alive": 98,
+      "deaths": 4,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 34,
+      "alive": 99,
+      "deaths": 4,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 35,
+      "alive": 97,
+      "deaths": 5,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 36,
+      "alive": 92,
+      "deaths": 6,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 37,
+      "alive": 89,
+      "deaths": 9,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 38,
+      "alive": 89,
+      "deaths": 9,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 39,
+      "alive": 87,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 40,
+      "alive": 88,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 41,
+      "alive": 88,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 42,
+      "alive": 88,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 43,
+      "alive": 84,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 44,
+      "alive": 83,
+      "deaths": 10,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 45,
+      "alive": 81,
+      "deaths": 12,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 46,
+      "alive": 80,
+      "deaths": 13,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 47,
+      "alive": 76,
+      "deaths": 14,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 48,
+      "alive": 75,
+      "deaths": 16,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 49,
+      "alive": 71,
+      "deaths": 19,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 50,
+      "alive": 68,
+      "deaths": 21,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 51,
+      "alive": 65,
+      "deaths": 24,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 52,
+      "alive": 59,
+      "deaths": 29,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 53,
+      "alive": 57,
+      "deaths": 30,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 54,
+      "alive": 56,
+      "deaths": 30,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 55,
+      "alive": 53,
+      "deaths": 32,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 56,
+      "alive": 51,
+      "deaths": 33,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 57,
+      "alive": 50,
+      "deaths": 33,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 58,
+      "alive": 50,
+      "deaths": 33,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 59,
+      "alive": 49,
+      "deaths": 33,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 60,
+      "alive": 47,
+      "deaths": 34,
+      "mills": 0,
+      "leaves": 1
+    }
+  ]
+}

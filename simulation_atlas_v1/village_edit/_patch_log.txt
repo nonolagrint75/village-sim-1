@@ -1,0 +1,6 @@
+{
+  "bilin": true,
+  "f05": true,
+  "amp": true,
+  "fast": true
+}

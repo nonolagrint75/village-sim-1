@@ -1,0 +1,68 @@
+{
+  "mode": "repro",
+  "seed": 42,
+  "ticks": 1000,
+  "repro_match": true,
+  "a": {
+    "seed": 42,
+    "tick": 1000,
+    "elapsedMs": 15034,
+    "alive": 36,
+    "professions": {
+      "farmer": 4,
+      "miner": 12,
+      "lumberjack": 18,
+      "none": 1,
+      "forager": 1
+    },
+    "career_changes": 50,
+    "profession_multi_factor": 50,
+    "group_created": 21,
+    "group_join": 24,
+    "group_leave": 0,
+    "average_group_size": 4.52,
+    "circle_count": 21,
+    "guild_count": 3,
+    "fingerprint": "t1000|a36|c21|pc50|cf21|farmer:4,forager:1,lumberjack:18,miner:12,none:1",
+    "apiSample": {
+      "npcId": 1,
+      "occupation": "farmer",
+      "opportunities": 8,
+      "topJob": "miner",
+      "topDelta": 155.90672819080407,
+      "shouldChange": false,
+      "groups": 2
+    }
+  },
+  "b": {
+    "seed": 42,
+    "tick": 1000,
+    "elapsedMs": 14541,
+    "alive": 36,
+    "professions": {
+      "farmer": 4,
+      "miner": 12,
+      "lumberjack": 18,
+      "none": 1,
+      "forager": 1
+    },
+    "career_changes": 50,
+    "profession_multi_factor": 50,
+    "group_created": 21,
+    "group_join": 24,
+    "group_leave": 0,
+    "average_group_size": 4.52,
+    "circle_count": 21,
+    "guild_count": 3,
+    "fingerprint": "t1000|a36|c21|pc50|cf21|farmer:4,forager:1,lumberjack:18,miner:12,none:1",
+    "apiSample": {
+      "npcId": 1,
+      "occupation": "farmer",
+      "opportunities": 8,
+      "topJob": "miner",
+      "topDelta": 155.90672819080407,
+      "shouldChange": false,
+      "groups": 2
+    }
+  }
+}

@@ -1,0 +1,129 @@
+=== CIVILIZATION AUDIT REPORT ===
+seeds 1,3,5,7,9 | 90 days | world 600×600
+mean elapsed 94s/seed
+
+── Per-seed checkpoints ──
+
+[seed 1] startPop=26 startTrees=28121
+  d30 | pop 24(+1/-3) | vg 4 | inst 15 | creed 11 | faith 6 | shrine 4 | bands 0/0 | fort 6o4 | hall 0 | Δtree -61 | way t167/p27/r1 | pol 4 ch1 k3
+  d60 | pop 24(+5/-3) | vg 4 | inst 18 | creed 21 | faith 6 | shrine 4 | bands 1/4 | fort 7o3 | hall 0 | Δtree -352 | way t327/p35/r1 | pol 4 ch2 k2
+  d90 | pop 7(+8/-14) | vg 2 | inst 5 | creed 7 | faith 1 | shrine 2 | bands 2/5 | fort 8o2 | hall 0 | Δtree -420 | way t350/p9/r1 | pol 2 ch1 k0
+  walls 2:wood 3:wood | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, fort de pierre] | creedIds {"piete":7}
+  chronicle inst=8 creed=178 bandit=0 fort=43 hall=0 kingdom=66 succession=7 territory=4 road=6 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j1·8h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+    · [1·j3·0h] piété croissante de Modan → creed : « honorer le sacré »
+    · [1·j3·0h] Première voie de foi : « honorer le sacré » (portée par Modan)
+    · [1·j3·12h] Une vraie route apparaît
+    · [1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Clair »
+
+[seed 3] startPop=26 startTrees=30226
+  d30 | pop 28(+2/-0) | vg 4 | inst 16 | creed 19 | faith 4 | shrine 4 | bands 0/0 | fort 4o3 | hall 0 | Δtree -95 | way t191/p50/r0 | pol 4 ch0 k4
+  d60 | pop 21(+5/-7) | vg 4 | inst 22 | creed 18 | faith 4 | shrine 4 | bands 1/3 | fort 5o3 | hall 0 | Δtree -151 | way t275/p46/r2 | pol 2 ch0 k2
+  d90 | pop 7(+5/-13) | vg 2 | inst 6 | creed 6 | faith 2 | shrine 2 | bands 2/7 | fort 5o3 | hall 1 | Δtree -134 | way t324/p3/r0 | pol 1 ch0 k1
+  walls 1:stone 2:stone | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin] | creedIds {"piete":6}
+  chronicle inst=10 creed=145 bandit=0 fort=31 hall=0 kingdom=63 succession=12 territory=0 road=10 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j1·14h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+    · [1·j3·0h] piété croissante de Tavic → creed : « honorer le sacré »
+    · [1·j3·0h] Première voie de foi : « honorer le sacré » (portée par Tavic)
+    · [1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Kareson »
+    · [1·j3·12h] institutions et influence du campement « campement n°2 » → le pouvoir se durcit en village « village de Bois »
+
+[seed 5] startPop=26 startTrees=33129
+  d30 | pop 28(+2/-0) | vg 4 | inst 15 | creed 14 | faith 4 | shrine 4 | bands 0/0 | fort 3o4 | hall 0 | Δtree -127 | way t231/p50/r0 | pol 4 ch1 k3
+  d60 | pop 32(+10/-0) | vg 4 | inst 19 | creed 19 | faith 5 | shrine 4 | bands 1/4 | fort 3o4 | hall 0 | Δtree -256 | way t275/p73/r0 | pol 4 ch2 k2
+  d90 | pop 7(+11/-12) | vg 4 | inst 5 | creed 6 | faith 1 | shrine 4 | bands 2/2 | fort 6o1 | hall 0 | Δtree -249 | way t299/p41/r0 | pol 1 ch0 k1
+  walls 1:stone 2:stone 3:wood 4:none | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin] | creedIds {"piete":6}
+  chronicle inst=5 creed=160 bandit=0 fort=49 hall=0 kingdom=63 succession=5 territory=0 road=27 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j1·14h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+    · [1·j2·8h] recueillement partagé au village n°4 → autel de Keokneos (« honorer le sacré ») s'élève
+    · [1·j2·8h] Premier sanctuaire : autel de Keokneos (« honorer le sacré »)
+    · [1·j3·0h] piété croissante de Modan → creed : « honorer le sacré »
+    · [1·j3·0h] Première voie de foi : « honorer le sacré » (portée par Modan)
+
+[seed 7] startPop=26 startTrees=14459
+  d30 | pop 27(+1/-0) | vg 4 | inst 18 | creed 18 | faith 4 | shrine 4 | bands 0/0 | fort 1o4 | hall 0 | Δtree -80 | way t177/p43/r2 | pol 4 ch1 k3
+  d60 | pop 23(+1/-0) | vg 4 | inst 17 | creed 19 | faith 3 | shrine 4 | bands 1/4 | fort 2o3 | hall 1 | Δtree -167 | way t247/p16/r6 | pol 4 ch2 k2
+  d90 | pop 10(+4/-12) | vg 3 | inst 13 | creed 9 | faith 2 | shrine 3 | bands 2/3 | fort 5o0 | hall 1 | Δtree -224 | way t252/p27/r0 | pol 3 ch0 k1
+  walls 2:stone 3:stone 4:none | forts [palissade / fortin, fort de pierre, fort de pierre, fort de pierre, palissade / fortin] | creedIds {"piete":9}
+  chronicle inst=6 creed=175 bandit=0 fort=43 hall=0 kingdom=54 succession=6 territory=10 road=25 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de fort de pierre (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de fort de pierre (sécurité du village) (#3)
+    · [1·j3·0h] recueillement partagé au village n°3 → autel de Mirpin (« honorer le sacré ») s'élève
+    · [1·j3·0h] Premier sanctuaire : autel de Mirpin (« honorer le sacré »)
+    · [1·j3·0h] foi du cercle pieux → projet de autel / sanctuaire (foi du cercle pieux) (#4)
+    · [1·j3·0h] piété croissante de Sawen → creed : « honorer le sacré »
+    · [1·j3·0h] Première voie de foi : « honorer le sacré » (portée par Sawen)
+
+[seed 9] startPop=26 startTrees=27357
+  d30 | pop 31(+7/-2) | vg 4 | inst 13 | creed 16 | faith 4 | shrine 4 | bands 0/0 | fort 5o3 | hall 0 | Δtree -423 | way t346/p68/r0 | pol 4 ch1 k3
+  d60 | pop 27(+18/-13) | vg 4 | inst 21 | creed 16 | faith 4 | shrine 4 | bands 1/4 | fort 5o3 | hall 0 | Δtree -515 | way t407/p35/r2 | pol 4 ch2 k2
+  d90 | pop 6(+18/-22) | vg 3 | inst 8 | creed 5 | faith 2 | shrine 3 | bands 2/3 | fort 7o1 | hall 0 | Δtree -542 | way t429/p16/r0 | pol 2 ch1 k1
+  walls 1:wood 2:stone 3:stone | forts [palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin, palissade / fortin] | creedIds {"piete":5}
+  chronicle inst=8 creed=154 bandit=0 fort=58 hall=0 kingdom=67 succession=10 territory=3 road=23 clear=0
+  samples:
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+    · [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+    · [1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+    · [1·j2·8h] recueillement partagé au village n°2 → autel de Baithnuar (« honorer le sacré ») s'élève
+    · [1·j2·8h] Premier sanctuaire : autel de Baithnuar (« honorer le sacré »)
+    · [1·j3·0h] piété croissante de Bralin → creed : « honorer le sacré »
+    · [1·j3·0h] Première voie de foi : « honorer le sacré » (portée par Bralin)
+    · [1·j3·8h] sécurité du village → palissade / fortin (tours) achevé (#1)
+
+── Aggregate (end of run) ──
+popΔ mean -18.6 [-19,-19,-19,-16,-20] | births mean 9.2
+institutions mean 7.4 | creeds 6.6 | faith 1.6 | shrines 2.8
+bands mean 2.0 (bandits 4.0) | forts done 6.2 | halls 0.4
+trees cleared mean 314 | path+road mean 19 | villages mean 2.8
+chiefdoms mean 0.4 | kingdoms mean 0.8
+
+── Systems: EXIST in code vs FIRE in 30–90d window ──
+STATUS  | SYSTEM                                     | seedsHit | evidence
+FIRES   | institutions                               |  5/5 | total=74
+FIRES   | circles (politics)                         |  5/5 | total=37
+FIRES   | creeds / religion                          |  5/5 | total=850
+FIRES   | faith circles                              |  5/5 | total=8
+FIRES   | shrines / autels                           |  5/5 | total=19
+FIRES   | rituals                                    |  5/5 | total=417
+FIRES   | bandit groups                              |  5/5 | total=35
+FIRES   | bandit raids                               |  3/5 | total=7
+FIRES   | fortify / castles                          |  5/5 | total=262
+FIRES   | village wallTier wood/stone                |  5/5 | total=12
+RARE    | halls (gather purpose)                     |  2/5 | total=3
+FIRES   | forest clearing (TREE loss / clearLand)    |  5/5 | total=5916
+FIRES   | roads (trail/path/road)                    |  5/5 | total=3502
+FIRES   | polities substrate                         |  5/5 | total=9
+RARE    | chiefdoms                                  |  2/5 | total=2
+RARE    | kingdoms                                   |  4/5 | total=4
+FIRES   | succession / authority contest             |  5/5 | total=40
+FIRES   | territory / absorption                     |  3/5 | total=17
+NEVER   | civil war (deferred soft)                  |  0/5 | total=0 (explicitly soft/deferred — confront bias only)
+FIRES   | guilds                                     |  5/5 | total=10
+FIRES   | population growth (births)                 |  5/5 | total=46
+FIRES   | multi-village founding                     |  5/5 | total=9
+
+── NEVER FIRE (coded but invisible in this window) ──
+  • civil war (deferred soft) — politics.ts comment: deferred — explicitly soft/deferred — confront bias only
+
+── RARE (fires on ≤ few events) ──
+  • halls (gather purpose) — perSeed=[0,1,0,2,0]
+  • chiefdoms — perSeed=[1,0,0,0,1]
+  • kingdoms — perSeed=[0,1,1,1,1]
+
+── Verdict ──
+Civilization feel gaps: civil war (deferred soft); halls (gather purpose); chiefdoms.
+FIRES=18 RARE=3 NEVER=1. Bandits gated to day 40+; creeds need piety/sacred thresholds.

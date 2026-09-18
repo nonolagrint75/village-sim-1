@@ -1,0 +1,219 @@
+{
+  "phase": 5,
+  "dp": "DP5",
+  "induced": false,
+  "seed": 1,
+  "days": 6,
+  "ticks": 432,
+  "elapsedMs": 9767,
+  "decisionExactTotal": 5095,
+  "professionChanges": 48,
+  "professionChangesMultiFactor": 48,
+  "professionExplainableShare": 1,
+  "materialThreshold": 8,
+  "targetShare": 0.7,
+  "samples": [
+    {
+      "tick": 0,
+      "day": 0,
+      "villagerId": 13,
+      "prev": "none",
+      "next": "farmer",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 296.41
+        },
+        {
+          "name": "foodNeed",
+          "delta": 20.7
+        },
+        {
+          "name": "skills",
+          "delta": 15.73
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.45,
+      "source": "buildHouse"
+    },
+    {
+      "tick": 0,
+      "day": 0,
+      "villagerId": 79,
+      "prev": "none",
+      "next": "farmer",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 313.03
+        },
+        {
+          "name": "foodNeed",
+          "delta": 20.7
+        },
+        {
+          "name": "skills",
+          "delta": 12.25
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.45,
+      "source": "buildHouse"
+    },
+    {
+      "tick": 0,
+      "day": 0,
+      "villagerId": 24,
+      "prev": "none",
+      "next": "farmer",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 311.51
+        },
+        {
+          "name": "foodNeed",
+          "delta": 20.7
+        },
+        {
+          "name": "skills",
+          "delta": 17.73
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.45,
+      "source": "buildHouse"
+    },
+    {
+      "tick": 1,
+      "day": 0,
+      "villagerId": 6,
+      "prev": "none",
+      "next": "forager",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 585.2
+        },
+        {
+          "name": "foodNeed",
+          "delta": 11.98
+        },
+        {
+          "name": "skills",
+          "delta": 11.75
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.62,
+      "source": "firstAssign"
+    },
+    {
+      "tick": 1,
+      "day": 0,
+      "villagerId": 6,
+      "prev": "forager",
+      "next": "farmer",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 317.43
+        },
+        {
+          "name": "foodNeed",
+          "delta": 28.52
+        },
+        {
+          "name": "skills",
+          "delta": 14.07
+        },
+        {
+          "name": "personality",
+          "delta": 11.23
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.62,
+      "source": "claimFarmer"
+    },
+    {
+      "tick": 1,
+      "day": 0,
+      "villagerId": 10,
+      "prev": "none",
+      "next": "forager",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 429.8
+        },
+        {
+          "name": "skills",
+          "delta": 12.31
+        },
+        {
+          "name": "foodNeed",
+          "delta": 11.98
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.62,
+      "source": "firstAssign"
+    },
+    {
+      "tick": 1,
+      "day": 0,
+      "villagerId": 10,
+      "prev": "forager",
+      "next": "farmer",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 327.5
+        },
+        {
+          "name": "foodNeed",
+          "delta": 28.52
+        },
+        {
+          "name": "skills",
+          "delta": 14.6
+        },
+        {
+          "name": "personality",
+          "delta": 14.28
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.62,
+      "source": "claimFarmer"
+    },
+    {
+      "tick": 1,
+      "day": 0,
+      "villagerId": 30,
+      "prev": "none",
+      "next": "forager",
+      "factors": [
+        {
+          "name": "location",
+          "delta": 576.8
+        },
+        {
+          "name": "foodNeed",
+          "delta": 11.98
+        },
+        {
+          "name": "skills",
+          "delta": 10.4
+        }
+      ],
+      "multiFactor": true,
+      "foodNeed": 0.62,
+      "source": "firstAssign"
+    }
+  ],
+  "acceptance": "PENDING",
+  "note": "CODE wired smoke - multi-factor explainability instrumented; acceptance PENDING; never PASS from this smoke"
+}

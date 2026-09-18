@@ -1,0 +1,37 @@
+{
+  "phase": 5,
+  "dp": "DP8",
+  "induced": false,
+  "seed": 1,
+  "days": 20,
+  "ticks": 1440,
+  "elapsedMs": 58751,
+  "decisionExactTotal": 26749,
+  "chain": {
+    "situation_perception": 0,
+    "help_decision_action": 0,
+    "helpEventsDefend": 0,
+    "helpEventsLabor": 3,
+    "helpEventsBuild": 30,
+    "helpEventsHaul": 7,
+    "helpEventsFood": 0,
+    "helpEventsTeach": 3575,
+    "helpTotal": 3615,
+    "helpOutcomes": 569,
+    "helpOutcomesByKind": {
+      "food": 0,
+      "teach": 529,
+      "defend": 0,
+      "build": 30,
+      "haul": 7,
+      "labor": 3
+    },
+    "farmHarvest": 311,
+    "farmGrind": 43,
+    "farmBake": 40
+  },
+  "helpChain": "PARTIAL",
+  "designNote": "Labor=clear/sow assist for others; build=buildProject wall phase for others. Defend=threat+ward+willingness->protect engage (fight/flee still dominate without ward). Opportunities vs taken measured. No CREATE_RAID.",
+  "acceptance": "PENDING",
+  "note": "DONE CODE wired smoke — never PASS from this smoke; acceptance PENDING"
+}

@@ -1,0 +1,775 @@
+{
+  "seed": 7,
+  "days": 60,
+  "status": "ok",
+  "configResolved": {
+    "worldSize": 1000,
+    "initialVillagers": 100,
+    "maxPopulation": 250,
+    "sheepCount": 40,
+    "horseCount": 14,
+    "wolfCount": 3,
+    "preset": "standard",
+    "startPaused": false,
+    "seed": 7
+  },
+  "startPop": 100,
+  "aliveEnd": 52,
+  "deaths": 22,
+  "births": 3,
+  "deathsByWolf": 0,
+  "deathsByBandit": 0,
+  "peakAlive": 100,
+  "decisionsProxy": {
+    "label": "PROXY_task_kind_change",
+    "taskKindChanges": 65272,
+    "factorWhySeen": 390472,
+    "uniqueTaskKinds": 31,
+    "taskKindHistogram": {
+      "sowField": 2311,
+      "idle": 369,
+      "gatherFuel": 3184,
+      "buildHouse": 1413,
+      "buildProject": 16690,
+      "tendHearth": 72,
+      "gatherFood": 19723,
+      "experiment": 603,
+      "rest": 100230,
+      "buildMill": 2697,
+      "gatherStone": 16072,
+      "gatherWood": 3056,
+      "buildBoat": 20,
+      "grindFlour": 6988,
+      "socialise": 16632,
+      "bakeBread": 485,
+      "fish": 661,
+      "buildWall": 96,
+      "craftGear": 24,
+      "harvestWheat": 11647,
+      "eat": 657,
+      "clearLand": 660,
+      "tradeRun": 127,
+      "teachCraft": 33624,
+      "flee": 126488,
+      "fight": 1889,
+      "takeFromChest": 93,
+      "giveFood": 217,
+      "ritual": 99,
+      "confront": 29,
+      "entertain": 14
+    },
+    "taskStartHistogram": {
+      "sowField": 219,
+      "idle": 36,
+      "gatherFuel": 327,
+      "buildHouse": 154,
+      "buildProject": 1369,
+      "tendHearth": 4,
+      "gatherFood": 1904,
+      "experiment": 87,
+      "rest": 6254,
+      "buildMill": 158,
+      "gatherStone": 789,
+      "gatherWood": 455,
+      "buildBoat": 3,
+      "grindFlour": 355,
+      "socialise": 11948,
+      "bakeBread": 85,
+      "fish": 41,
+      "buildWall": 13,
+      "craftGear": 3,
+      "harvestWheat": 1024,
+      "eat": 647,
+      "clearLand": 104,
+      "tradeRun": 11,
+      "teachCraft": 13700,
+      "flee": 1466,
+      "fight": 394,
+      "takeFromChest": 23,
+      "giveFood": 60,
+      "ritual": 38,
+      "confront": 9,
+      "entertain": 1
+    },
+    "entropyStarts": 2.7901,
+    "entropyOccupancy": 2.8511
+  },
+  "professionsEnd": {
+    "none": 9,
+    "forager": 4,
+    "farmer": 12,
+    "fisher": 1,
+    "miller": 0,
+    "lumberjack": 16,
+    "mason": 0,
+    "guard": 0,
+    "builder": 7,
+    "herder": 0,
+    "trader": 0,
+    "weaver": 0,
+    "blacksmith": 0,
+    "miner": 3
+  },
+  "professionChanges": 147,
+  "professionChangeNpcs": 86,
+  "professionsInvolved": [
+    "none",
+    "farmer",
+    "forager",
+    "lumberjack",
+    "miner",
+    "builder",
+    "fisher"
+  ],
+  "foodChain": {
+    "harvestStarts": 1024,
+    "grindStarts": 355,
+    "bakeStarts": 85,
+    "sowStarts": 219,
+    "buildMillStarts": 158
+  },
+  "helpCounters": {
+    "food": 6,
+    "teach": 11638,
+    "defend": 0,
+    "build": 0,
+    "haul": 0,
+    "labor": 0
+  },
+  "helpCategoryCount": 2,
+  "helpTotal": 11644,
+  "society": {
+    "counters": {
+      "circlesFormed": 56,
+      "circlesDissolved": 5,
+      "circlePeakAgeTicks": 4230,
+      "institutionsFormed": 53,
+      "institutionsDissolved": 4,
+      "institutionPeakAgeTicks": 4230,
+      "institutionsLived30d": 4,
+      "circleJoins": 217,
+      "circleDrops": 119,
+      "creedChanges": 233,
+      "creedBehaviorFollowups": 64,
+      "conflictsTotal": 300,
+      "conflictsByCause": {
+        "raid": 8,
+        "confront": 0,
+        "theft_feud": 0,
+        "succession": 120,
+        "rivalry": 169,
+        "territory_absorb": 3,
+        "schism": 0,
+        "exclusion": 0
+      },
+      "banditUnlockCalendar": 0,
+      "banditUnlockPressure": 1
+    },
+    "livingCircles": 48,
+    "livingInstitutions": 46,
+    "livingInstitutionKinds": [
+      "faith",
+      "elder",
+      "village",
+      "guild",
+      "kin",
+      "threat"
+    ],
+    "institutionsAgeGe30d": 41,
+    "circlePeakAgeDays": 58.75,
+    "institutionPeakAgeDays": 58.75,
+    "distinctConflictCauses": 4,
+    "identifiableConflictShare": 1,
+    "creedFollowupRate": 0.275
+  },
+  "migration": {
+    "counters": {
+      "urgeSamples": 8134,
+      "urgeMax": 1,
+      "urgeCross070": 19,
+      "urgeCross086": 13,
+      "urgeCross094": 7,
+      "leaveAttempts": 26,
+      "leaves": 8,
+      "leavesByCause": {
+        "famine": 0,
+        "low_sol": 0,
+        "unemployment": 0,
+        "crowding": 0,
+        "cohesion": 0,
+        "oppression": 0,
+        "pull_elsewhere": 0,
+        "grievance": 0,
+        "mixed": 8
+      },
+      "blockedBy": {
+        "below_threshold": 0,
+        "home_loyalty": 3,
+        "elder": 9,
+        "low_curiosity": 6,
+        "job_field": 0
+      },
+      "rejoins": 9,
+      "foundCamps": 0,
+      "distinctDestinations": 2
+    },
+    "leaveActs": 17,
+    "identifiableCauseShare": 1,
+    "topLeaveCauses": [
+      "mixed:8"
+    ],
+    "topBlocks": [
+      "elder:9",
+      "low_curiosity:6",
+      "home_loyalty:3"
+    ]
+  },
+  "families": {
+    "familyCount": 22,
+    "withMembers": 22,
+    "births": 3
+  },
+  "buildings": {
+    "mills": 4,
+    "wheatTiles": 56,
+    "ripe": 35,
+    "houses": 10,
+    "fields": 6
+  },
+  "prices": {
+    "wood": 2.3,
+    "stone": 10.4,
+    "iron": 25.5,
+    "gold": 33.2,
+    "food": 0.8,
+    "wheat": 2.3,
+    "flour": 11.9,
+    "bread": 7.7,
+    "wool": 8.9,
+    "cloth": 17.8,
+    "clothing": 40.2,
+    "hide": 13,
+    "leather": 30.5,
+    "fur": 34.9,
+    "charcoal": 15.3,
+    "copper": 21.2,
+    "tin": 22.8,
+    "lead": 17.5,
+    "silver": 29,
+    "bronze": 34.9,
+    "coal": 12.5,
+    "clay": 6.6,
+    "salt": 17.8,
+    "flint": 10.9,
+    "limestone": 8.8,
+    "sand": 3.4,
+    "peat": 5.2,
+    "brick": 15.3,
+    "mortar": 10.9,
+    "mushrooms": 6.4,
+    "herbs": 3.6,
+    "honey": 17.5,
+    "beeswax": 13.4,
+    "resin": 8,
+    "pitch": 15.3,
+    "bark": 2.4,
+    "acorns": 4.3,
+    "chestnuts": 7,
+    "hazelnuts": 8.8,
+    "reeds": 4.3,
+    "nettles": 3.1,
+    "willow": 6.6,
+    "basket": 13,
+    "fish": 8.6,
+    "game": 12.5,
+    "milk": 6.6,
+    "cheese": 15.3,
+    "eggs": 7.9,
+    "tallow": 8.8,
+    "soap": 13,
+    "candle": 10.9,
+    "rye": 6.1,
+    "barley": 5.7,
+    "oats": 5.3,
+    "flax": 4.6,
+    "hemp": 5.5,
+    "linen": 21.8,
+    "rope": 15.3,
+    "cabbage": 4.5,
+    "turnip": 4.3,
+    "pea": 6.5,
+    "bean": 6.1,
+    "onion": 5.4,
+    "garlic": 8.3,
+    "leek": 5.2,
+    "carrot": 4.1,
+    "beet": 3.5,
+    "apple": 6.7,
+    "pear": 7.5,
+    "plum": 6.6,
+    "grape": 8,
+    "hop": 5.7,
+    "sage": 3.6,
+    "mint": 2.5,
+    "lavender": 3.4,
+    "woad": 6.8,
+    "madder": 5.8,
+    "dye": 19.7,
+    "medicine": 21.8,
+    "ale": 10.9,
+    "wine": 17.5,
+    "preserved": 15.3,
+    "firewood": 3.9,
+    "oil": 13,
+    "torch": 13,
+    "oil_lamp": 21.8,
+    "lantern": 30.5,
+    "sconce": 26.2,
+    "chandelier": 59.6
+  },
+  "foodStock": {
+    "food": 0,
+    "wheat": 0,
+    "flour": 0,
+    "bread": 0,
+    "meat": 0
+  },
+  "creeds": {
+    "changement": 11,
+    "commerce_libre": 29,
+    "partage": 2,
+    "ordre": 2
+  },
+  "creedHolders": 44,
+  "groups": {
+    "circles": 48,
+    "institutions": 46,
+    "guilds": 10,
+    "polities": 5,
+    "villages": 8
+  },
+  "teachCraftStarts": 13700,
+  "elapsedMs": 109003,
+  "daySnapshots": [
+    {
+      "day": 1,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 2,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 3,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 4,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 5,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 6,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 7,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 8,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 9,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 0
+    },
+    {
+      "day": 10,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 11,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 12,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 1
+    },
+    {
+      "day": 13,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 14,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 15,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 16,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 17,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 18,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 2
+    },
+    {
+      "day": 19,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 3
+    },
+    {
+      "day": 20,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 4
+    },
+    {
+      "day": 21,
+      "alive": 100,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 5
+    },
+    {
+      "day": 22,
+      "alive": 97,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 5
+    },
+    {
+      "day": 23,
+      "alive": 97,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 5
+    },
+    {
+      "day": 24,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 25,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 26,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 27,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 28,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 29,
+      "alive": 96,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 30,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 31,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 6
+    },
+    {
+      "day": 32,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 33,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 34,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 35,
+      "alive": 92,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 36,
+      "alive": 91,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 37,
+      "alive": 91,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 38,
+      "alive": 92,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 7
+    },
+    {
+      "day": 39,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 40,
+      "alive": 93,
+      "deaths": 0,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 41,
+      "alive": 92,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 42,
+      "alive": 91,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 43,
+      "alive": 91,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 44,
+      "alive": 90,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 45,
+      "alive": 89,
+      "deaths": 1,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 46,
+      "alive": 88,
+      "deaths": 2,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 47,
+      "alive": 84,
+      "deaths": 2,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 48,
+      "alive": 82,
+      "deaths": 3,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 49,
+      "alive": 80,
+      "deaths": 4,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 50,
+      "alive": 78,
+      "deaths": 5,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 51,
+      "alive": 77,
+      "deaths": 6,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 52,
+      "alive": 74,
+      "deaths": 8,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 53,
+      "alive": 70,
+      "deaths": 11,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 54,
+      "alive": 67,
+      "deaths": 13,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 55,
+      "alive": 65,
+      "deaths": 14,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 56,
+      "alive": 63,
+      "deaths": 15,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 57,
+      "alive": 59,
+      "deaths": 18,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 58,
+      "alive": 55,
+      "deaths": 21,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 59,
+      "alive": 53,
+      "deaths": 22,
+      "mills": 0,
+      "leaves": 8
+    },
+    {
+      "day": 60,
+      "alive": 52,
+      "deaths": 22,
+      "mills": 0,
+      "leaves": 8
+    }
+  ]
+}

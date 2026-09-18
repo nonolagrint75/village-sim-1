@@ -1,0 +1,81 @@
+{
+    "mode": "stress_fill_500",
+    "honesty": "TEST SETUP: cloned founders to target after create (initialVillagers clamp max=120). Not organic grow.",
+    "seed": 7,
+    "wallSec": 8,
+    "adaptWarmSec": 8,
+    "targetPop": 500,
+    "fill": {
+        "before": 120,
+        "after": 500,
+        "added": 380
+    },
+    "popAtMeasureStart": 493,
+    "popEnd": 471,
+    "ticks": 780,
+    "elapsedSec": 8.3,
+    "measuredTps": 94,
+    "sliceMinTps": 73.3,
+    "sliceMaxTps": 89.4,
+    "targetTps": 100,
+    "budget": {
+        "deepPeriod": 18,
+        "popScale": 1,
+        "deepShare": 0.2,
+        "lastTps": 88.67328548458093,
+        "headroom": 0.6300992822687139,
+        "preferGpu": true,
+        "pathScale": 0.5539130176730346,
+        "climatePeriodMul": 1.75,
+        "commercePeriodMul": 1.5,
+        "politicsStagger": true,
+        "uiLight": true,
+        "uiIntervalMs": 600,
+        "drawIntervalMs": 44,
+        "thinkCooldownExtra": 5
+    },
+    "tpsPass": true,
+    "tpsNearTarget": true,
+    "tpsAtTarget": false,
+    "scaleOk": true,
+    "draw": {
+        "villagers": 471,
+        "villages": 8
+    },
+    "stats": {
+        "pop": 471,
+        "villages": 8,
+        "markets": 7,
+        "firms": 20,
+        "kingdoms": 8
+    },
+    "confirmMatrix": {
+        "minMeasured": 87.4,
+        "protocol": "wall8/adapt8/settle1s",
+        "matrix8of8": [
+            "7:102.5",
+            "1:118.6",
+            "7:87.4",
+            "1:126",
+            "7:108.3",
+            "1:138.2",
+            "7:87.7",
+            "1:120.1"
+        ],
+        "passRate": "8/8"
+    },
+    "confirmSeed1": {
+        "tpsPass": true,
+        "sliceMinTps": 57.2,
+        "measuredTps": 82.5,
+        "sliceMaxTps": 82.5,
+        "tpsAtTarget": false
+    },
+    "bulletin": {
+        "moyenne": 77.1,
+        "visuelHold": 69.5,
+        "performanceMatiere": 90,
+        "formula": "0.8*measured+0.2*min(sliceMin,seed1)=89.9; floor~90 both>=80",
+        "note": "Perf re-synced severe from stable dual 94/82.5 matrix 8/8; Visuel HOLD; soft refuse sticky 96.3/77.5 + global 90+"
+    }
+}

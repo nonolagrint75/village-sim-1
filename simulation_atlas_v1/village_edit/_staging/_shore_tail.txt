@@ -1,0 +1,486 @@
+﻿function dirtBlob(wx: number, wy: number): number {
+  return (
+    0.5 +
+    fbm2(wx * 0.18 + 41.2, wy * 0.18 + 17.8, 6, 2.05, 0.52) * 0.58 +
+    simplex2(wx * 0.55 + 3.7, wy * 0.55 + 11.2) * 0.34 +
+    simplex2(wx * 1.35 - 2.4, wy * 1.35 + 8.1) * 0.18
+  )
+}
+
+export function dirtSdf(terrain: Uint8Array, worldW: number, wx: number, wy: number): number {
+  // Aggressive vector warp — beige Manhattan edges must leave tile mid-edges.
+  const [sx0, sy0] = domainWarp(wx + 17.3, wy + 9.1)
+  const sx = sx0 - 17.3
+  const sy = sy0 - 9.1
+  const ix = Math.floor(sx)
+  const iy = Math.floor(sy)
+  const fx = sx - ix
+  const fy = sy - iy
+  const samp = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= worldW || y >= worldW) return 0
+    return isDirtOrSand(terrain[y * worldW + x]!) ? 1 : 0
+  }
+  const here = samp(ix, iy) > 0
+  let best = 6
+  for (let dy = -5; dy <= 5; dy++) {
+    for (let dx = -5; dx <= 5; dx++) {
+      const ox = ix + dx
+      const oy = iy + dy
+      if ((samp(ox, oy) > 0) === here) continue
+      const d = Math.hypot(sx - (ox + 0.5), sy - (oy + 0.5)) - 0.5
+      if (d < best) best = d
+    }
+  }
+  const bil =
+    samp(ix, iy) * (1 - fx) * (1 - fy) +
+    samp(ix + 1, iy) * fx * (1 - fy) +
+    samp(ix, iy + 1) * (1 - fx) * fy +
+    samp(ix + 1, iy + 1) * fx * fy
+  const blob = dirtBlob(wx, wy)
+  const signed = here ? Math.max(0.015, best) : -Math.max(0.015, best)
+  const edge = Math.max(0, 1 - Math.abs(signed) * 1.2)
+  return (
+    signed * 0.5 +
+    (bil - 0.5) * 0.28 +
+    (blob - 0.5) * 0.42 * edge +
+    shoreWarp(sx + 2.4, sy + 1.1) * 0.95 * edge
+  )
+}
+
+export function dirtField(terrain: Uint8Array, worldW: number, wx: number, wy: number): number {
+  const base = smoothstep(-1.25, 0.75, dirtSdf(terrain, worldW, wx, wy))
+  const mid = Math.max(0, 1 - Math.abs(base - 0.5) * 2)
+  const carve =
+    simplex2(wx * 1.95 + 3.3, wy * 1.95 - 1.8) * 0.5 * mid +
+    simplex2(wx * 4.6 - 2.4, wy * 4.6 + 4.2) * 0.35 * mid +
+    fbm2(wx * 0.8 + 2.1, wy * 0.8 - 1.4, 4, 2.05, 0.5) * 0.28 * mid +
+    simplex2(wx * 10.2 + 1.1, wy * 10.2 - 2.6) * 0.14 * mid
+  const jig =
+    simplex2(wx * 2.9 + 5.1, wy * 2.9 - 3.3) * 0.16 +
+    simplex2(wx * 6.4, wy * 6.4) * 0.1
+  return Math.max(0, Math.min(1, base + carve + jig))
+}
+
+/** Opaque land/cover lerp with neighbor overspill (pad in world cells). */
+function paintOpaqueLerpStrip(
+  ctx: CanvasRenderingContext2D,
+  fieldAt: (wx: number, wy: number) => number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+  land: [number, number, number],
+  cover: [number, number, number],
+  lo: number,
+  hi: number,
+  pad: number,
+  tintFn?: (wx: number, wy: number) => number,
+  maskLo?: number,
+  maskHi?: number,
+  densityScale = 1,
+) {
+  const span = 1 + pad * 2
+  const n = Math.max(10, Math.min(22, Math.round(tileS * span * 0.55 * densityScale)))
+  const cell = (tileS * span) / n
+  const ox = px - pad * tileS
+  const oy = py - pad * tileS
+  ctx.globalAlpha = 1
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n
+      const v = (j + 0.5) / n
+      const wx = gx - pad + u * span
+      const wy = gy - pad + v * span
+      const f = fieldAt(wx, wy)
+      if (maskLo != null && f < maskLo) continue
+      if (maskHi != null && f > maskHi) continue
+      const w = smoothstep(lo, hi, f)
+      // Always paint — opaque cover must not leave world-buffer holes.
+      const tint = tintFn ? tintFn(wx, wy) : 0
+      const r = Math.max(0, Math.min(255, (land[0] * (1 - w) + cover[0] * w + tint) | 0))
+      const g = Math.max(0, Math.min(255, (land[1] * (1 - w) + cover[1] * w + tint * 0.7) | 0))
+      const b = Math.max(0, Math.min(255, (land[2] * (1 - w) + cover[2] * w + tint * 0.45) | 0))
+      ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")"
+      ctx.fillRect(ox + i * cell - 0.35, oy + j * cell - 0.35, cell + 0.75, cell + 0.75)
+    }
+  }
+}
+
+const SHORE_PAD = 0.42
+const DIRT_PAD = 0.4
+
+export function paintOrganicShoreWater(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+  blitLand: () => void,
+) {
+  void blitLand
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const water = rgbFromPacked(atlas.color32("water"), [36, 88, 104])
+  const deep = rgbFromPacked(atlas.color32("water_deep"), [28, 68, 92])
+  const field = (wx: number, wy: number) => shoreField(terrain, worldW, wx, wy)
+  paintOpaqueLerpStrip(ctx, field, gx, gy, px, py, tileS, land, water, 0.02, 0.58, SHORE_PAD, (wx, wy) => simplex2(wx * 2.2, wy * 2.2) * 5, undefined, undefined, 1.15)
+  paintOpaqueLerpStrip(ctx, field, gx, gy, px, py, tileS, water, deep, 0.38, 0.92, SHORE_PAD, undefined, undefined, undefined, 1.0)
+}
+
+export function paintLandShoreFringe(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+) {
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const water = rgbFromPacked(atlas.color32("water"), [36, 88, 104])
+  paintOpaqueLerpStrip(
+    ctx,
+    (wx, wy) => shoreField(terrain, worldW, wx, wy),
+    gx, gy, px, py, tileS, land, water, 0.02, 0.62, SHORE_PAD,
+    undefined, undefined, undefined, 1.15,
+  )
+}
+
+export function paintOrganicDirtPatch(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+  blitGrass: () => void,
+  coverKey: string,
+) {
+  void blitGrass
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const cover = rgbFromPacked(
+    atlas.color32(coverKey) ?? atlas.color32("grass_grazed"),
+    coverKey === "sand" ? [210, 186, 118] : [118, 92, 52],
+  )
+  paintOpaqueLerpStrip(
+    ctx,
+    (wx, wy) => dirtField(terrain, worldW, wx, wy),
+    gx, gy, px, py, tileS, land, cover, 0.02, 0.42, DIRT_PAD,
+    (wx, wy) => simplex2(wx * 2.4, wy * 2.4) * 6,
+    undefined,
+    undefined,
+    1.35,
+  )
+}
+
+export function paintDirtBleedOnGrass(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+) {
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const grazed = rgbFromPacked(atlas.color32("grass_grazed"), [118, 92, 52])
+  paintOpaqueLerpStrip(
+    ctx,
+    (wx, wy) => dirtField(terrain, worldW, wx, wy),
+    gx, gy, px, py, tileS, land, grazed, 0.08, 0.55, DIRT_PAD, undefined, 0.06, 0.92,
+    1.2,
+  
+  )
+}
+
+export function paintCoastalSand(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  px: number,
+  py: number,
+  tileS: number,
+  blitGrass: () => void,
+) {
+  void blitGrass
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const sand = rgbFromPacked(atlas.color32("sand"), [210, 186, 118])
+  const water = rgbFromPacked(atlas.color32("water"), [36, 88, 104])
+  const field = (wx: number, wy: number) => shoreFieldFast(terrain, worldW, wx, wy)
+  paintOpaqueLerpStrip(ctx, field, gx, gy, px, py, tileS, land, sand, 0.08, 0.42, SHORE_PAD)
+  paintOpaqueLerpStrip(ctx, field, gx, gy, px, py, tileS, sand, water, 0.28, 0.75, SHORE_PAD)
+}
+
+/**
+ * Viewport shore strip: continuous coast across near-shore cells.
+ * Call AFTER ground underlays, BEFORE props.
+ */
+let _shoreTmp: HTMLCanvasElement | null = null
+function shoreTmpCanvas(w: number, h: number): CanvasRenderingContext2D {
+  if (!_shoreTmp || _shoreTmp.width < w || _shoreTmp.height < h) {
+    _shoreTmp = document.createElement("canvas")
+    _shoreTmp.width = Math.max(w, 64)
+    _shoreTmp.height = Math.max(h, 64)
+  } else if (_shoreTmp.width < w || _shoreTmp.height < h) {
+    _shoreTmp.width = w
+    _shoreTmp.height = h
+  }
+  return _shoreTmp.getContext("2d")!
+}
+
+function cellTouchesOpposite(
+  terrain: Uint8Array,
+  worldW: number,
+  gx: number,
+  gy: number,
+  wantWater: boolean,
+  r: number,
+): boolean {
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx === 0 && dy === 0) continue
+      const x = gx + dx
+      const y = gy + dy
+      if (x < 0 || y < 0 || x >= worldW || y >= worldW) continue
+      if ((terrain[y * worldW + x] === WATER) === wantWater) return true
+    }
+  }
+  return false
+}
+
+let _stripTmp: HTMLCanvasElement | null = null
+function stripCanvas(w: number, h: number): CanvasRenderingContext2D {
+  const ww = Math.max(1, w | 0)
+  const hh = Math.max(1, h | 0)
+  if (!_stripTmp || _stripTmp.width !== ww || _stripTmp.height !== hh) {
+    _stripTmp = document.createElement("canvas")
+    _stripTmp.width = ww
+    _stripTmp.height = hh
+  }
+  return _stripTmp.getContext("2d")!
+}
+
+function cellTouchesDirt(terrain: Uint8Array, worldW: number, gx: number, gy: number, r = 2): boolean {
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const x = gx + dx
+      const y = gy + dy
+      if (x < 0 || y < 0 || x >= worldW || y >= worldW) continue
+      if (isDirtOrSand(terrain[y * worldW + x]!)) return true
+    }
+  }
+  return false
+}
+
+function cellTouchesShore(terrain: Uint8Array, worldW: number, gx: number, gy: number, r = 3): boolean {
+  const here = isWaterCell(terrain, worldW, gx, gy)
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx === 0 && dy === 0) continue
+      if (isWaterCell(terrain, worldW, gx + dx, gy + dy) !== here) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Continuous opaque dirt strip across near-dirt AABB (one ImageData — no per-cell stairs).
+ */
+export function paintViewportShoreStrip(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  camX: number,
+  camY: number,
+  zoom: number,
+  tilePx: number,
+) {
+  const tileS = tilePx * zoom
+  if (tileS < 5.5) return
+  // Edge band r=2 — need one cell of overspill so SDF mid-band isn't clipped to Manhattan.
+  const cells: { gx: number; gy: number }[] = []
+  for (let gy = y0; gy <= y1; gy++) {
+    for (let gx = x0; gx <= x1; gx++) {
+      if (cellTouchesShore(terrain, worldW, gx, gy, 2)) cells.push({ gx, gy })
+    }
+  }
+  if (!cells.length) return
+  let minX = cells[0]!.gx, maxX = minX, minY = cells[0]!.gy, maxY = minY
+  for (const c of cells) {
+    if (c.gx < minX) minX = c.gx
+    if (c.gy < minY) minY = c.gy
+    if (c.gx > maxX) maxX = c.gx
+    if (c.gy > maxY) maxY = c.gy
+  }
+  minX = Math.max(x0, minX - 1)
+  minY = Math.max(y0, minY - 1)
+  maxX = Math.min(x1, maxX + 1)
+  maxY = Math.min(y1, maxY + 1)
+
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const water = rgbFromPacked(atlas.color32("water"), [36, 88, 104])
+  const deep = rgbFromPacked(atlas.color32("water_deep"), [28, 68, 92])
+
+  // Adaptive chunk: at z14 tileS~42, fixed CHUNK=18 → 756² > 200k → every chunk skipped → cyan Manhattan.
+  const BUDGET = 160_000
+  const step = tileS >= 48 ? 2 : 1
+  const maxCells = Math.max(4, Math.floor(Math.sqrt(BUDGET) / (tileS / step)))
+  const CHUNK = Math.min(24, maxCells)
+
+  const prevSmooth = ctx.imageSmoothingEnabled
+  ctx.imageSmoothingEnabled = true
+  for (let cy0 = minY; cy0 <= maxY; cy0 += CHUNK) {
+    for (let cx0 = minX; cx0 <= maxX; cx0 += CHUNK) {
+      const cx1 = Math.min(maxX, cx0 + CHUNK - 1)
+      const cy1 = Math.min(maxY, cy0 + CHUNK - 1)
+      let hit = false
+      for (const c of cells) {
+        if (c.gx >= cx0 - 1 && c.gx <= cx1 + 1 && c.gy >= cy0 - 1 && c.gy <= cy1 + 1) {
+          hit = true
+          break
+        }
+      }
+      if (!hit) continue
+      const cellsW = cx1 - cx0 + 1
+      const cellsH = cy1 - cy0 + 1
+      const pw = Math.max(1, Math.ceil((cellsW * tileS) / step))
+      const ph = Math.max(1, Math.ceil((cellsH * tileS) / step))
+      if (pw * ph > BUDGET) continue
+      const img = stripCanvas(pw, ph).createImageData(pw, ph)
+      const data = img.data
+      const inv = step / tileS
+      for (let j = 0; j < ph; j++) {
+        for (let i = 0; i < pw; i++) {
+          const wx = cx0 + (i + 0.5) * inv
+          const wy = cy0 + (j + 0.5) * inv
+          const f = shoreField(terrain, worldW, wx, wy)
+          const a = shoreAlpha(f)
+          if (a <= 0.02) continue
+          const [r, g, b] = shoreHardRgb(f, water, deep)
+          const o = (j * pw + i) * 4
+          data[o] = r
+          data[o + 1] = g
+          data[o + 2] = b
+          data[o + 3] = (a * 255) | 0
+        }
+      }
+      const sctx = stripCanvas(pw, ph)
+      sctx.putImageData(img, 0, 0)
+      const dx = (cx0 * tilePx - camX) * zoom
+      const dy = (cy0 * tilePx - camY) * zoom
+      ctx.drawImage(sctx.canvas, 0, 0, pw, ph, dx, dy, cellsW * tileS, cellsH * tileS)
+    }
+  }
+  ctx.imageSmoothingEnabled = prevSmooth
+}
+
+export function paintViewportDirtStrip(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  camX: number,
+  camY: number,
+  zoom: number,
+  tilePx: number,
+) {
+  const tileS = tilePx * zoom
+  if (tileS < 5.5) return
+  const cells: { gx: number; gy: number }[] = []
+  for (let gy = y0; gy <= y1; gy++) {
+    for (let gx = x0; gx <= x1; gx++) {
+      if (cellTouchesDirt(terrain, worldW, gx, gy, 2)) cells.push({ gx, gy })
+    }
+  }
+  if (!cells.length) return
+  let minX = cells[0]!.gx, maxX = minX, minY = cells[0]!.gy, maxY = minY
+  for (const c of cells) {
+    if (c.gx < minX) minX = c.gx
+    if (c.gy < minY) minY = c.gy
+    if (c.gx > maxX) maxX = c.gx
+    if (c.gy > maxY) maxY = c.gy
+  }
+  minX = Math.max(x0, minX - 1)
+  minY = Math.max(y0, minY - 1)
+  maxX = Math.min(x1, maxX + 1)
+  maxY = Math.min(y1, maxY + 1)
+
+  const cover = rgbFromPacked(atlas.color32("grass_grazed"), [118, 92, 52])
+  const sand = rgbFromPacked(atlas.color32("sand"), [210, 186, 118])
+  // Adaptive chunk — fixed 18×tileS@z14 exceeds budget → beige Manhattan underlay.
+  const BUDGET = 160_000
+  const step = tileS >= 48 ? 2 : 1
+  const maxCells = Math.max(4, Math.floor(Math.sqrt(BUDGET) / (tileS / step)))
+  const CHUNK = Math.min(24, maxCells)
+  const prevSmooth = ctx.imageSmoothingEnabled
+  ctx.imageSmoothingEnabled = true
+  for (let cy0 = minY; cy0 <= maxY; cy0 += CHUNK) {
+    for (let cx0 = minX; cx0 <= maxX; cx0 += CHUNK) {
+      const cx1 = Math.min(maxX, cx0 + CHUNK - 1)
+      const cy1 = Math.min(maxY, cy0 + CHUNK - 1)
+      let hit = false
+      for (const c of cells) {
+        if (c.gx >= cx0 - 1 && c.gx <= cx1 + 1 && c.gy >= cy0 - 1 && c.gy <= cy1 + 1) {
+          hit = true
+          break
+        }
+      }
+      if (!hit) continue
+      const cellsW = cx1 - cx0 + 1
+      const cellsH = cy1 - cy0 + 1
+      const pw = Math.max(1, Math.ceil((cellsW * tileS) / step))
+      const ph = Math.max(1, Math.ceil((cellsH * tileS) / step))
+      if (pw * ph > BUDGET) continue
+      const img = stripCanvas(pw, ph).createImageData(pw, ph)
+      const data = img.data
+      const inv = step / tileS
+      for (let j = 0; j < ph; j++) {
+        for (let i = 0; i < pw; i++) {
+          const wx = cx0 + (i + 0.5) * inv
+          const wy = cy0 + (j + 0.5) * inv
+          const f = dirtField(terrain, worldW, wx, wy)
+          if (f < 0.5) continue
+          const sf = shoreField(terrain, worldW, wx, wy)
+          // Never sand at coast — was beige Manhattan rim along water.
+          if (sf > 0.22) continue
+          const o = (j * pw + i) * 4
+          data[o] = cover[0]
+          data[o + 1] = cover[1]
+          data[o + 2] = cover[2]
+          data[o + 3] = 255
+        }
+      }
+      const sctx = stripCanvas(pw, ph)
+      sctx.putImageData(img, 0, 0)
+      const dx = (cx0 * tilePx - camX) * zoom
+      const dy = (cy0 * tilePx - camY) * zoom
+      ctx.drawImage(sctx.canvas, 0, 0, pw, ph, dx, dy, cellsW * tileS, cellsH * tileS)
+    }
+  }
+  ctx.imageSmoothingEnabled = prevSmooth
+}
+
+

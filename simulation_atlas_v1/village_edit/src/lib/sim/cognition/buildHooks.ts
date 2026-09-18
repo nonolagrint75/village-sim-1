@@ -1,0 +1,312 @@
+/**
+ * Cognition hooks for generative construction.
+ * Deep think proposes StructureIntent → enqueueBuildProject; behaviors stamp tiles.
+ */
+import {
+  describeIntent,
+  enqueueBuildProject,
+  findProject,
+  fortifyIsBuilt,
+  intentFromReasons,
+  pickProjectForVillager,
+  type StructureIntent,
+  type StructurePurpose,
+} from '../construction'
+import { villagerFeelsFamine } from '../ecology'
+import { countOf } from '../inventory'
+import { hasKnowledge } from '../technology'
+import type { SimState, Villager } from '../types'
+import type { CognitiveState } from './types'
+
+export type { StructureIntent, StructurePurpose }
+export { describeIntent, intentFromReasons, enqueueBuildProject, pickProjectForVillager, findProject }
+
+/** French reason line for UI / lastReasons when a chantier is active. */
+export function constructionReasonFr(state: SimState, v: Villager): string | null {
+  const p = pickProjectForVillager(state, v) ?? (v.activeProjectId !== null ? findProject(state, v.activeProjectId) : null)
+  if (!p || p.phase === 'done') return null
+  return `chantier : ${p.label} · ${p.phase}`
+}
+
+function villageHasOpenFortify(state: SimState, villageId: number): boolean {
+  return state.projects.some(
+    (p) => p.villageId === villageId && p.phase !== 'done' && p.intent.purposes.includes('fortify'),
+  )
+}
+
+function villageHasAnyFort(state: SimState, villageId: number): boolean {
+  return state.projects.some((p) => p.villageId === villageId && fortifyIsBuilt(state, p))
+}
+
+function villageHasStoneKeep(state: SimState, villageId: number): boolean {
+  return state.projects.some(
+    (p) =>
+      p.villageId === villageId &&
+      fortifyIsBuilt(state, p) &&
+      (p.params.wallMaterial === 'stone' || (p.params.towers && p.intent.scale >= 0.7 && p.params.wallMaterial !== 'wood')),
+  )
+}
+
+/**
+ * Life → soft StructureIntent. Returns null if no strong trigger.
+ * Purpose tags only — never Castle/TownHall enums.
+ */
+export function evaluateLifeBuildIntent(state: SimState, v: Villager, mind: CognitiveState): StructureIntent | null {
+  const village = state.villages.find((g) => g.id === v.villageId)
+  const coins = countOf(v.inventory, 'coin')
+  const wood = countOf(v.inventory, 'wood')
+  const stone = countOf(v.inventory, 'stone')
+  const wolvesNear = mind.semantic.some((s) => s.kind === 'wolves_near' && s.confidence > 0.28)
+  const dangerMem = mind.semantic.some((s) => s.kind === 'danger_spot' && s.confidence > 0.32)
+  const fear = mind.emotions.fear
+  const safety = mind.needs.safety
+
+  if (village && !villageHasOpenFortify(state, village.id)) {
+    const stackKnown =
+      hasKnowledge(v.knowledge, 'stack_stone_high', 0.22) ||
+      hasKnowledge(village.knowledge, 'stack_stone_high', 0.25)
+    const keepKnown =
+      hasKnowledge(v.knowledge, 'high_stone_keep', 0.25) ||
+      hasKnowledge(village.knowledge, 'high_stone_keep', 0.28)
+    const stoneSurplus = village.surplus.stone ?? 0
+    const prosperous =
+      (village.prosperity ?? 0) >= 42 ||
+      (village.standardOfLiving ?? 0) >= 0.4 ||
+      stoneSurplus >= 0.7 ||
+      coins >= 3
+    const threatened =
+      wolvesNear ||
+      dangerMem ||
+      fear > 0.28 ||
+      safety > 0.32 ||
+      (village.recentDeaths ?? 0) > 0.15 ||
+      (village.security ?? 0.5) < 0.48
+    const midSettled = village.memberIds.length >= 3 && (v.hasHome || village.memberIds.length >= 5)
+    const hasFort = villageHasAnyFort(state, village.id)
+    const hasKeep = villageHasStoneKeep(state, village.id)
+
+    // Threat → first palissade / fort.
+    if (threatened && midSettled && !hasFort) {
+      const baseScale = village.memberIds.length >= 6 ? 0.55 : 0.38
+      const wantStone = keepKnown || (stackKnown && stoneSurplus >= 0.8) || stone >= 4
+      return intentFromReasons(
+        [wolvesNear || fear > 0.35 ? 'loups / menace' : 'sécurité du village', 'fortifier'],
+        {
+          purposes: ['fortify'],
+          scale: keepKnown ? Math.min(1, baseScale + 0.28) : stackKnown ? Math.min(1, baseScale + 0.12) : baseScale,
+          wood: wantStone ? 0.28 : 0.62,
+          stone: wantStone ? 0.78 : 0.35,
+        },
+      )
+    }
+
+    // Wealth / tech → stone keep / towers (upgrade even after a wood enceinte).
+    if (
+      midSettled &&
+      !hasKeep &&
+      (keepKnown || (stackKnown && prosperous) || (prosperous && (stone >= 3 || stoneSurplus >= 0.85)))
+    ) {
+      return intentFromReasons(
+        [
+          keepKnown ? 'technique du donjon' : stackKnown ? 'maçonnerie haute' : 'prospérité',
+          'keep / fort de pierre',
+        ],
+        {
+          purposes: ['fortify'],
+          scale: keepKnown ? 0.78 : stackKnown ? 0.62 : 0.52,
+          wood: 0.2,
+          stone: 0.88,
+        },
+      )
+    }
+  }
+
+  const famineFeel = villagerFeelsFamine(state, v)
+  if (famineFeel || mind.needs.hunger > 0.55) {
+    if (v.hasHome && (!v.hasChest || (v.chestInventory && countOf(v.chestInventory, 'food') + countOf(v.chestInventory, 'bread') < 2))) {
+      return intentFromReasons([famineFeel ? 'famine' : 'vivres insuffisants', 'grenier'], {
+        purposes: ['store'],
+        scale: famineFeel ? 0.55 : 0.35,
+        wood: 0.7,
+        stone: 0.25,
+      })
+    }
+  }
+
+  if (village) {
+    let homes = 0
+    for (const o of state.villagers) {
+      if (o.alive && o.villageId === village.id && o.hasHome) homes++
+    }
+    const crowded = village.memberIds.length >= 10 && homes > 0 && village.memberIds.length / Math.max(1, homes) > 2.2
+    if ((crowded || mind.values.freedom > 0.55) && (v.personality.curiosity > 0.4 || v.ambition === 'explorer' || !v.hasHome)) {
+      return intentFromReasons([crowded ? 'surpeuplement' : 'envie de migrer', 'nouveau foyer'], {
+        purposes: ['homestead', 'shelter'],
+        scale: crowded ? 0.5 : 0.3,
+        wood: 0.7,
+        stone: 0.25,
+      })
+    }
+  }
+
+  const oreFact = mind.semantic.find(
+    (s) =>
+      (s.label.includes('fer') || s.label.includes('or') || s.label.includes('montagne') || s.kind === 'resource_scarce') &&
+      s.confidence > 0.35,
+  )
+  if (oreFact && v.hasWorkbench && (v.profession === 'miner' || v.profession === 'mason' || mind.needs.purpose > 0.45)) {
+    return intentFromReasons(['gisement connu', 'accès de mine'], {
+      purposes: ['mining_access', 'mine'],
+      scale: 0.4,
+      wood: 0.4,
+      stone: 0.65,
+    })
+  }
+
+  if (village && village.memberIds.length >= 6 && v.hasHome) {
+    if (v.ambition === 'leader' || v.profession === 'trader' || mind.needs.social > 0.4) {
+      return intentFromReasons(['cercle des anciens / commerce', 'halle'], {
+        purposes: ['gather', 'prestige'],
+        scale: village.memberIds.length >= 12 ? 0.8 : 0.55,
+        wood: 0.5,
+        stone: 0.55,
+      })
+    }
+  }
+
+  if (
+    v.hasHome &&
+    (coins >= 3 || mind.needs.status > 0.35 || (mind.livelihood?.recognition ?? 0) > 0.2) &&
+    (v.personality.ambition > 0.4 || v.ambition === 'leader' || v.ambition === 'builder' || v.ambition === 'wealth')
+  ) {
+    return intentFromReasons(['richesse et ambition', 'grande demeure'], {
+      purposes: ['prestige', 'shelter'],
+      scale: coins >= 8 ? 0.75 : 0.5,
+      wood: 0.65,
+      stone: 0.4,
+    })
+  }
+
+  // Family pressure → annex / store even without prestige ambition.
+  if (v.hasHome && v.house) {
+    let hh = 1
+    for (const o of state.villagers) {
+      if (!o.alive || o.id === v.id) continue
+      if (o.homeOwnerId === v.id || o.parentIds.includes(v.id)) hh++
+    }
+    const beds = v.house.bedSlots ?? 1
+    if (hh > beds || (v.spouseId !== null && beds < 2)) {
+      return intentFromReasons(['foyer trop étroit', 'agrandir la maison'], {
+        purposes: ['shelter', 'homestead'],
+        scale: 0.35 + Math.min(0.35, (hh - beds) * 0.12),
+        wood: 0.7,
+        stone: 0.25,
+      })
+    }
+  }
+
+  return null
+}
+
+/** Deep cognition: propose a generative BuildProject from life pressures. */
+export function maybeProposeConstruction(
+  state: SimState,
+  v: Villager,
+  mind: CognitiveState,
+  rng: () => number,
+): number | null {
+  if ((state.tick + v.id * 7) % 9 !== 0) return null
+  // Fortify / status drives pass the soft RNG gate more often.
+  const safetyPush = mind.needs.safety >= 0.3 || mind.emotions.fear >= 0.28
+  const statusPush = mind.needs.status >= 0.4
+  if (rng() > 0.7 && !safetyPush && !statusPush && mind.needs.safety < 0.55 && mind.needs.status < 0.45) {
+    return null
+  }
+
+  const existing = pickProjectForVillager(state, v)
+  if (existing && (existing.ownerId === v.id || existing.villageId === v.villageId)) {
+    if (v.activeProjectId === null) v.activeProjectId = existing.id
+    mind.buildProjectId = existing.id
+    return existing.id
+  }
+
+  const intent = evaluateLifeBuildIntent(state, v, mind)
+  if (!intent) return null
+
+  const civic =
+    intent.purposes.includes('gather') ||
+    intent.purposes.includes('fortify') ||
+    intent.purposes.includes('mining_access') ||
+    intent.purposes.includes('mine')
+  const ore = mind.semantic.find(
+    (s) =>
+      (s.label.includes('fer') || s.label.includes('or') || s.label.includes('montagne') || s.kind === 'resource_scarce' || s.kind === 'mine_spot') &&
+      s.confidence > 0.3,
+  )
+  let nearX = civic ? villageNearX(state, v) : v.hasHome ? v.homeX : v.x
+  let nearY = civic ? villageNearY(state, v) : v.hasHome ? v.homeY : v.y
+  if ((intent.purposes.includes('mine') || intent.purposes.includes('mining_access')) && ore && (ore.x !== 0 || ore.y !== 0)) {
+    nearX = ore.x
+    nearY = ore.y
+  }
+  // Offset fort slightly from plaza so houses don't block the plot.
+  if (intent.purposes.includes('fortify')) {
+    nearX += 10 + (v.id % 5)
+    nearY += 8 + ((v.id * 3) % 5)
+  }
+
+  const id = proposeStructureFromReasons(state, v, intent.reasons.length ? intent.reasons : intent.purposes, {
+    purposes: intent.purposes,
+    scale: intent.scale,
+    wood: intent.woodBias,
+    stone: intent.stoneBias,
+    civic: civic && (intent.purposes.includes('gather') || intent.purposes.includes('fortify')),
+    nearX,
+    nearY,
+  })
+  if (id !== null) mind.buildProjectId = id
+  return id
+}
+
+function villageNearX(state: SimState, v: Villager): number {
+  const village = state.villages.find((g) => g.id === v.villageId)
+  return village?.centerX ?? v.x
+}
+
+function villageNearY(state: SimState, v: Villager): number {
+  const village = state.villages.find((g) => g.id === v.villageId)
+  return village?.centerY ?? v.y
+}
+
+/** Free-form reasons → project (cognition / events). Live path via maybeProposeConstruction. */
+export function proposeStructureFromReasons(
+  state: SimState,
+  v: Villager,
+  reasons: string[],
+  opts: {
+    purposes?: StructurePurpose[]
+    scale?: number
+    wood?: number
+    stone?: number
+    civic?: boolean
+    nearX?: number
+    nearY?: number
+  } = {},
+): number | null {
+  const intent = intentFromReasons(reasons, {
+    purposes: opts.purposes,
+    scale: opts.scale ?? 0.35 + v.personality.ambition * 0.45,
+    wood: opts.wood,
+    stone: opts.stone,
+  })
+  const project = enqueueBuildProject(state, intent, {
+    ownerId: opts.civic ? null : v.id,
+    villageId: v.villageId,
+    nearX: opts.nearX ?? (v.hasHome ? v.homeX : v.x),
+    nearY: opts.nearY ?? (v.hasHome ? v.homeY : v.y),
+    laborHint: 1 + v.personality.ambition,
+  })
+  if (!project) return null
+  v.activeProjectId = project.id
+  return project.id
+}

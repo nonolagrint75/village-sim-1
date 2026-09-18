@@ -1,0 +1,14 @@
+---
+description: Before shipping 2D visuals, compare against real games
+alwaysApply: true
+---
+
+# Visuel 2D - comparer avant livraison
+
+Avant de dire qu'un rendu nature/terrain est bon :
+
+1. Comparer a plusieurs jeux top-down / pixel (Stardew Valley, Factorio, RimWorld, Puny World, RPG Maker overworld).
+2. Refuser si tampon 16x16 Minecraft, eau autotile d'etang (ronds/U), arbres coupes, grille trop lisible.
+3. Cibler : herbe variee, eau continue, houppiers ronds qui debordent, props dessines APRES le sol.
+4. Dans la livraison : 3-5 jeux de reference + ce qui cloche encore vs eux.
+5. Ne pas livrer un screenshot unique sans ce check.

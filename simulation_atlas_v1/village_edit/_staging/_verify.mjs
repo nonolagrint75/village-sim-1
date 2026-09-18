@@ -1,0 +1,10 @@
+import fs from "fs"
+const s = fs.readFileSync("src/lib/render/nature/shorePaint.ts","utf8")
+const d = fs.readFileSync("src/lib/render/nature/draw.ts","utf8")
+console.log("dirt CHUNK", s.includes("paintViewportDirtStrip") && s.slice(s.indexOf("paintViewportDirtStrip")).includes("CHUNK"))
+console.log("shoreAlpha", s.includes("export function shoreAlpha"))
+console.log("shoreHardRgb", s.includes("export function shoreHardRgb"))
+console.log("dirt hard alpha", s.includes("smoothstep(0.22, 0.42, f)"))
+console.log("draw imports", d.match(/shoreHardRgb|shoreAlpha|shoreRgbAt/g))
+const i = d.indexOf("shorePaint")
+console.log(d.slice(Math.max(0,i-280), i+30))

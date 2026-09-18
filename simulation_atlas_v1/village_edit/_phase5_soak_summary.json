@@ -1,0 +1,2786 @@
+{
+  "phase": 5,
+  "step": "STEP6",
+  "channel": "EMERGENCE",
+  "induced": false,
+  "days": 60,
+  "seeds": [
+    1,
+    3,
+    7
+  ],
+  "config": {
+    "initialVillagers": 100,
+    "maxPopulation": 250,
+    "preset": "standard",
+    "worldSize": 1000
+  },
+  "scalePolicy": {
+    "individual": {
+      "suite": "individual",
+      "status": "READY",
+      "evidenceResult": "NOT_TESTED",
+      "resolvedInitial": 100,
+      "resolvedMaxPop": 250,
+      "requestedInitial": 100,
+      "requestedMaxPop": 250,
+      "floorPop": 100,
+      "canStartAtFloor": true,
+      "canGrowWithinCap": true,
+      "clamps": {
+        "initialVillagersMin": 4,
+        "initialVillagersMax": 120,
+        "maxPopulationHardCap": 500
+      },
+      "violations": [],
+      "note": "individual: START@100 meets floor 100 (within clamp). Soak not run — NOT_TESTED, not PASS."
+    },
+    "socialStart300": {
+      "suite": "social",
+      "status": "UNPROVEN_GROW",
+      "evidenceResult": "BLOCKED",
+      "resolvedInitial": 120,
+      "resolvedMaxPop": 400,
+      "requestedInitial": 300,
+      "requestedMaxPop": 400,
+      "floorPop": 300,
+      "canStartAtFloor": false,
+      "canGrowWithinCap": true,
+      "clamps": {
+        "initialVillagersMin": 4,
+        "initialVillagersMax": 120,
+        "maxPopulationHardCap": 500
+      },
+      "violations": [
+        "initialVillagers requested 300 clamped to 120 (max 120) — cannot START at floor 300",
+        "START@300 BLOCKED capacite: initialVillagers clamp max=120"
+      ],
+      "note": "social: BLOCKED capacite START@300 (initialVillagers clamp max=120 -> resolved 120). Grow cap 400>=300 OK but organic reach UNPROVEN. != FAIL emergence."
+    },
+    "note": "Individual START@100 READY (clamp max 120). Social START@300 BLOCKED capacite (300->120). Do not raise clamp."
+  },
+  "decisionsNote": "PROXY = task-kind deltas. Exact = state.decisionExact (CP1 noteChosenAction/orphan setTask). PASS gate uses exact only.",
+  "totals": {
+    "seedsRequested": 3,
+    "seedsOk": 3,
+    "seedsFailed": [],
+    "decisionsProxyTotal": 185836,
+    "decisionsExactTotal": 735423,
+    "decisionsExactBySource": {
+      "chooseTask": 122009,
+      "HARD": 417230,
+      "setTask": 241,
+      "other": 195943
+    },
+    "professionChangesTotal": 610,
+    "harvestStartsTotal": 2894,
+    "grindStartsTotal": 888,
+    "bakeStartsTotal": 216,
+    "helpTotal": 27459,
+    "leavesTotal": 14,
+    "rejoinsTotal": 9,
+    "foundCampsTotal": 3,
+    "edibleTotalSum": 1513,
+    "helpCategoriesMax": 6,
+    "millerPeakMax": 0,
+    "millerAlivePeakMax": 0,
+    "grindLabel": "GRIND_OPEN_TASK",
+    "birthsTotal": 91,
+    "deathsTotal": 71,
+    "teachCraftStartsTotal": 35667,
+    "teachTrueLaterUsesTotal": 174,
+    "teachLaterUsesProxyTotal": 986,
+    "conflictsTotal": 866,
+    "circlesFormedTotal": 192,
+    "creedChangesTotal": 581,
+    "creedGen2EventsTotal": 102,
+    "creedParentChildTransmissionsTotal": 102,
+    "maxPop": 131,
+    "minAliveEnd": 47,
+    "attribution": {
+      "memoryAttributedDecisions": 16810,
+      "emotionAttributedDecisions": 88162,
+      "personalityAttributedDecisions": 65269,
+      "personalityPairSamples": 224,
+      "personalityPairReady": 2878,
+      "personalityPairDivergent": 1730,
+      "memoryCausalFlips": 2202,
+      "emotionCausalFlips": 3861,
+      "personalityCausalFlips": 1639,
+      "memoryMemorableEvents": 64372,
+      "memoryRetrievals": 38548,
+      "memoryUses": 38548,
+      "emotionChanges": 761900,
+      "emotionUses": 121145,
+      "personalityUses": 103951,
+      "professionChanges": 579,
+      "professionChangesMultiFactor": 579,
+      "professionExplainableShare": 1
+    },
+    "helpByKind": {
+      "food": 13,
+      "teach": 27160,
+      "defend": 6,
+      "build": 186,
+      "haul": 75,
+      "labor": 19
+    },
+    "defendHelpOpportunities": 33,
+    "defendHelpTaken": 6,
+    "migrateStages": {
+      "urgeCrosses": 59,
+      "leaveAttempts": 39,
+      "leaves": 14,
+      "homelessLeave": 11,
+      "housedLeave": 3,
+      "travelStarts": 11,
+      "destEvals": 38,
+      "settlementAttempts": 3,
+      "foundCamps": 3,
+      "rejoins": 9,
+      "fails": 29
+    },
+    "behaviorSeq": {
+      "trackedMax": 165,
+      "variationPctMin": 0.8727272727272727,
+      "stuckLoop14dPctMax": 0.09090909090909091,
+      "secondaryGoalStablePctMin": 0.8093500954091368,
+      "dampAppsTotal": 287553,
+      "longestSameLoopDaysMax": 30
+    },
+    "causalitySec22BySeed": [
+      {
+        "seed": 1,
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "migration_camp:{2/5evt UNDER · 5/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false
+      },
+      {
+        "seed": 3,
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "family_decision:{5/15evt UNDER · 34/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false
+      },
+      {
+        "seed": 7,
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "migration_camp:{1/5evt UNDER · 3/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false
+      }
+    ]
+  },
+  "rows": [
+    {
+      "seed": 1,
+      "status": "ok",
+      "startPop": 100,
+      "aliveEnd": 123,
+      "peakAlive": 131,
+      "deaths": 9,
+      "births": 65,
+      "decisionsProxy": 70470,
+      "decisionsExact": 259935,
+      "uniqueTaskKinds": 32,
+      "entropyStarts": 2.913,
+      "professionChanges": 312,
+      "professionMultiFactor": 276,
+      "professionExplainableShare": 1,
+      "foodChain": {
+        "harvestStarts": 1158,
+        "grindStarts": 196,
+        "bakeStarts": 44,
+        "sowStarts": 435,
+        "buildMillStarts": 117,
+        "grindByProfession": {
+          "none": 80,
+          "farmer": 65,
+          "lumberjack": 20,
+          "forager": 31
+        },
+        "millerPeakAlive": 0,
+        "millerAlivePeak": 0,
+        "grindLabel": "GRIND_OPEN_TASK"
+      },
+      "helpTotal": 9993,
+      "helpCategories": 6,
+      "helpByKind": {
+        "food": 3,
+        "teach": 9896,
+        "defend": 2,
+        "build": 35,
+        "haul": 43,
+        "labor": 14
+      },
+      "defendHelp": {
+        "opportunities": 23,
+        "taken": 2
+      },
+      "families": {
+        "familyCount": 34,
+        "withMembers": 34,
+        "births": 65
+      },
+      "buildings": {
+        "mills": 2,
+        "wheatTiles": 98,
+        "ripe": 55,
+        "houses": 76,
+        "fields": 10
+      },
+      "migration": {
+        "leaves": 2,
+        "rejoins": 2,
+        "foundCamps": 0,
+        "leaveAttempts": 2,
+        "urgeMax": 1,
+        "distinctDestinations": 2,
+        "stages": {
+          "homelessLeave": 2,
+          "housedLeave": 0,
+          "travelStarts": 2,
+          "destEvals": 2,
+          "settlementAttempts": 0,
+          "fails": 0
+        }
+      },
+      "society": {
+        "circles": 48,
+        "institutions": 48,
+        "conflicts": 218,
+        "creedChanges": 145,
+        "inst30d": 47
+      },
+      "teachCraftStarts": 12927,
+      "teachTrueLaterUses": 80,
+      "teachLaterUsesProxy": 445,
+      "creedGen": {
+        "parentChild": 35,
+        "childBehavior": 15,
+        "genDepthMax": 2,
+        "gen2": 35,
+        "gen3": 3
+      },
+      "prices": {
+        "wood": 4.4,
+        "stone": 11.4,
+        "iron": 24.6,
+        "gold": 32.4,
+        "food": 1.1,
+        "wheat": 1.9,
+        "flour": 11.8,
+        "bread": 7.8,
+        "wool": 8.6,
+        "cloth": 17.2,
+        "clothing": 38.8,
+        "hide": 12.7,
+        "leather": 29.8,
+        "fur": 34,
+        "charcoal": 14.8,
+        "copper": 20.5,
+        "tin": 22.3,
+        "lead": 17,
+        "silver": 28.4,
+        "bronze": 34,
+        "coal": 12.2,
+        "clay": 6.3,
+        "salt": 17.2,
+        "flint": 10.6,
+        "limestone": 8.5,
+        "sand": 3.4,
+        "peat": 5,
+        "brick": 14.8,
+        "mortar": 10.6,
+        "mushrooms": 4.6,
+        "herbs": 3.8,
+        "honey": 17,
+        "beeswax": 10.5,
+        "resin": 6,
+        "pitch": 14.8,
+        "bark": 2.4,
+        "acorns": 4.2,
+        "chestnuts": 6.8,
+        "hazelnuts": 8.5,
+        "reeds": 4.2,
+        "nettles": 2.5,
+        "willow": 6.3,
+        "basket": 12.7,
+        "fish": 8.6,
+        "game": 12.7,
+        "milk": 6.3,
+        "cheese": 14.8,
+        "eggs": 7.6,
+        "tallow": 8.5,
+        "soap": 12.7,
+        "candle": 10.6,
+        "rye": 5.3,
+        "barley": 3.4,
+        "oats": 4.9,
+        "flax": 5.2,
+        "hemp": 7.8,
+        "linen": 21.3,
+        "rope": 14.8,
+        "cabbage": 4,
+        "turnip": 4.2,
+        "pea": 6.3,
+        "bean": 6.3,
+        "onion": 5.5,
+        "garlic": 6.2,
+        "leek": 5,
+        "carrot": 5,
+        "beet": 4.6,
+        "apple": 6.8,
+        "pear": 7.2,
+        "plum": 6.2,
+        "grape": 9.4,
+        "hop": 8.1,
+        "sage": 4.2,
+        "mint": 2.9,
+        "lavender": 3.8,
+        "woad": 12.7,
+        "madder": 10.4,
+        "dye": 19.1,
+        "medicine": 21.3,
+        "ale": 10.6,
+        "wine": 17,
+        "preserved": 14.8,
+        "firewood": 4.5,
+        "oil": 12.7,
+        "torch": 12.7,
+        "oil_lamp": 21.3,
+        "lantern": 29.8,
+        "sconce": 25.5,
+        "chandelier": 59.4
+      },
+      "foodStock": {
+        "food": 554,
+        "wheat": 194,
+        "flour": 0,
+        "bread": 0,
+        "meat": 0,
+        "edibleTotal": 770
+      },
+      "creeds": {
+        "changement": 19,
+        "partage": 30,
+        "commerce_libre": 31,
+        "protection": 4
+      },
+      "causality": {
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "counters": {
+          "foodHarvestProduces": 1457,
+          "foodGrindConsumes": 44,
+          "foodBakeConsumes": 41,
+          "foodEatConsequences": 2641,
+          "foodStockConsequences": 0,
+          "foodNpcCount": 152,
+          "teachEvents": 9896,
+          "teachSkillChanges": 1005,
+          "teachLaterUses": 445,
+          "teachTrueLaterUses": 80,
+          "teachNpcCount": 104,
+          "teachTrueLaterSamples": [
+            {
+              "tick": 993,
+              "day": 13,
+              "teacherId": 66,
+              "receiverId": 90,
+              "skill": "chop",
+              "skillBefore": 0.18699999999999997,
+              "skillAfter": 0.21343999999999996,
+              "learningEventId": 192,
+              "futureAction": "gatherWood",
+              "futureSkillUse": "chop",
+              "decisionExactId": 14911
+            },
+            {
+              "tick": 1036,
+              "day": 14,
+              "teacherId": 7,
+              "receiverId": 95,
+              "skill": "chop",
+              "skillBefore": 0.20946839999999997,
+              "skillAfter": 0.23119679999999995,
+              "learningEventId": 207,
+              "futureAction": "gatherWood",
+              "futureSkillUse": "chop",
+              "decisionExactId": 15789
+            },
+            {
+              "tick": 1046,
+              "day": 14,
+              "teacherId": 48,
+              "receiverId": 169,
+              "skill": "farm",
+              "skillBefore": 0.19997999999999996,
+              "skillAfter": 0.22946999999999995,
+              "learningEventId": 312,
+              "futureAction": "gatherFood",
+              "futureSkillUse": "farm",
+              "decisionExactId": 16044
+            },
+            {
+              "tick": 1073,
+              "day": 14,
+              "teacherId": 18,
+              "receiverId": 90,
+              "skill": "chop",
+              "skillBefore": 0.22443999999999995,
+              "skillAfter": 0.24869999999999995,
+              "learningEventId": 330,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 16772
+            },
+            {
+              "tick": 1076,
+              "day": 14,
+              "teacherId": 18,
+              "receiverId": 90,
+              "skill": "chop",
+              "skillBefore": 0.24869999999999995,
+              "skillAfter": 0.27321999999999996,
+              "learningEventId": 335,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 16821
+            }
+          ],
+          "creedChanges": 145,
+          "creedFollowups": 41,
+          "creedNpcCount": 103,
+          "creedParentChildTransmissions": 35,
+          "creedChildBehaviorInfluenced": 15,
+          "creedGenDepthMax": 2,
+          "creedGen2Events": 35,
+          "creedGen3Events": 3,
+          "migrateUrgeCrosses": 7,
+          "migrateLeaveAttempts": 2,
+          "migrateLeaves": 2,
+          "migrateFoundCamps": 0,
+          "migrateHomelessLeave": 2,
+          "migrateHousedLeave": 0,
+          "migrateTravelStarts": 2,
+          "migrateDestEvals": 2,
+          "migrateSettlementAttempts": 0,
+          "migrateRejoins": 2,
+          "migrateFails": 0,
+          "migrateDestReasons": {
+            "group": 2
+          },
+          "migrateSettleReasons": {},
+          "priceDeltaEvents": 901,
+          "priceTaskShifts": 40,
+          "priceProfessionShifts": 240,
+          "priceNpcCount": 145,
+          "priceChainSamples": [
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "sage",
+              "priceBefore": 5.3,
+              "priceAfter": 4.8,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "mint",
+              "priceBefore": 3.2,
+              "priceAfter": 3.1,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "lavender",
+              "priceBefore": 4.5,
+              "priceAfter": 4.2,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "madder",
+              "priceBefore": 12.2,
+              "priceAfter": 11.5,
+              "shockId": null
+            },
+            {
+              "tick": 3612,
+              "day": 50,
+              "stage": "professionShift",
+              "npcId": 174,
+              "prevProfession": "forager",
+              "nextProfession": "lumberjack",
+              "shockId": null
+            }
+          ],
+          "priceActiveShockId": null,
+          "priceShockTaggedDeltas": 0,
+          "priceShockLinkedTaskShifts": 0,
+          "priceShockLinkedProfessionShifts": 0,
+          "helpEvents": 9993,
+          "helpOutcomes": 1102,
+          "helpEventsByKind": {
+            "food": 3,
+            "teach": 9896,
+            "defend": 2,
+            "build": 35,
+            "haul": 43,
+            "labor": 14
+          },
+          "helpOutcomesByKind": {
+            "food": 3,
+            "teach": 1005,
+            "defend": 2,
+            "build": 35,
+            "haul": 43,
+            "labor": 14
+          },
+          "defendHelpOpportunities": 23,
+          "defendHelpTaken": 2,
+          "helpNpcCount": 101,
+          "helpChainSamples": [
+            {
+              "tick": 4054,
+              "day": 56,
+              "kind": "teach",
+              "helperId": 40,
+              "outcome": true
+            },
+            {
+              "tick": 4054,
+              "day": 56,
+              "kind": "teach",
+              "helperId": 59,
+              "outcome": false
+            },
+            {
+              "tick": 4054,
+              "day": 56,
+              "kind": "teach",
+              "helperId": 91,
+              "outcome": false
+            },
+            {
+              "tick": 4056,
+              "day": 56,
+              "kind": "teach",
+              "helperId": 59,
+              "outcome": false
+            },
+            {
+              "tick": 4056,
+              "day": 56,
+              "kind": "teach",
+              "helperId": 75,
+              "outcome": false
+            }
+          ],
+          "familyDecisionUses": 642,
+          "familyDecisionNpcCount": 36,
+          "familyDecisionSamples": [
+            {
+              "tick": 3513,
+              "day": 48,
+              "npcId": 232,
+              "kind": "socialise",
+              "kinship": 0.7,
+              "familyValue": 0.7742080621251997
+            },
+            {
+              "tick": 3513,
+              "day": 48,
+              "npcId": 241,
+              "kind": "socialise",
+              "kinship": 0.7,
+              "familyValue": 0.7947937049521707
+            },
+            {
+              "tick": 3515,
+              "day": 48,
+              "npcId": 232,
+              "kind": "socialise",
+              "kinship": 0.7,
+              "familyValue": 0.7742080621251997
+            },
+            {
+              "tick": 3517,
+              "day": 48,
+              "npcId": 235,
+              "kind": "socialise",
+              "kinship": 0.7,
+              "familyValue": 0.8748491243934133
+            },
+            {
+              "tick": 3530,
+              "day": 49,
+              "npcId": 235,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.8748491243934133
+            }
+          ],
+          "migrateNpcCount": 5,
+          "migrateChainSamples": [
+            {
+              "tick": 632,
+              "day": 8,
+              "stage": "urge",
+              "npcId": 88
+            },
+            {
+              "tick": 635,
+              "day": 8,
+              "stage": "urge",
+              "npcId": 25
+            },
+            {
+              "tick": 635,
+              "day": 8,
+              "stage": "leaveAttempt",
+              "npcId": 25
+            },
+            {
+              "tick": 635,
+              "day": 8,
+              "stage": "leave",
+              "npcId": 25
+            },
+            {
+              "tick": 635,
+              "day": 8,
+              "stage": "travel",
+              "npcId": 25
+            }
+          ]
+        }
+      },
+      "attribution": {
+        "memoryCausalFlips": 819,
+        "emotionCausalFlips": 1663,
+        "personalityCausalFlips": 676,
+        "personalityPairReady": 162,
+        "personalityPairDivergent": 4,
+        "professionChanges": 276,
+        "professionChangesMultiFactor": 276,
+        "professionExplainableShare": 1,
+        "floors": {
+          "memorable": {
+            "value": 23566,
+            "floor": 50,
+            "ok": true
+          },
+          "retrievals": {
+            "value": 13837,
+            "floor": 30,
+            "ok": true
+          },
+          "uses": {
+            "value": 13837,
+            "floor": 20,
+            "ok": true
+          },
+          "causalFlips": {
+            "value": 819,
+            "floor": 10,
+            "ok": true
+          },
+          "emotionChanges": {
+            "value": 277163,
+            "floor": 50,
+            "ok": true
+          },
+          "emotionUses": {
+            "value": 49768,
+            "floor": 30,
+            "ok": true
+          },
+          "emotionCausalFlips": {
+            "value": 1663,
+            "floor": 15,
+            "ok": true
+          },
+          "personalityUses": {
+            "value": 42830,
+            "floor": 20,
+            "ok": true
+          },
+          "personalityCausalFlips": {
+            "value": 676,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityPairReady": {
+            "value": 162,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityDivergentRatio": {
+            "value": 0.025,
+            "floor": 0.5,
+            "ok": false,
+            "ready": 162,
+            "divergent": 4
+          },
+          "professionMultiFactorShare": {
+            "value": 1,
+            "floor": 0.7,
+            "ok": true,
+            "changes": 276,
+            "multi": 276
+          }
+        },
+        "status": "WIRED",
+        "memoryAttributedDecisions": 7777,
+        "emotionAttributedDecisions": 35105,
+        "personalityAttributedDecisions": 26025
+      },
+      "sec22Evidence": {
+        "sec22Status": "PARTIAL",
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "migration_camp:{2/5evt UNDER · 5/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false,
+        "chainBlocks": [
+          "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=819/20evt OK · 93/3npc OK · 3/3seeds OK | id=memory_decision",
+          "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=1663/15evt OK · 156/3npc OK · 3/3seeds OK | id=emotion_decision",
+          "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=676/20evt OK · 121/3npc OK · 3/3seeds OK | id=personality_decision",
+          "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=80/20evt OK · 104/3npc OK · 3/3seeds OK | id=learning_future",
+          "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> kind_flip -> action -> world | label=PARTIAL | floors=53/15evt OK · 85/3npc OK · 3/3seeds OK | id=family_decision",
+          "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=280/5evt OK · 145/3npc OK · 3/3seeds OK | id=price_profession",
+          "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=41/5evt OK · 103/3npc OK · 3/3seeds OK | id=belief_behavior",
+          "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=9993/20evt OK · 101/3npc OK · 3/3seeds OK | id=relationship_help",
+          "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=PARTIAL | floors=2/5evt UNDER · 5/3npc OK · 3/3seeds OK | id=migration_camp"
+        ],
+        "priorities": [
+          {
+            "id": "memory_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 819,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 93,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "819/20evt OK · 93/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "mem_cf v216 d55 teachCraft->rest util=1703.36",
+              "mem_cf v225 d55 gatherFood->rest util=2426.88",
+              "mem_cf v216 d55 teachCraft->rest util=2875.33"
+            ]
+          },
+          {
+            "id": "emotion_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 1663,
+              "eventFloor": 15,
+              "eventsOk": true,
+              "npcs": 156,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "1663/15evt OK · 156/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "emo_cf v55 d49 socialise->eat",
+              "emo_cf v78 d49 rest->socialise",
+              "emo_cf v44 d50 gatherFood->buildProject"
+            ]
+          },
+          {
+            "id": "personality_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 676,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 121,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "676/20evt OK · 121/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "pers_cf v31 teachCraft->socialise",
+              "pers_cf v31 teachCraft->socialise",
+              "pers_cf v31 teachCraft->socialise"
+            ]
+          },
+          {
+            "id": "learning_future",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 80,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 104,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "80/20evt OK · 104/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "teach_true t66->r90 chop 0.18699999999999997->0.21343999999999996 act=gatherWood de=#14911",
+              "teach_true t7->r95 chop 0.20946839999999997->0.23119679999999995 act=gatherWood de=#15789",
+              "teach_true t48->r169 farm 0.19997999999999996->0.22946999999999995 act=gatherFood de=#16044"
+            ]
+          },
+          {
+            "id": "family_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 53,
+              "eventFloor": 15,
+              "eventsOk": true,
+              "npcs": 85,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "53/15evt OK · 85/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "family_cf v100 d18 socialise->socialise kin=0.90",
+              "family_cf v100 d18 socialise->socialise kin=0.90",
+              "family_cf v100 d18 socialise->socialise kin=0.90"
+            ]
+          },
+          {
+            "id": "price_profession",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 280,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 145,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "280/5evt OK · 145/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "price_prof v174 forager->lumberjack",
+              "price_prof v100 lumberjack->forager",
+              "price_prof v193 forager->lumberjack"
+            ]
+          },
+          {
+            "id": "belief_behavior",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 41,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 103,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "41/5evt OK · 103/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "creed_peer changes=145 followups=41 npcs=103",
+              "creed_culture tx=35 childBeh=15 genMax=2"
+            ]
+          },
+          {
+            "id": "relationship_help",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 9993,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 101,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "9993/20evt OK · 101/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "help_byKind {\"food\":3,\"teach\":9896,\"defend\":2,\"build\":35,\"haul\":43,\"labor\":14}",
+              "defend opp=23 taken=2",
+              "help teach helper=40 d56 outcome=true"
+            ]
+          },
+          {
+            "id": "migration_camp",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 2,
+              "eventFloor": 5,
+              "eventsOk": false,
+              "npcs": 5,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": false,
+              "missionOk": false,
+              "label": "2/5evt UNDER · 5/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "migrate urge=7 attempts=2 leaves=2 travel=2",
+              "migrate destEval=2 settle=0 camps=0 rejoins=2 fails=0",
+              "migrate urge npc=88 d8"
+            ]
+          }
+        ]
+      },
+      "behaviorSeq": {
+        "counters": {
+          "seqNpcTracked": 165,
+          "seqNpcWithVariation30d": 157,
+          "seqNpcStuckLoop14d": 8,
+          "seqLongestSameLoopDays": 23,
+          "seqUniqueDaySequences": 160,
+          "seqSecondaryGoalStableSamples": 11783,
+          "seqSecondaryGoalStableHits": 10457,
+          "seqDayOccupancyTeach": 19938,
+          "seqDayOccupancySocial": 7156,
+          "seqDayOccupancyRest": 23495,
+          "seqDampApplications": 87509
+        },
+        "variationPct": 0.9573170731707317,
+        "stuckLoop14dPct": 0.048484848484848485,
+        "secondaryGoalStablePct": 0.8874649919375371,
+        "acceptanceTargets": {
+          "variationPctMin": 0.3,
+          "stuckLoop14dPctMax": 0.5,
+          "secondaryGoalStablePctMin": 0.2
+        },
+        "note": "Measure-first DP10 - farm multi-day runs excluded from stuck; night rest excluded from day-dominant; never PASS from short smoke"
+      },
+      "elapsedMs": 244017
+    },
+    {
+      "seed": 3,
+      "status": "ok",
+      "startPop": 100,
+      "aliveEnd": 50,
+      "peakAlive": 101,
+      "deaths": 28,
+      "births": 10,
+      "decisionsProxy": 69349,
+      "decisionsExact": 215756,
+      "uniqueTaskKinds": 31,
+      "entropyStarts": 2.7119,
+      "professionChanges": 123,
+      "professionMultiFactor": 128,
+      "professionExplainableShare": 1,
+      "foodChain": {
+        "harvestStarts": 315,
+        "grindStarts": 259,
+        "bakeStarts": 86,
+        "sowStarts": 382,
+        "buildMillStarts": 94,
+        "grindByProfession": {
+          "none": 87,
+          "forager": 66,
+          "miner": 6,
+          "lumberjack": 11,
+          "farmer": 86,
+          "builder": 3
+        },
+        "millerPeakAlive": 0,
+        "millerAlivePeak": 0,
+        "grindLabel": "GRIND_OPEN_TASK"
+      },
+      "helpTotal": 12349,
+      "helpCategories": 5,
+      "helpByKind": {
+        "food": 9,
+        "teach": 12183,
+        "defend": 2,
+        "build": 136,
+        "haul": 19,
+        "labor": 0
+      },
+      "defendHelp": {
+        "opportunities": 5,
+        "taken": 2
+      },
+      "families": {
+        "familyCount": 34,
+        "withMembers": 34,
+        "births": 10
+      },
+      "buildings": {
+        "mills": 3,
+        "wheatTiles": 8,
+        "ripe": 8,
+        "houses": 9,
+        "fields": 5
+      },
+      "migration": {
+        "leaves": 11,
+        "rejoins": 6,
+        "foundCamps": 3,
+        "leaveAttempts": 31,
+        "urgeMax": 1,
+        "distinctDestinations": 5,
+        "stages": {
+          "homelessLeave": 8,
+          "housedLeave": 3,
+          "travelStarts": 8,
+          "destEvals": 35,
+          "settlementAttempts": 3,
+          "fails": 29
+        }
+      },
+      "society": {
+        "circles": 48,
+        "institutions": 43,
+        "conflicts": 332,
+        "creedChanges": 222,
+        "inst30d": 39
+      },
+      "teachCraftStarts": 15438,
+      "teachTrueLaterUses": 50,
+      "teachLaterUsesProxy": 310,
+      "creedGen": {
+        "parentChild": 30,
+        "childBehavior": 6,
+        "genDepthMax": 1,
+        "gen2": 30,
+        "gen3": 0
+      },
+      "prices": {
+        "wood": 2.6,
+        "stone": 12.2,
+        "iron": 26.5,
+        "gold": 34.6,
+        "food": 1.1,
+        "wheat": 3.1,
+        "flour": 13.6,
+        "bread": 9,
+        "wool": 8.9,
+        "cloth": 17.6,
+        "clothing": 39.8,
+        "hide": 12.9,
+        "leather": 30.2,
+        "fur": 34.6,
+        "charcoal": 15.1,
+        "copper": 22.1,
+        "tin": 23.8,
+        "lead": 17.3,
+        "silver": 30.2,
+        "bronze": 34.6,
+        "coal": 12.9,
+        "clay": 6.4,
+        "salt": 17.6,
+        "flint": 9.8,
+        "limestone": 8.7,
+        "sand": 3.4,
+        "peat": 5.1,
+        "brick": 15.1,
+        "mortar": 10.9,
+        "mushrooms": 5.3,
+        "herbs": 3.9,
+        "honey": 17.3,
+        "beeswax": 13.7,
+        "resin": 5.7,
+        "pitch": 15.1,
+        "bark": 2.7,
+        "acorns": 4.3,
+        "chestnuts": 6.9,
+        "hazelnuts": 8.7,
+        "reeds": 4.3,
+        "nettles": 2.3,
+        "willow": 6.4,
+        "basket": 12.9,
+        "fish": 8.9,
+        "game": 12.9,
+        "milk": 6.4,
+        "cheese": 15.1,
+        "eggs": 7.8,
+        "tallow": 8.7,
+        "soap": 12.9,
+        "candle": 10.9,
+        "rye": 5.8,
+        "barley": 5.8,
+        "oats": 5.4,
+        "flax": 7.3,
+        "hemp": 8.7,
+        "linen": 21.6,
+        "rope": 15.1,
+        "cabbage": 4.3,
+        "turnip": 4,
+        "pea": 6.4,
+        "bean": 6.4,
+        "onion": 4.6,
+        "garlic": 8.2,
+        "leek": 5.1,
+        "carrot": 4.6,
+        "beet": 4.7,
+        "apple": 6.9,
+        "pear": 6.4,
+        "plum": 5.4,
+        "grape": 9.5,
+        "hop": 4.8,
+        "sage": 5.8,
+        "mint": 3.7,
+        "lavender": 3.3,
+        "woad": 12.9,
+        "madder": 13.8,
+        "dye": 19.4,
+        "medicine": 21.6,
+        "ale": 10.9,
+        "wine": 17.3,
+        "preserved": 15.1,
+        "firewood": 3.6,
+        "oil": 12.9,
+        "torch": 12.9,
+        "oil_lamp": 21.6,
+        "lantern": 30.2,
+        "sconce": 26,
+        "chandelier": 58.6
+      },
+      "foodStock": {
+        "food": 319,
+        "wheat": 48,
+        "flour": 4,
+        "bread": 1,
+        "meat": 0,
+        "edibleTotal": 400
+      },
+      "creeds": {
+        "commerce_libre": 8,
+        "piete": 3,
+        "changement": 2,
+        "partage": 4,
+        "ordre": 1
+      },
+      "causality": {
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "counters": {
+          "foodHarvestProduces": 149,
+          "foodGrindConsumes": 123,
+          "foodBakeConsumes": 101,
+          "foodEatConsequences": 1862,
+          "foodStockConsequences": 0,
+          "foodNpcCount": 103,
+          "teachEvents": 12183,
+          "teachSkillChanges": 635,
+          "teachLaterUses": 310,
+          "teachTrueLaterUses": 50,
+          "teachNpcCount": 81,
+          "teachTrueLaterSamples": [
+            {
+              "tick": 679,
+              "day": 9,
+              "teacherId": 35,
+              "receiverId": 3,
+              "skill": "chop",
+              "skillBefore": 0.15,
+              "skillAfter": 0.17126,
+              "learningEventId": 38,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 10375
+            },
+            {
+              "tick": 709,
+              "day": 9,
+              "teacherId": 58,
+              "receiverId": 2,
+              "skill": "chop",
+              "skillBefore": 0.7380000000000003,
+              "skillAfter": 0.7680000000000003,
+              "learningEventId": 686,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 11407
+            },
+            {
+              "tick": 710,
+              "day": 9,
+              "teacherId": 58,
+              "receiverId": 2,
+              "skill": "chop",
+              "skillBefore": 0.7680000000000003,
+              "skillAfter": 0.7980000000000004,
+              "learningEventId": 687,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 11412
+            },
+            {
+              "tick": 714,
+              "day": 9,
+              "teacherId": 58,
+              "receiverId": 2,
+              "skill": "chop",
+              "skillBefore": 0.7980000000000004,
+              "skillAfter": 0.8280000000000004,
+              "learningEventId": 688,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 11429
+            },
+            {
+              "tick": 716,
+              "day": 9,
+              "teacherId": 58,
+              "receiverId": 2,
+              "skill": "chop",
+              "skillBefore": 0.8270000000000004,
+              "skillAfter": 0.8570000000000004,
+              "learningEventId": 689,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 11440
+            }
+          ],
+          "creedChanges": 222,
+          "creedFollowups": 45,
+          "creedNpcCount": 40,
+          "creedParentChildTransmissions": 30,
+          "creedChildBehaviorInfluenced": 6,
+          "creedGenDepthMax": 1,
+          "creedGen2Events": 30,
+          "creedGen3Events": 0,
+          "migrateUrgeCrosses": 44,
+          "migrateLeaveAttempts": 31,
+          "migrateLeaves": 11,
+          "migrateFoundCamps": 3,
+          "migrateHomelessLeave": 8,
+          "migrateHousedLeave": 3,
+          "migrateTravelStarts": 8,
+          "migrateDestEvals": 35,
+          "migrateSettlementAttempts": 3,
+          "migrateRejoins": 6,
+          "migrateFails": 29,
+          "migrateDestReasons": {
+            "group": 6,
+            "no_candidate": 58
+          },
+          "migrateSettleReasons": {
+            "hasHome": 3
+          },
+          "priceDeltaEvents": 980,
+          "priceTaskShifts": 60,
+          "priceProfessionShifts": 105,
+          "priceNpcCount": 86,
+          "priceChainSamples": [
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "onion",
+              "priceBefore": 5.1,
+              "priceAfter": 5.2,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "carrot",
+              "priceBefore": 5,
+              "priceAfter": 4.9,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "beet",
+              "priceBefore": 4.6,
+              "priceAfter": 4.7,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "apple",
+              "priceBefore": 6.7,
+              "priceAfter": 6.8,
+              "shockId": null
+            },
+            {
+              "tick": 3600,
+              "day": 50,
+              "stage": "priceDelta",
+              "resource": "pear",
+              "priceBefore": 5.8,
+              "priceAfter": 6.2,
+              "shockId": null
+            }
+          ],
+          "priceActiveShockId": null,
+          "priceShockTaggedDeltas": 0,
+          "priceShockLinkedTaskShifts": 0,
+          "priceShockLinkedProfessionShifts": 0,
+          "helpEvents": 12349,
+          "helpOutcomes": 801,
+          "helpEventsByKind": {
+            "food": 9,
+            "teach": 12183,
+            "defend": 2,
+            "build": 136,
+            "haul": 19,
+            "labor": 0
+          },
+          "helpOutcomesByKind": {
+            "food": 9,
+            "teach": 635,
+            "defend": 2,
+            "build": 136,
+            "haul": 19,
+            "labor": 0
+          },
+          "defendHelpOpportunities": 5,
+          "defendHelpTaken": 2,
+          "helpNpcCount": 76,
+          "helpChainSamples": [
+            {
+              "tick": 4290,
+              "day": 59,
+              "kind": "teach",
+              "helperId": 64,
+              "outcome": false
+            },
+            {
+              "tick": 4290,
+              "day": 59,
+              "kind": "teach",
+              "helperId": 72,
+              "outcome": false
+            },
+            {
+              "tick": 4291,
+              "day": 59,
+              "kind": "teach",
+              "helperId": 37,
+              "outcome": false
+            },
+            {
+              "tick": 4291,
+              "day": 59,
+              "kind": "teach",
+              "helperId": 90,
+              "outcome": false
+            },
+            {
+              "tick": 4292,
+              "day": 59,
+              "kind": "teach",
+              "helperId": 46,
+              "outcome": false
+            }
+          ],
+          "familyDecisionUses": 58,
+          "familyDecisionNpcCount": 11,
+          "familyDecisionSamples": [
+            {
+              "tick": 2270,
+              "day": 31,
+              "npcId": 178,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.9414974614402412
+            },
+            {
+              "tick": 2275,
+              "day": 31,
+              "npcId": 178,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.9414974614402412
+            },
+            {
+              "tick": 2277,
+              "day": 31,
+              "npcId": 178,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.9414974614402412
+            },
+            {
+              "tick": 2279,
+              "day": 31,
+              "npcId": 178,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.9414974614402412
+            },
+            {
+              "tick": 2281,
+              "day": 31,
+              "npcId": 178,
+              "kind": "socialise",
+              "kinship": 0.9,
+              "familyValue": 0.9414974614402412
+            }
+          ],
+          "migrateNpcCount": 15,
+          "migrateChainSamples": [
+            {
+              "tick": 1132,
+              "day": 15,
+              "stage": "leaveAttempt",
+              "npcId": 20
+            },
+            {
+              "tick": 1180,
+              "day": 16,
+              "stage": "leaveAttempt",
+              "npcId": 20
+            },
+            {
+              "tick": 1180,
+              "day": 16,
+              "stage": "leave",
+              "npcId": 20
+            },
+            {
+              "tick": 1180,
+              "day": 16,
+              "stage": "settlementAttempt",
+              "npcId": 20,
+              "reason": "hasHome"
+            },
+            {
+              "tick": 1180,
+              "day": 16,
+              "stage": "foundCamp",
+              "npcId": 20
+            }
+          ]
+        }
+      },
+      "attribution": {
+        "memoryCausalFlips": 361,
+        "emotionCausalFlips": 1361,
+        "personalityCausalFlips": 699,
+        "personalityPairReady": 1453,
+        "personalityPairDivergent": 1088,
+        "professionChanges": 128,
+        "professionChangesMultiFactor": 128,
+        "professionExplainableShare": 1,
+        "floors": {
+          "memorable": {
+            "value": 19733,
+            "floor": 50,
+            "ok": true
+          },
+          "retrievals": {
+            "value": 14182,
+            "floor": 30,
+            "ok": true
+          },
+          "uses": {
+            "value": 14182,
+            "floor": 20,
+            "ok": true
+          },
+          "causalFlips": {
+            "value": 361,
+            "floor": 10,
+            "ok": true
+          },
+          "emotionChanges": {
+            "value": 240817,
+            "floor": 50,
+            "ok": true
+          },
+          "emotionUses": {
+            "value": 42861,
+            "floor": 30,
+            "ok": true
+          },
+          "emotionCausalFlips": {
+            "value": 1361,
+            "floor": 15,
+            "ok": true
+          },
+          "personalityUses": {
+            "value": 36533,
+            "floor": 20,
+            "ok": true
+          },
+          "personalityCausalFlips": {
+            "value": 699,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityPairReady": {
+            "value": 1453,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityDivergentRatio": {
+            "value": 0.749,
+            "floor": 0.5,
+            "ok": true,
+            "ready": 1453,
+            "divergent": 1088
+          },
+          "professionMultiFactorShare": {
+            "value": 1,
+            "floor": 0.7,
+            "ok": true,
+            "changes": 128,
+            "multi": 128
+          }
+        },
+        "status": "WIRED",
+        "memoryAttributedDecisions": 4815,
+        "emotionAttributedDecisions": 33258,
+        "personalityAttributedDecisions": 24812
+      },
+      "sec22Evidence": {
+        "sec22Status": "PARTIAL",
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "family_decision:{5/15evt UNDER · 34/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false,
+        "chainBlocks": [
+          "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=361/20evt OK · 54/3npc OK · 3/3seeds OK | id=memory_decision",
+          "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=1361/15evt OK · 103/3npc OK · 3/3seeds OK | id=emotion_decision",
+          "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=1088/20evt OK · 86/3npc OK · 3/3seeds OK | id=personality_decision",
+          "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=50/20evt OK · 81/3npc OK · 3/3seeds OK | id=learning_future",
+          "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> kind_flip -> action -> world | label=PARTIAL | floors=5/15evt UNDER · 34/3npc OK · 3/3seeds OK | id=family_decision",
+          "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=165/5evt OK · 86/3npc OK · 3/3seeds OK | id=price_profession",
+          "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=45/5evt OK · 40/3npc OK · 3/3seeds OK | id=belief_behavior",
+          "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=12349/20evt OK · 76/3npc OK · 3/3seeds OK | id=relationship_help",
+          "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=PARTIAL | floors=11/5evt OK · 15/3npc OK · 3/3seeds OK | id=migration_camp"
+        ],
+        "priorities": [
+          {
+            "id": "memory_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 361,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 54,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "361/20evt OK · 54/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "mem_cf v77 d48 socialise->teachCraft util=735.06",
+              "mem_cf v77 d48 socialise->teachCraft util=749.93",
+              "mem_cf v77 d48 socialise->teachCraft util=520.33"
+            ]
+          },
+          {
+            "id": "emotion_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 1361,
+              "eventFloor": 15,
+              "eventsOk": true,
+              "npcs": 103,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "1361/15evt OK · 103/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "emo_cf v56 d54 socialise->buildProject",
+              "emo_cf v37 d54 socialise->eat",
+              "emo_cf v37 d54 socialise->eat"
+            ]
+          },
+          {
+            "id": "personality_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 1088,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 86,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "1088/20evt OK · 86/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "pers_cf v64 eat->gatherWood",
+              "pers_cf v46 teachCraft->socialise",
+              "pers_cf v46 teachCraft->socialise"
+            ]
+          },
+          {
+            "id": "learning_future",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 50,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 81,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "50/20evt OK · 81/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "teach_true t35->r3 chop 0.15->0.17126 act=gatherFuel de=#10375",
+              "teach_true t58->r2 chop 0.7380000000000003->0.7680000000000003 act=gatherFuel de=#11407",
+              "teach_true t58->r2 chop 0.7680000000000003->0.7980000000000004 act=gatherFuel de=#11412"
+            ]
+          },
+          {
+            "id": "family_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 5,
+              "eventFloor": 15,
+              "eventsOk": false,
+              "npcs": 34,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": false,
+              "missionOk": false,
+              "label": "5/15evt UNDER · 34/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "family_cf v62 d31 giveFood->eat kin=0.00",
+              "family_cf v62 d39 giveFood->teachCraft kin=0.00",
+              "family_cf v60 d49 giveFood->rest kin=0.00"
+            ]
+          },
+          {
+            "id": "price_profession",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 165,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 86,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "165/5evt OK · 86/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "price_prof v47 none->lumberjack",
+              "price_prof v49 miner->lumberjack",
+              "price_prof v74 forager->farmer"
+            ]
+          },
+          {
+            "id": "belief_behavior",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 45,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 40,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "45/5evt OK · 40/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "creed_peer changes=222 followups=45 npcs=40",
+              "creed_culture tx=30 childBeh=6 genMax=1"
+            ]
+          },
+          {
+            "id": "relationship_help",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 12349,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 76,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "12349/20evt OK · 76/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "help_byKind {\"food\":9,\"teach\":12183,\"defend\":2,\"build\":136,\"haul\":19,\"labor\":0}",
+              "defend opp=5 taken=2",
+              "help teach helper=64 d59 outcome=false"
+            ]
+          },
+          {
+            "id": "migration_camp",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 11,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 15,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "11/5evt OK · 15/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "migrate urge=44 attempts=31 leaves=11 travel=8",
+              "migrate destEval=35 settle=3 camps=3 rejoins=6 fails=29",
+              "migrate leaveAttempt npc=20 d15"
+            ]
+          }
+        ]
+      },
+      "behaviorSeq": {
+        "counters": {
+          "seqNpcTracked": 110,
+          "seqNpcWithVariation30d": 96,
+          "seqNpcStuckLoop14d": 10,
+          "seqLongestSameLoopDays": 30,
+          "seqUniqueDaySequences": 105,
+          "seqSecondaryGoalStableSamples": 17818,
+          "seqSecondaryGoalStableHits": 14421,
+          "seqDayOccupancyTeach": 22369,
+          "seqDayOccupancySocial": 5005,
+          "seqDayOccupancyRest": 22372,
+          "seqDampApplications": 36940
+        },
+        "variationPct": 0.8727272727272727,
+        "stuckLoop14dPct": 0.09090909090909091,
+        "secondaryGoalStablePct": 0.8093500954091368,
+        "acceptanceTargets": {
+          "variationPctMin": 0.3,
+          "stuckLoop14dPctMax": 0.5,
+          "secondaryGoalStablePctMin": 0.2
+        },
+        "note": "Measure-first DP10 - farm multi-day runs excluded from stuck; night rest excluded from day-dominant; never PASS from short smoke"
+      },
+      "elapsedMs": 266037
+    },
+    {
+      "seed": 7,
+      "status": "ok",
+      "startPop": 100,
+      "aliveEnd": 47,
+      "peakAlive": 102,
+      "deaths": 34,
+      "births": 16,
+      "decisionsProxy": 46017,
+      "decisionsExact": 259732,
+      "uniqueTaskKinds": 31,
+      "entropyStarts": 3.0553,
+      "professionChanges": 175,
+      "professionMultiFactor": 175,
+      "professionExplainableShare": 1,
+      "foodChain": {
+        "harvestStarts": 1421,
+        "grindStarts": 433,
+        "bakeStarts": 86,
+        "sowStarts": 248,
+        "buildMillStarts": 126,
+        "grindByProfession": {
+          "farmer": 144,
+          "none": 104,
+          "forager": 142,
+          "lumberjack": 38,
+          "fisher": 1,
+          "builder": 4
+        },
+        "millerPeakAlive": 0,
+        "millerAlivePeak": 0,
+        "grindLabel": "GRIND_OPEN_TASK"
+      },
+      "helpTotal": 5117,
+      "helpCategories": 6,
+      "helpByKind": {
+        "food": 1,
+        "teach": 5081,
+        "defend": 2,
+        "build": 15,
+        "haul": 13,
+        "labor": 5
+      },
+      "defendHelp": {
+        "opportunities": 5,
+        "taken": 2
+      },
+      "families": {
+        "familyCount": 18,
+        "withMembers": 18,
+        "births": 16
+      },
+      "buildings": {
+        "mills": 4,
+        "wheatTiles": 43,
+        "ripe": 43,
+        "houses": 19,
+        "fields": 5
+      },
+      "migration": {
+        "leaves": 1,
+        "rejoins": 1,
+        "foundCamps": 0,
+        "leaveAttempts": 6,
+        "urgeMax": 1,
+        "distinctDestinations": 1,
+        "stages": {
+          "homelessLeave": 1,
+          "housedLeave": 0,
+          "travelStarts": 1,
+          "destEvals": 1,
+          "settlementAttempts": 0,
+          "fails": 0
+        }
+      },
+      "society": {
+        "circles": 46,
+        "institutions": 40,
+        "conflicts": 316,
+        "creedChanges": 214,
+        "inst30d": 26
+      },
+      "teachCraftStarts": 7302,
+      "teachTrueLaterUses": 44,
+      "teachLaterUsesProxy": 231,
+      "creedGen": {
+        "parentChild": 37,
+        "childBehavior": 14,
+        "genDepthMax": 1,
+        "gen2": 37,
+        "gen3": 0
+      },
+      "prices": {
+        "wood": 3,
+        "stone": 12.4,
+        "iron": 27,
+        "gold": 34.9,
+        "food": 1.1,
+        "wheat": 3.3,
+        "flour": 13.8,
+        "bread": 9.3,
+        "wool": 9.5,
+        "cloth": 18.9,
+        "clothing": 42.6,
+        "hide": 13.6,
+        "leather": 32,
+        "fur": 36.6,
+        "charcoal": 16.1,
+        "copper": 22.6,
+        "tin": 24,
+        "lead": 18.3,
+        "silver": 30.5,
+        "bronze": 36.6,
+        "coal": 13,
+        "clay": 6.9,
+        "salt": 18.9,
+        "flint": 11.5,
+        "limestone": 9.2,
+        "sand": 3.7,
+        "peat": 5.5,
+        "brick": 16.1,
+        "mortar": 11.5,
+        "mushrooms": 5.8,
+        "herbs": 5.1,
+        "honey": 18.3,
+        "beeswax": 8.6,
+        "resin": 6,
+        "pitch": 16.1,
+        "bark": 3.6,
+        "acorns": 4.7,
+        "chestnuts": 7.4,
+        "hazelnuts": 9.2,
+        "reeds": 4.7,
+        "nettles": 2.6,
+        "willow": 6.9,
+        "basket": 13.6,
+        "fish": 9.1,
+        "game": 13.1,
+        "milk": 6.9,
+        "cheese": 16.1,
+        "eggs": 8.2,
+        "tallow": 9.2,
+        "soap": 13.6,
+        "candle": 11.5,
+        "rye": 6.2,
+        "barley": 6.4,
+        "oats": 5.9,
+        "flax": 7.1,
+        "hemp": 3.8,
+        "linen": 22.9,
+        "rope": 16.1,
+        "cabbage": 5.4,
+        "turnip": 3.4,
+        "pea": 6.6,
+        "bean": 4.2,
+        "onion": 5.4,
+        "garlic": 7.5,
+        "leek": 5.1,
+        "carrot": 5.5,
+        "beet": 5,
+        "apple": 4.8,
+        "pear": 7.7,
+        "plum": 6.9,
+        "grape": 9.8,
+        "hop": 11,
+        "sage": 4.1,
+        "mint": 3.4,
+        "lavender": 5.1,
+        "woad": 13.6,
+        "madder": 12.3,
+        "dye": 20.6,
+        "medicine": 22.9,
+        "ale": 11.5,
+        "wine": 18.3,
+        "preserved": 16.1,
+        "firewood": 4.7,
+        "oil": 13.6,
+        "torch": 13.6,
+        "oil_lamp": 22.9,
+        "lantern": 32,
+        "sconce": 27.5,
+        "chandelier": 61.1
+      },
+      "foodStock": {
+        "food": 267,
+        "wheat": 35,
+        "flour": 0,
+        "bread": 5,
+        "meat": 0,
+        "edibleTotal": 343
+      },
+      "creeds": {
+        "partage": 15,
+        "changement": 6,
+        "commerce_libre": 17,
+        "ordre": 1,
+        "tradition": 1,
+        "piete": 1
+      },
+      "causality": {
+        "sec22Status": "PARTIAL",
+        "chains": {
+          "food": "PARTIAL",
+          "teach": "PARTIAL",
+          "creed": "PARTIAL",
+          "creedCulture": "PARTIAL",
+          "migrate": "PARTIAL",
+          "price": "PARTIAL",
+          "help": "PARTIAL"
+        },
+        "counters": {
+          "foodHarvestProduces": 306,
+          "foodGrindConsumes": 118,
+          "foodBakeConsumes": 100,
+          "foodEatConsequences": 1740,
+          "foodStockConsequences": 0,
+          "foodNpcCount": 115,
+          "teachEvents": 5081,
+          "teachSkillChanges": 505,
+          "teachLaterUses": 231,
+          "teachTrueLaterUses": 44,
+          "teachNpcCount": 58,
+          "teachTrueLaterSamples": [
+            {
+              "tick": 11,
+              "day": 0,
+              "teacherId": 8,
+              "receiverId": 48,
+              "skill": "chop",
+              "skillBefore": 0.7280000000000003,
+              "skillAfter": 0.7580000000000003,
+              "learningEventId": 544,
+              "futureAction": "gatherFuel",
+              "futureSkillUse": "chop",
+              "decisionExactId": 248
+            },
+            {
+              "tick": 122,
+              "day": 1,
+              "teacherId": 76,
+              "receiverId": 28,
+              "skill": "farm",
+              "skillBefore": 0.46800000000000014,
+              "skillAfter": 0.49800000000000016,
+              "learningEventId": 625,
+              "futureAction": "grindFlour",
+              "futureSkillUse": "farm",
+              "decisionExactId": 927
+            },
+            {
+              "tick": 123,
+              "day": 1,
+              "teacherId": 76,
+              "receiverId": 28,
+              "skill": "farm",
+              "skillBefore": 0.49800000000000016,
+              "skillAfter": 0.5280000000000001,
+              "learningEventId": 626,
+              "futureAction": "bakeBread",
+              "futureSkillUse": "farm",
+              "decisionExactId": 930
+            },
+            {
+              "tick": 190,
+              "day": 2,
+              "teacherId": 82,
+              "receiverId": 77,
+              "skill": "farm",
+              "skillBefore": 0.8040000000000004,
+              "skillAfter": 0.8266502000000004,
+              "learningEventId": 596,
+              "futureAction": "gatherFood",
+              "futureSkillUse": "farm",
+              "decisionExactId": 1487
+            },
+            {
+              "tick": 191,
+              "day": 2,
+              "teacherId": 82,
+              "receiverId": 77,
+              "skill": "farm",
+              "skillBefore": 0.8266502000000004,
+              "skillAfter": 0.8495604000000004,
+              "learningEventId": 598,
+              "futureAction": "gatherFood",
+              "futureSkillUse": "farm",
+              "decisionExactId": 1495
+            }
+          ],
+          "creedChanges": 214,
+          "creedFollowups": 56,
+          "creedNpcCount": 106,
+          "creedParentChildTransmissions": 37,
+          "creedChildBehaviorInfluenced": 14,
+          "creedGenDepthMax": 1,
+          "creedGen2Events": 37,
+          "creedGen3Events": 0,
+          "migrateUrgeCrosses": 8,
+          "migrateLeaveAttempts": 6,
+          "migrateLeaves": 1,
+          "migrateFoundCamps": 0,
+          "migrateHomelessLeave": 1,
+          "migrateHousedLeave": 0,
+          "migrateTravelStarts": 1,
+          "migrateDestEvals": 1,
+          "migrateSettlementAttempts": 0,
+          "migrateRejoins": 1,
+          "migrateFails": 0,
+          "migrateDestReasons": {
+            "group": 1
+          },
+          "migrateSettleReasons": {},
+          "priceDeltaEvents": 1151,
+          "priceTaskShifts": 35,
+          "priceProfessionShifts": 153,
+          "priceNpcCount": 91,
+          "priceChainSamples": [
+            {
+              "tick": 4200,
+              "day": 58,
+              "stage": "priceDelta",
+              "resource": "brick",
+              "priceBefore": 15.8,
+              "priceAfter": 16.1,
+              "shockId": null
+            },
+            {
+              "tick": 4200,
+              "day": 58,
+              "stage": "priceDelta",
+              "resource": "mortar",
+              "priceBefore": 11.3,
+              "priceAfter": 11.5,
+              "shockId": null
+            },
+            {
+              "tick": 4200,
+              "day": 58,
+              "stage": "priceDelta",
+              "resource": "mushrooms",
+              "priceBefore": 6.1,
+              "priceAfter": 5.8,
+              "shockId": null
+            },
+            {
+              "tick": 4200,
+              "day": 58,
+              "stage": "priceDelta",
+              "resource": "herbs",
+              "priceBefore": 5.4,
+              "priceAfter": 5.1,
+              "shockId": null
+            },
+            {
+              "tick": 4200,
+              "day": 58,
+              "stage": "priceDelta",
+              "resource": "honey",
+              "priceBefore": 18,
+              "priceAfter": 18.3,
+              "shockId": null
+            }
+          ],
+          "priceActiveShockId": null,
+          "priceShockTaggedDeltas": 0,
+          "priceShockLinkedTaskShifts": 0,
+          "priceShockLinkedProfessionShifts": 0,
+          "helpEvents": 5117,
+          "helpOutcomes": 541,
+          "helpEventsByKind": {
+            "food": 1,
+            "teach": 5081,
+            "defend": 2,
+            "build": 15,
+            "haul": 13,
+            "labor": 5
+          },
+          "helpOutcomesByKind": {
+            "food": 1,
+            "teach": 505,
+            "defend": 2,
+            "build": 15,
+            "haul": 13,
+            "labor": 5
+          },
+          "defendHelpOpportunities": 5,
+          "defendHelpTaken": 2,
+          "helpNpcCount": 59,
+          "helpChainSamples": [
+            {
+              "tick": 3926,
+              "day": 54,
+              "kind": "teach",
+              "helperId": 81,
+              "outcome": false
+            },
+            {
+              "tick": 3928,
+              "day": 54,
+              "kind": "teach",
+              "helperId": 57,
+              "outcome": false
+            },
+            {
+              "tick": 3928,
+              "day": 54,
+              "kind": "teach",
+              "helperId": 81,
+              "outcome": false
+            },
+            {
+              "tick": 3930,
+              "day": 54,
+              "kind": "teach",
+              "helperId": 57,
+              "outcome": false
+            },
+            {
+              "tick": 3930,
+              "day": 54,
+              "kind": "teach",
+              "helperId": 81,
+              "outcome": false
+            }
+          ],
+          "familyDecisionUses": 1249,
+          "familyDecisionNpcCount": 13,
+          "familyDecisionSamples": [
+            {
+              "tick": 3780,
+              "day": 52,
+              "npcId": 192,
+              "kind": "teachCraft",
+              "kinship": 0.7,
+              "familyValue": 0.591445732578278
+            },
+            {
+              "tick": 3780,
+              "day": 52,
+              "npcId": 215,
+              "kind": "socialise",
+              "kinship": 0.7,
+              "familyValue": 0.63764695871553
+            },
+            {
+              "tick": 3781,
+              "day": 52,
+              "npcId": 183,
+              "kind": "teachCraft",
+              "kinship": 0.7,
+              "familyValue": 0.5332867704163536
+            },
+            {
+              "tick": 3781,
+              "day": 52,
+              "npcId": 207,
+              "kind": "teachCraft",
+              "kinship": 0.7,
+              "familyValue": 0.768386376852781
+            },
+            {
+              "tick": 3782,
+              "day": 52,
+              "npcId": 192,
+              "kind": "teachCraft",
+              "kinship": 0.7,
+              "familyValue": 0.591445732578278
+            }
+          ],
+          "migrateNpcCount": 3,
+          "migrateChainSamples": [
+            {
+              "tick": 709,
+              "day": 9,
+              "stage": "urge",
+              "npcId": 23
+            },
+            {
+              "tick": 810,
+              "day": 11,
+              "stage": "urge",
+              "npcId": 30
+            },
+            {
+              "tick": 901,
+              "day": 12,
+              "stage": "urge",
+              "npcId": 23
+            },
+            {
+              "tick": 901,
+              "day": 12,
+              "stage": "leaveAttempt",
+              "npcId": 23
+            },
+            {
+              "tick": 949,
+              "day": 13,
+              "stage": "leaveAttempt",
+              "npcId": 23
+            }
+          ]
+        }
+      },
+      "attribution": {
+        "memoryCausalFlips": 1022,
+        "emotionCausalFlips": 837,
+        "personalityCausalFlips": 264,
+        "personalityPairReady": 1263,
+        "personalityPairDivergent": 638,
+        "professionChanges": 175,
+        "professionChangesMultiFactor": 175,
+        "professionExplainableShare": 1,
+        "floors": {
+          "memorable": {
+            "value": 21073,
+            "floor": 50,
+            "ok": true
+          },
+          "retrievals": {
+            "value": 10529,
+            "floor": 30,
+            "ok": true
+          },
+          "uses": {
+            "value": 10529,
+            "floor": 20,
+            "ok": true
+          },
+          "causalFlips": {
+            "value": 1022,
+            "floor": 10,
+            "ok": true
+          },
+          "emotionChanges": {
+            "value": 243920,
+            "floor": 50,
+            "ok": true
+          },
+          "emotionUses": {
+            "value": 28516,
+            "floor": 30,
+            "ok": true
+          },
+          "emotionCausalFlips": {
+            "value": 837,
+            "floor": 15,
+            "ok": true
+          },
+          "personalityUses": {
+            "value": 24588,
+            "floor": 20,
+            "ok": true
+          },
+          "personalityCausalFlips": {
+            "value": 264,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityPairReady": {
+            "value": 1263,
+            "floor": 10,
+            "ok": true
+          },
+          "personalityDivergentRatio": {
+            "value": 0.505,
+            "floor": 0.5,
+            "ok": true,
+            "ready": 1263,
+            "divergent": 638
+          },
+          "professionMultiFactorShare": {
+            "value": 1,
+            "floor": 0.7,
+            "ok": true,
+            "changes": 175,
+            "multi": 175
+          }
+        },
+        "status": "WIRED",
+        "memoryAttributedDecisions": 4218,
+        "emotionAttributedDecisions": 19799,
+        "personalityAttributedDecisions": 14432
+      },
+      "sec22Evidence": {
+        "sec22Status": "PARTIAL",
+        "priorityLabels": {
+          "memory_decision": "PARTIAL",
+          "emotion_decision": "PARTIAL",
+          "personality_decision": "PARTIAL",
+          "learning_future": "PARTIAL",
+          "family_decision": "PARTIAL",
+          "price_profession": "PARTIAL",
+          "belief_behavior": "PARTIAL",
+          "relationship_help": "PARTIAL",
+          "migration_camp": "PARTIAL"
+        },
+        "underFloors": [
+          "migration_camp:{1/5evt UNDER · 3/3npc OK · 3/3seeds OK}"
+        ],
+        "allLocalFloorsMet": false,
+        "missionFloorsMet": false,
+        "chainBlocks": [
+          "CHAIN: mem_event -> encode -> retrieve -> placeMemoryFactor_use -> kind_flip -> chosen_action -> world | label=PARTIAL | floors=1022/20evt OK · 48/3npc OK · 3/3seeds OK | id=memory_decision",
+          "CHAIN: emotion_event -> bias_data -> soft_receive -> emotionsFactor_use -> kind_flip -> action -> world | label=PARTIAL | floors=837/15evt OK · 113/3npc OK · 3/3seeds OK | id=emotion_decision",
+          "CHAIN: trait_context -> pair_or_prior -> soft_receive -> persFactor_use -> kind_flip|pair_delta -> action -> hist_delta | label=PARTIAL | floors=638/20evt OK · 98/3npc OK · 3/3seeds OK | id=personality_decision",
+          "CHAIN: teachCraft -> skillDelta -> pupil_receives -> later_skill_use -> true_reuse -> action -> world | label=PARTIAL | floors=44/20evt OK · 58/3npc OK · 3/3seeds OK | id=learning_future",
+          "CHAIN: kin_or_values_family -> relation_data -> soft_receive -> family_bias_use -> kind_flip -> action -> world | label=PARTIAL | floors=53/15evt OK · 35/3npc OK · 3/3seeds OK | id=family_decision",
+          "CHAIN: priceDelta -> market_data -> npc_perceives -> score_use -> profession|task_shift -> action -> supply | label=PARTIAL | floors=188/5evt OK · 91/3npc OK · 3/3seeds OK | id=price_profession",
+          "CHAIN: creed_change -> belief_data -> peer|child_receives -> followup_use -> behavior_change -> action -> world | label=PARTIAL | floors=56/5evt OK · 106/3npc OK · 3/3seeds OK | id=belief_behavior",
+          "CHAIN: need_or_threat -> relation_willingness -> help_receive -> help_use -> help_decision -> help_action -> outcome | label=PARTIAL | floors=5117/20evt OK · 59/3npc OK · 3/3seeds OK | id=relationship_help",
+          "CHAIN: urge -> leaveAttempt -> leave -> travel|destEval -> settleAttempt -> camp|rejoin -> world | label=PARTIAL | floors=1/5evt UNDER · 3/3npc OK · 3/3seeds OK | id=migration_camp"
+        ],
+        "priorities": [
+          {
+            "id": "memory_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 1022,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 48,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "1022/20evt OK · 48/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "mem_cf v100 d55 harvestWheat->harvestWheat util=200055.45",
+              "mem_cf v100 d55 harvestWheat->harvestWheat util=200351.52",
+              "mem_cf v100 d55 harvestWheat->harvestWheat util=200682.52"
+            ]
+          },
+          {
+            "id": "emotion_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 837,
+              "eventFloor": 15,
+              "eventsOk": true,
+              "npcs": 113,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "837/15evt OK · 113/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "emo_cf v198 d51 teachCraft->gatherFood",
+              "emo_cf v198 d51 teachCraft->gatherFood",
+              "emo_cf v192 d51 teachCraft->gatherFood"
+            ]
+          },
+          {
+            "id": "personality_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 638,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 98,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "638/20evt OK · 98/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "pers_cf v173 socialise->sowField",
+              "pers_cf v173 socialise->sowField",
+              "pers_cf v173 socialise->sowField"
+            ]
+          },
+          {
+            "id": "learning_future",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 44,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 58,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "44/20evt OK · 58/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "teach_true t8->r48 chop 0.7280000000000003->0.7580000000000003 act=gatherFuel de=#248",
+              "teach_true t76->r28 farm 0.46800000000000014->0.49800000000000016 act=grindFlour de=#927",
+              "teach_true t76->r28 farm 0.49800000000000016->0.5280000000000001 act=bakeBread de=#930"
+            ]
+          },
+          {
+            "id": "family_decision",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 53,
+              "eventFloor": 15,
+              "eventsOk": true,
+              "npcs": 35,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "53/15evt OK · 35/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "family_cf v87 d28 teachCraft->experiment kin=0.90",
+              "family_cf v87 d28 teachCraft->eat kin=0.90",
+              "family_cf v187 d28 socialise->socialise kin=0.70"
+            ]
+          },
+          {
+            "id": "price_profession",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 188,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 91,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "188/5evt OK · 91/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "price_prof v38 forager->farmer",
+              "price_prof v192 fisher->forager",
+              "price_prof v38 farmer->forager"
+            ]
+          },
+          {
+            "id": "belief_behavior",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 56,
+              "eventFloor": 5,
+              "eventsOk": true,
+              "npcs": 106,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "56/5evt OK · 106/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "creed_peer changes=214 followups=56 npcs=106",
+              "creed_culture tx=37 childBeh=14 genMax=1"
+            ]
+          },
+          {
+            "id": "relationship_help",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 5117,
+              "eventFloor": 20,
+              "eventsOk": true,
+              "npcs": 59,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": true,
+              "missionOk": true,
+              "label": "5117/20evt OK · 59/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "help_byKind {\"food\":1,\"teach\":5081,\"defend\":2,\"build\":15,\"haul\":13,\"labor\":5}",
+              "defend opp=5 taken=2",
+              "help teach helper=81 d54 outcome=false"
+            ]
+          },
+          {
+            "id": "migration_camp",
+            "label": "PARTIAL",
+            "floors": {
+              "events": 1,
+              "eventFloor": 5,
+              "eventsOk": false,
+              "npcs": 3,
+              "npcFloor": 3,
+              "npcsOk": true,
+              "seeds": 3,
+              "seedFloor": 3,
+              "seedsOk": true,
+              "localOk": false,
+              "missionOk": false,
+              "label": "1/5evt UNDER · 3/3npc OK · 3/3seeds OK"
+            },
+            "sampleLines": [
+              "migrate urge=8 attempts=6 leaves=1 travel=1",
+              "migrate destEval=1 settle=0 camps=0 rejoins=1 fails=0",
+              "migrate urge npc=23 d9"
+            ]
+          }
+        ]
+      },
+      "behaviorSeq": {
+        "counters": {
+          "seqNpcTracked": 116,
+          "seqNpcWithVariation30d": 109,
+          "seqNpcStuckLoop14d": 6,
+          "seqLongestSameLoopDays": 28,
+          "seqUniqueDaySequences": 105,
+          "seqSecondaryGoalStableSamples": 21249,
+          "seqSecondaryGoalStableHits": 17714,
+          "seqDayOccupancyTeach": 14717,
+          "seqDayOccupancySocial": 4723,
+          "seqDayOccupancyRest": 40752,
+          "seqDampApplications": 163104
+        },
+        "variationPct": 0.9396551724137931,
+        "stuckLoop14dPct": 0.05172413793103448,
+        "secondaryGoalStablePct": 0.8336392300814156,
+        "acceptanceTargets": {
+          "variationPctMin": 0.3,
+          "stuckLoop14dPctMax": 0.5,
+          "secondaryGoalStablePctMin": 0.2
+        },
+        "note": "Measure-first DP10 - farm multi-day runs excluded from stuck; night rest excluded from day-dominant; never PASS from short smoke"
+      },
+      "elapsedMs": 280015
+    }
+  ]
+}

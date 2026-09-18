@@ -1,0 +1,63 @@
+{
+  "phase": 4,
+  "cp": "CP2",
+  "induced": false,
+  "seed": 1,
+  "days": 5,
+  "ticks": 360,
+  "elapsedMs": 6897,
+  "decisionExactTotal": 3982,
+  "causality": {
+    "counters": {
+      "foodHarvestProduces": 29,
+      "foodGrindConsumes": 18,
+      "foodBakeConsumes": 9,
+      "foodEatConsequences": 82,
+      "foodStockConsequences": 0,
+      "foodNpcCount": 89,
+      "teachEvents": 0,
+      "teachSkillChanges": 0,
+      "teachLaterUses": 0,
+      "teachNpcCount": 0,
+      "creedChanges": 6,
+      "creedFollowups": 1,
+      "migrateUrgeCrosses": 0,
+      "migrateLeaveAttempts": 0,
+      "migrateLeaves": 0,
+      "migrateFoundCamps": 0,
+      "priceDeltaEvents": 89,
+      "priceTaskShifts": 6,
+      "priceProfessionShifts": 7,
+      "helpEvents": 0,
+      "helpOutcomes": 0,
+      "helpEventsByKind": {
+        "food": 0,
+        "teach": 0,
+        "defend": 0,
+        "build": 0,
+        "haul": 0,
+        "labor": 0
+      },
+      "helpOutcomesByKind": {
+        "food": 0,
+        "teach": 0,
+        "defend": 0,
+        "build": 0,
+        "haul": 0,
+        "labor": 0
+      }
+    },
+    "chains": {
+      "food": "PARTIAL",
+      "teach": "NOT_TESTED",
+      "creed": "CONNECTION_NOT_PROVEN",
+      "migrate": "NOT_TESTED",
+      "price": "PARTIAL",
+      "help": "NOT_TESTED"
+    },
+    "sec22Status": "PARTIAL",
+    "decisionExactTotal": 3982
+  },
+  "passSmoke": true,
+  "note": "CODE wired smoke only — sec22 acceptance PENDING; never PASS from this smoke"
+}

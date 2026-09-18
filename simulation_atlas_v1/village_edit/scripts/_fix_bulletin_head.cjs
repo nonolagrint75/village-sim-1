@@ -1,0 +1,50 @@
+const fs = require('fs')
+const path = 'C:/Users/kamel/village-sim-1/simulation_atlas_v1/village_edit/NONO_SIMU_2D_BULLETIN.md'
+let t = fs.readFileSync(path, 'utf8')
+const idx = t.indexOf('# 1. INTELLIGENCE')
+const body = idx >= 0 ? t.slice(idx) : ''
+const head = [
+  "# NONO_SIMU_2D ? BULLETIN D'AUDIT",
+  '',
+  '**Date :** 18 sept 2026',
+  '**Arbre :** `C:\\\\Users\\\\kamel\\\\village-sim-1\\\\simulation_atlas_v1\\\\village_edit`',
+  '**Methode :** bareme severe (existence / fonction / integration / causalite / emergence chacun /20) + probes runtime.',
+  '**Scenarios :** `ATLAS_V1_SCENARIO_MATRIX.md` ? **42 PASS / 4 PARTIAL / 4 FAIL** (seeds 1+7, 35j ; reference officielle).',
+  '**Cible utilisateur :** moyenne 100 ? **non atteinte honnetement**.',
+  '',
+  '## MOYENNE GENERALE',
+  '',
+  '```text',
+  '75.1 / 100',
+  '```',
+  '',
+  '## BULLETIN SYNTHETIQUE',
+  '',
+  '| Matiere | Note /100 |',
+  '| ------------------------------- | --------: |',
+  '| Intelligence des PNJ | 71.4 |',
+  '| Vie individuelle et familles | 66.8 |',
+  '| Relations sociales | 74.2 |',
+  '| Groupes et institutions | 76.5 |',
+  '| Economie | 73.1 |',
+  '| Metiers et production | 69.4 |',
+  '| Politique | 81.2 |',
+  '| Religion et culture | 72.6 |',
+  '| Conflits et guerres | 82.4 |',
+  '| Monde et environnement | 77.0 |',
+  '| Villes et construction | 74.8 |',
+  '| Histoire et causalite | 78.9 |',
+  '| Emergence globale | 76.3 |',
+  '| Simulation visuelle | 68.5 |',
+  '| Performance | 83.7 |',
+  '',
+  '**Moyenne generale : 75.1 / 100**',
+  '',
+  'Delta vs 100 : **24.9 points** ? inflation refusee. Leviers : herder/weaver (S9-S10), credit (S20), multi-gen (S50), assets nature, maisons riches (S7), schisme (S24).',
+  '',
+  '---',
+  '',
+  '',
+].join('\n')
+fs.writeFileSync(path, head + body, 'utf8')
+console.log('ok', fs.statSync(path).size)

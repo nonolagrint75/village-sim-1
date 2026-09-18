@@ -1,0 +1,43 @@
+{
+  "phase": 5,
+  "dp": "DP11",
+  "induced": false,
+  "seed": 7,
+  "days": 12,
+  "ticks": 864,
+  "elapsedMs": 25430,
+  "births": 0,
+  "decisionExactTotal": 10814,
+  "creedPeer": {
+    "changes": 71,
+    "followups": 14,
+    "npcCount": 44,
+    "chain": "PARTIAL"
+  },
+  "creedCulture": {
+    "parentChildTransmissions": 0,
+    "childBehaviorInfluenced": 0,
+    "genDepthMax": 0,
+    "gen2Events": 0,
+    "gen3Events": 0,
+    "chain": "NOT_TESTED"
+  },
+  "societyCreed": {
+    "changes": 71,
+    "followups": 14,
+    "followupRate": 0.197
+  },
+  "chains": {
+    "food": "PARTIAL",
+    "teach": "PARTIAL",
+    "creed": "PARTIAL",
+    "creedCulture": "NOT_TESTED",
+    "migrate": "NOT_TESTED",
+    "price": "PARTIAL",
+    "help": "PARTIAL"
+  },
+  "sec22Status": "PARTIAL",
+  "designNote": "Instrument only: parent belief -> spread/crystallize/shrine -> child creed match -> child task followup. No CREATE_CREED; no birth creed assign; short smoke may show gen=0 (honest NOT_TESTED).",
+  "acceptance": "PENDING",
+  "note": "DONE CODE wired smoke - never PASS from this smoke; acceptance PENDING (long soak for 2-gen)"
+}

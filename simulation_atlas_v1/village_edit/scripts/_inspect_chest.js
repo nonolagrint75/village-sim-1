@@ -1,0 +1,8 @@
+const fs = require('fs')
+const t = fs.readFileSync('src/lib/sim/behaviors.ts', 'utf8')
+const i = t.indexOf("noteChosenAction(v, 'takeFromChest', 'survie")
+console.log('try', JSON.stringify(t.slice(i - 220, i + 90)))
+const j = t.indexOf("noteChosenAction(v, 'takeFromChest', 'faim")
+console.log('int', JSON.stringify(t.slice(j - 260, j + 90)))
+console.log('has wasSurvivalBite', t.includes('wasSurvivalBite'))
+console.log('has chain', t.includes('après garde-manger'))

@@ -1,0 +1,546 @@
+[
+  {
+    "seed": 1,
+    "end": {
+      "pop": 6,
+      "births": 6,
+      "deaths": 11,
+      "deathsByBandit": 0,
+      "deathsByWolf": 0,
+      "guilds": 0,
+      "villages": 3
+    },
+    "gen": {
+      "maxAlive": 0,
+      "maxAll": 0,
+      "histAlive": {
+        "0": 6
+      },
+      "histAll": {
+        "0": 6
+      },
+      "bornAlive": 1,
+      "bornAll": 1
+    },
+    "meanAgeYears": 0.25,
+    "checkpoints": [
+      {
+        "day": 30,
+        "pop": 26,
+        "births": 3,
+        "deaths": 3,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 2
+      },
+      {
+        "day": 60,
+        "pop": 12,
+        "births": 6,
+        "deaths": 11,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 2,
+        "guilds": 0
+      },
+      {
+        "day": 90,
+        "pop": 6,
+        "births": 6,
+        "deaths": 11,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 3,
+        "guilds": 0
+      }
+    ],
+    "deathSpikes": [
+      {
+        "day": 10,
+        "pop": 24,
+        "births": 0,
+        "deaths": 2,
+        "dDelta": 2,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 0
+      },
+      {
+        "day": 46,
+        "pop": 23,
+        "births": 6,
+        "deaths": 5,
+        "dDelta": 2,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 3,
+        "guilds": 1
+      },
+      {
+        "day": 47,
+        "pop": 16,
+        "births": 6,
+        "deaths": 11,
+        "dDelta": 6,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 3,
+        "guilds": 0
+      }
+    ],
+    "deathLinesSample": [
+      "[1·j37·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → cercle de garde devient une institution (application des normes)",
+      "[1·j43·12h] peur des loups → naissance du cercle de garde",
+      "[1·j46·12h] Belmir est mort de faim",
+      "[1·j46·18h] Garild est mort de faim",
+      "[1·j47·1h] Wylora est mort de faim",
+      "[1·j47·2h] Rilya est mort de faim",
+      "[1·j47·6h] peur des loups → cercle de garde devient une institution (application des normes)",
+      "[1·j47·9h] Drodric est mort de faim",
+      "[1·j47·10h] Tavic est mort de faim",
+      "[1·j47·12h] Elana invente → meurtrière",
+      "[1·j47·13h] Wylora est mort de faim",
+      "[1·j47·14h] Elana enseigne « meurtrière » à Ortho"
+    ]
+  },
+  {
+    "seed": 3,
+    "end": {
+      "pop": 4,
+      "births": 4,
+      "deaths": 8,
+      "deathsByBandit": 0,
+      "deathsByWolf": 0,
+      "guilds": 0,
+      "villages": 2
+    },
+    "gen": {
+      "maxAlive": 0,
+      "maxAll": 0,
+      "histAlive": {
+        "0": 4
+      },
+      "histAll": {
+        "0": 4
+      },
+      "bornAlive": 2,
+      "bornAll": 2
+    },
+    "meanAgeYears": 0.24,
+    "checkpoints": [
+      {
+        "day": 30,
+        "pop": 30,
+        "births": 4,
+        "deaths": 0,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 1
+      },
+      {
+        "day": 60,
+        "pop": 8,
+        "births": 4,
+        "deaths": 8,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 6,
+        "guilds": 0
+      },
+      {
+        "day": 90,
+        "pop": 4,
+        "births": 4,
+        "deaths": 8,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 0,
+        "guilds": 0
+      }
+    ],
+    "deathSpikes": [
+      {
+        "day": 46,
+        "pop": 22,
+        "births": 4,
+        "deaths": 4,
+        "dDelta": 4,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 4,
+        "guilds": 1
+      },
+      {
+        "day": 47,
+        "pop": 18,
+        "births": 4,
+        "deaths": 7,
+        "dDelta": 3,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 4,
+        "guilds": 1
+      }
+    ],
+    "deathLinesSample": [
+      "[1·j43·4h] Drodric invente → meurtrière",
+      "[1·j43·5h] La famine s'installe",
+      "[1·j43·5h] Première famine",
+      "[1·j43·12h] famine partagée → naissance du cercle de partage",
+      "[1·j43·12h] famine → cercle de partage adopte la norme « partager en famine »",
+      "[1·j43·12h] famine partagée → naissance du cercle de partage",
+      "[1·j43·12h] famine → cercle de partage adopte la norme « partager en famine »",
+      "[1·j43·12h] famine partagée → naissance du cercle de partage",
+      "[1·j43·12h] famine → cercle de partage adopte la norme « partager en famine »",
+      "[1·j43·12h] famine partagée → naissance du cercle de partage",
+      "[1·j43·12h] famine → cercle de partage adopte la norme « partager en famine »",
+      "[1·j46·0h] institution cercle pieux → découverte : meurtrière",
+      "[1·j46·0h] institution conseil du village → découverte : meurtrière",
+      "[1·j46·0h] institution conseil des aînés → découverte : meurtrière",
+      "[1·j46·0h] institution cercle pieux → découverte : meurtrière"
+    ]
+  },
+  {
+    "seed": 5,
+    "end": {
+      "pop": 5,
+      "births": 6,
+      "deaths": 16,
+      "deathsByBandit": 0,
+      "deathsByWolf": 0,
+      "guilds": 0,
+      "villages": 3
+    },
+    "gen": {
+      "maxAlive": 0,
+      "maxAll": 0,
+      "histAlive": {
+        "0": 5
+      },
+      "histAll": {
+        "0": 5
+      },
+      "bornAlive": 0,
+      "bornAll": 0
+    },
+    "meanAgeYears": 0.27,
+    "checkpoints": [
+      {
+        "day": 30,
+        "pop": 28,
+        "births": 2,
+        "deaths": 0,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 2
+      },
+      {
+        "day": 60,
+        "pop": 7,
+        "births": 6,
+        "deaths": 16,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 4,
+        "guilds": 0
+      },
+      {
+        "day": 90,
+        "pop": 5,
+        "births": 6,
+        "deaths": 16,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 4,
+        "guilds": 0
+      }
+    ],
+    "deathSpikes": [
+      {
+        "day": 46,
+        "pop": 20,
+        "births": 6,
+        "deaths": 8,
+        "dDelta": 8,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 4,
+        "guilds": 1
+      },
+      {
+        "day": 47,
+        "pop": 14,
+        "births": 6,
+        "deaths": 14,
+        "dDelta": 6,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 4,
+        "guilds": 0
+      },
+      {
+        "day": 48,
+        "pop": 12,
+        "births": 6,
+        "deaths": 16,
+        "dDelta": 2,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 3,
+        "guilds": 0
+      }
+    ],
+    "deathLinesSample": [
+      "[1·j47·6h] peur des loups → cercle de garde devient une institution (application des normes)",
+      "[1·j47·6h] peur des loups → cercle de garde devient une institution (application des normes)",
+      "[1·j47·9h] Modan est mort de faim",
+      "[1·j47·11h] Elana est mort de faim",
+      "[1·j47·16h] Karen est mort de faim",
+      "[1·j47·16h] mort de Karen → vide de pouvoir dans le cercle des fermiers",
+      "[1·j47·17h] Wylora est mort de faim",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le conseil des aînés",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le conseil du village",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le cercle de parenté",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le cercle pieux",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le cercle de garde",
+      "[1·j47·17h] mort de Wylora → vide de pouvoir dans le cercle de partage",
+      "[1·j47·17h] mort de Wylora → Modan devient seigneur du royaume « royaume de Modason »",
+      "[1·j47·20h] Fensen est mort de faim"
+    ]
+  },
+  {
+    "seed": 7,
+    "end": {
+      "pop": 9,
+      "births": 3,
+      "deaths": 8,
+      "deathsByBandit": 0,
+      "deathsByWolf": 0,
+      "guilds": 1,
+      "villages": 3
+    },
+    "gen": {
+      "maxAlive": 0,
+      "maxAll": 0,
+      "histAlive": {
+        "0": 9
+      },
+      "histAll": {
+        "0": 9
+      },
+      "bornAlive": 1,
+      "bornAll": 1
+    },
+    "meanAgeYears": 0.26,
+    "checkpoints": [
+      {
+        "day": 30,
+        "pop": 28,
+        "births": 2,
+        "deaths": 0,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 2
+      },
+      {
+        "day": 60,
+        "pop": 12,
+        "births": 3,
+        "deaths": 8,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 3,
+        "guilds": 1
+      },
+      {
+        "day": 90,
+        "pop": 9,
+        "births": 3,
+        "deaths": 8,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 3,
+        "guilds": 1
+      }
+    ],
+    "deathSpikes": [
+      {
+        "day": 46,
+        "pop": 20,
+        "births": 3,
+        "deaths": 5,
+        "dDelta": 5,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 4,
+        "guilds": 2
+      },
+      {
+        "day": 47,
+        "pop": 17,
+        "births": 3,
+        "deaths": 7,
+        "dDelta": 2,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 1,
+        "bandits": 3,
+        "guilds": 1
+      }
+    ],
+    "deathLinesSample": [
+      "[1·j26·0h] institution guilde des mineurs → découverte : meurtrière",
+      "[1·j26·0h] institution conseil du village → découverte : meurtrière",
+      "[1·j35·10h] Karen enseigne « meurtrière » à Fensen",
+      "[1·j39·18h] arbitrage des conflits → conseil des aînés s'institue — lois : punir le vol, entretenir le commun",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j46·7h] Rilya est mort de faim",
+      "[1·j46·20h] Wylora est mort de faim",
+      "[1·j46·21h] Elana est mort de faim",
+      "[1·j46·22h] Fensen est mort de faim",
+      "[1·j46·22h] mort de Fensen → vide de pouvoir dans le guilde des mineurs",
+      "[1·j46·22h] mort de Fensen → vide de pouvoir dans le conseil des aînés",
+      "[1·j46·22h] mort de Fensen → vide de pouvoir dans le conseil du village",
+      "[1·j46·22h] mort de Fensen → vide de pouvoir dans le cercle de parenté"
+    ]
+  },
+  {
+    "seed": 9,
+    "end": {
+      "pop": 5,
+      "births": 10,
+      "deaths": 9,
+      "deathsByBandit": 0,
+      "deathsByWolf": 0,
+      "guilds": 0,
+      "villages": 3
+    },
+    "gen": {
+      "maxAlive": 1,
+      "maxAll": 1,
+      "histAlive": {
+        "0": 4,
+        "1": 1
+      },
+      "histAll": {
+        "0": 4,
+        "1": 1
+      },
+      "bornAlive": 1,
+      "bornAll": 1
+    },
+    "meanAgeYears": 0.25,
+    "checkpoints": [
+      {
+        "day": 30,
+        "pop": 28,
+        "births": 4,
+        "deaths": 2,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 3
+      },
+      {
+        "day": 60,
+        "pop": 14,
+        "births": 10,
+        "deaths": 8,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 5,
+        "guilds": 0
+      },
+      {
+        "day": 90,
+        "pop": 5,
+        "births": 10,
+        "deaths": 9,
+        "dDelta": 0,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 2,
+        "bandits": 6,
+        "guilds": 0
+      }
+    ],
+    "deathSpikes": [
+      {
+        "day": 28,
+        "pop": 28,
+        "births": 4,
+        "deaths": 2,
+        "dDelta": 2,
+        "banditDelta": 0,
+        "wolfDelta": 0,
+        "bands": 0,
+        "bandits": 0,
+        "guilds": 3
+      }
+    ],
+    "deathLinesSample": [
+      "[1·j37·14h] Elana enseigne « meurtrière » à Tavic",
+      "[1·j40·14h] Elana enseigne « meurtrière » à Rilya",
+      "[1·j41·0h] institution cercle pieux → découverte : meurtrière",
+      "[1·j41·0h] institution conseil du village → découverte : meurtrière",
+      "[1·j41·0h] peur des loups → cercle de garde devient une institution (application des normes)",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·6h] peur des loups → naissance du cercle de garde",
+      "[1·j42·8h] Savoir du village → Ivos apprend « meurtrière »",
+      "[1·j42·13h] Nygor meurt de froid",
+      "[1·j43·10h] Ortho meurt de froid",
+      "[1·j46·0h] peur des loups → naissance du cercle de garde",
+      "[1·j46·0h] institution cercle pieux → découverte : meurtrière",
+      "[1·j46·0h] institution conseil du village → découverte : meurtrière",
+      "[1·j46·14h] Rilya meurt de froid",
+      "[1·j47·6h] peur des loups → cercle de garde devient une institution (application des normes)"
+    ]
+  }
+]

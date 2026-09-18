@@ -1,0 +1,1239 @@
+{
+  "agg": {
+    "seeds": 3,
+    "days": 60,
+    "worldSize": 600,
+    "popGrowth": [
+      -9,
+      8,
+      2
+    ],
+    "institutionsEnd": [
+      18,
+      28,
+      17
+    ],
+    "creedsEnd": [
+      14,
+      26,
+      16
+    ],
+    "faithEnd": [
+      4,
+      5,
+      4
+    ],
+    "shrinesEnd": [
+      4,
+      4,
+      4
+    ],
+    "bandsEnd": [
+      1,
+      1,
+      1
+    ],
+    "banditsEnd": [
+      4,
+      4,
+      4
+    ],
+    "fortDone": [
+      4,
+      7,
+      2
+    ],
+    "hallsDone": [
+      0,
+      0,
+      1
+    ],
+    "treesCleared": [
+      106,
+      164,
+      376
+    ],
+    "pathRoad": [
+      31,
+      45,
+      9
+    ],
+    "villages": [
+      4,
+      4,
+      4
+    ],
+    "chiefdoms": [
+      3,
+      0,
+      2
+    ],
+    "kingdoms": [
+      1,
+      4,
+      2
+    ],
+    "births": [
+      0,
+      18,
+      6
+    ]
+  },
+  "systemRows": [
+    {
+      "id": "institutions",
+      "existsIn": "politics.ts maybeInstitutionalize",
+      "note": "",
+      "total": 87,
+      "seedsFiring": 3,
+      "perSeed": [
+        25,
+        38,
+        24
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "circles (politics)",
+      "existsIn": "politics.ts tickCircles",
+      "note": "",
+      "total": 74,
+      "seedsFiring": 3,
+      "perSeed": [
+        18,
+        32,
+        24
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "creeds / religion",
+      "existsIn": "religion.ts + politics crystallizeCreed",
+      "note": "",
+      "total": 586,
+      "seedsFiring": 3,
+      "perSeed": [
+        211,
+        182,
+        193
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "faith circles",
+      "existsIn": "politics.ts faith circle spawn",
+      "note": "",
+      "total": 13,
+      "seedsFiring": 3,
+      "perSeed": [
+        4,
+        5,
+        4
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "shrines / autels",
+      "existsIn": "religion.ts ensureVillageShrine / build shrine",
+      "note": "",
+      "total": 15,
+      "seedsFiring": 3,
+      "perSeed": [
+        5,
+        5,
+        5
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "rituals",
+      "existsIn": "religion.ts shrine rites",
+      "note": "",
+      "total": 285,
+      "seedsFiring": 3,
+      "perSeed": [
+        120,
+        76,
+        89
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "bandit groups",
+      "existsIn": "bandits.ts tryForm* (gate day 40)",
+      "note": "",
+      "total": 18,
+      "seedsFiring": 3,
+      "perSeed": [
+        6,
+        6,
+        6
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "bandit raids",
+      "existsIn": "bandits.ts startRaid",
+      "note": "",
+      "total": 2,
+      "seedsFiring": 2,
+      "perSeed": [
+        1,
+        1,
+        0
+      ],
+      "status": "RARE"
+    },
+    {
+      "id": "fortify / castles",
+      "existsIn": "construction fortify + politics enqueue",
+      "note": "",
+      "total": 129,
+      "seedsFiring": 3,
+      "perSeed": [
+        26,
+        54,
+        49
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "village wallTier wood/stone",
+      "existsIn": "construction applyFortifyCompletion",
+      "note": "",
+      "total": 10,
+      "seedsFiring": 3,
+      "perSeed": [
+        4,
+        3,
+        3
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "halls (gather purpose)",
+      "existsIn": "politics / buildHooks gather→halle",
+      "note": "",
+      "total": 1,
+      "seedsFiring": 1,
+      "perSeed": [
+        0,
+        0,
+        1
+      ],
+      "status": "RARE"
+    },
+    {
+      "id": "forest clearing (TREE loss / clearLand)",
+      "existsIn": "construction clear phase + clearLand task",
+      "note": "",
+      "total": 2420,
+      "seedsFiring": 3,
+      "perSeed": [
+        564,
+        532,
+        1324
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "roads (trail/path/road)",
+      "existsIn": "roads.ts + behaviors wear",
+      "note": "",
+      "total": 2598,
+      "seedsFiring": 3,
+      "perSeed": [
+        656,
+        986,
+        956
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "polities substrate",
+      "existsIn": "politics.ts tickPolities",
+      "note": "",
+      "total": 12,
+      "seedsFiring": 3,
+      "perSeed": [
+        4,
+        4,
+        4
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "chiefdoms",
+      "existsIn": "politics.ts desiredTier→chiefdom",
+      "note": "",
+      "total": 5,
+      "seedsFiring": 2,
+      "perSeed": [
+        3,
+        0,
+        2
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "kingdoms",
+      "existsIn": "politics.ts desiredTier→kingdom",
+      "note": "",
+      "total": 7,
+      "seedsFiring": 3,
+      "perSeed": [
+        1,
+        4,
+        2
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "succession / authority contest",
+      "existsIn": "politics.ts setPolityRuler / challengers",
+      "note": "",
+      "total": 17,
+      "seedsFiring": 3,
+      "perSeed": [
+        9,
+        6,
+        2
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "territory / absorption",
+      "existsIn": "politics.ts claimRadius / absorb",
+      "note": "",
+      "total": 19,
+      "seedsFiring": 3,
+      "perSeed": [
+        11,
+        2,
+        6
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "civil war (deferred soft)",
+      "existsIn": "politics.ts comment: deferred",
+      "note": "explicitly soft/deferred — confront bias only",
+      "total": 0,
+      "seedsFiring": 0,
+      "perSeed": [
+        0,
+        0,
+        0
+      ],
+      "status": "NEVER"
+    },
+    {
+      "id": "guilds",
+      "existsIn": "politics.ts promoteToGuild",
+      "note": "",
+      "total": 13,
+      "seedsFiring": 3,
+      "perSeed": [
+        3,
+        4,
+        6
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "population growth (births)",
+      "existsIn": "family / marriage births",
+      "note": "",
+      "total": 24,
+      "seedsFiring": 2,
+      "perSeed": [
+        0,
+        18,
+        6
+      ],
+      "status": "FIRES"
+    },
+    {
+      "id": "multi-village founding",
+      "existsIn": "engine village spawn",
+      "note": "",
+      "total": 9,
+      "seedsFiring": 3,
+      "perSeed": [
+        3,
+        3,
+        3
+      ],
+      "status": "FIRES"
+    }
+  ],
+  "runs": [
+    {
+      "seed": 1,
+      "startPop": 26,
+      "startTrees": 28121,
+      "startBush": 49940,
+      "snaps": [
+        {
+          "day": 30,
+          "pop": 23,
+          "births": 0,
+          "deaths": 3,
+          "villages": 4,
+          "institutions": 16,
+          "circles": 16,
+          "faithCircles": 4,
+          "creeds": 14,
+          "creedById": {
+            "partage": 5,
+            "commerce_libre": 9
+          },
+          "shrines": 4,
+          "ritualsLogged": 76,
+          "religionLog": 130,
+          "bands": 0,
+          "bandits": 0,
+          "banditRaids": 0,
+          "deathsByBandit": 0,
+          "fortifyDone": 4,
+          "fortifyOpen": 3,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:wood",
+            "2:stone",
+            "3:wood",
+            "4:stone"
+          ],
+          "wallTiles": 96,
+          "hallsDone": 0,
+          "hallsOpen": 0,
+          "treeTiles": 28097,
+          "bushTiles": 50558,
+          "treesClearedVsStart": 24,
+          "trail": 242,
+          "path": 19,
+          "road": 1,
+          "roadTilesStat": 262,
+          "polities": 4,
+          "chiefdoms": 1,
+          "kingdoms": 3,
+          "polityTiers": [
+            "kingdom",
+            "kingdom",
+            "kingdom",
+            "chiefdom"
+          ],
+          "guilds": 2,
+          "houses": 7,
+          "clearLandSamples": 222,
+          "buildWallSamples": 55,
+          "milestones": {
+            "firstHouse": false,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": false,
+            "firstBoatVoyage": false,
+            "firstBirth": false,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": false,
+            "firstRegionalHub": false,
+            "firstStorm": true,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": false,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        },
+        {
+          "day": 60,
+          "pop": 17,
+          "births": 0,
+          "deaths": 5,
+          "villages": 4,
+          "institutions": 18,
+          "circles": 18,
+          "faithCircles": 4,
+          "creeds": 14,
+          "creedById": {
+            "partage": 6,
+            "commerce_libre": 8
+          },
+          "shrines": 4,
+          "ritualsLogged": 119,
+          "religionLog": 196,
+          "bands": 1,
+          "bandits": 4,
+          "banditRaids": 1,
+          "deathsByBandit": 0,
+          "fortifyDone": 4,
+          "fortifyOpen": 4,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:wood",
+            "2:stone",
+            "3:wood",
+            "4:stone"
+          ],
+          "wallTiles": 108,
+          "hallsDone": 0,
+          "hallsOpen": 0,
+          "treeTiles": 28015,
+          "bushTiles": 50918,
+          "treesClearedVsStart": 106,
+          "trail": 297,
+          "path": 29,
+          "road": 2,
+          "roadTilesStat": 328,
+          "polities": 4,
+          "chiefdoms": 3,
+          "kingdoms": 1,
+          "polityTiers": [
+            "kingdom",
+            "chiefdom",
+            "chiefdom",
+            "chiefdom"
+          ],
+          "guilds": 1,
+          "houses": 5,
+          "clearLandSamples": 458,
+          "buildWallSamples": 55,
+          "milestones": {
+            "firstHouse": false,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": true,
+            "firstBoatVoyage": false,
+            "firstBirth": false,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": false,
+            "firstRegionalHub": true,
+            "firstStorm": true,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": true,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        }
+      ],
+      "end": {
+        "day": 60,
+        "pop": 17,
+        "births": 0,
+        "deaths": 5,
+        "villages": 4,
+        "institutions": 18,
+        "circles": 18,
+        "faithCircles": 4,
+        "creeds": 14,
+        "creedById": {
+          "partage": 6,
+          "commerce_libre": 8
+        },
+        "shrines": 4,
+        "ritualsLogged": 119,
+        "religionLog": 196,
+        "bands": 1,
+        "bandits": 4,
+        "banditRaids": 1,
+        "deathsByBandit": 0,
+        "fortifyDone": 4,
+        "fortifyOpen": 4,
+        "fortLabels": [
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin"
+        ],
+        "wallTiers": [
+          "1:wood",
+          "2:stone",
+          "3:wood",
+          "4:stone"
+        ],
+        "wallTiles": 108,
+        "hallsDone": 0,
+        "hallsOpen": 0,
+        "treeTiles": 28015,
+        "bushTiles": 50918,
+        "treesClearedVsStart": 106,
+        "trail": 297,
+        "path": 29,
+        "road": 2,
+        "roadTilesStat": 328,
+        "polities": 4,
+        "chiefdoms": 3,
+        "kingdoms": 1,
+        "polityTiers": [
+          "kingdom",
+          "chiefdom",
+          "chiefdom",
+          "chiefdom"
+        ],
+        "guilds": 1,
+        "houses": 5,
+        "clearLandSamples": 458,
+        "buildWallSamples": 55,
+        "milestones": {
+          "firstHouse": false,
+          "firstPath": true,
+          "firstRoad": true,
+          "firstMill": false,
+          "firstPort": false,
+          "firstMarket": true,
+          "firstBoatVoyage": false,
+          "firstBirth": false,
+          "firstMarriage": true,
+          "firstAdoption": false,
+          "firstFamine": false,
+          "firstRegionalHub": true,
+          "firstStorm": true,
+          "firstMasterwork": false,
+          "firstCreed": true,
+          "firstShrine": true,
+          "firstRitual": true,
+          "firstChapel": true,
+          "firstTemple": true,
+          "firstBandits": true,
+          "firstKeep": true,
+          "firstRealm": true
+        }
+      },
+      "chronicle": {
+        "institution": 7,
+        "creed": 196,
+        "shrine": 28,
+        "ritual": 119,
+        "bandit": 0,
+        "fort": 18,
+        "hall": 0,
+        "road": 7,
+        "kingdom": 63,
+        "succession": 9,
+        "territory": 11,
+        "war": 0,
+        "guild": 2,
+        "clear": 0
+      },
+      "samples": [
+        "[1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)",
+        "[1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)",
+        "[1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)",
+        "[1·j1·8h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)",
+        "[1·j3·0h] piété croissante de Modan → creed : « le partage avant tout »",
+        "[1·j3·0h] Première voie de foi : « le partage avant tout » (portée par Modan)",
+        "[1·j3·12h] Une vraie route apparaît",
+        "[1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Clair »",
+        "[1·j3·12h] institutions et influence du campement « campement n°2 » → le pouvoir se durcit en village « village de Ford »",
+        "[1·j3·12h] institutions et influence du campement « campement n°3 » → le pouvoir se durcit en village « village de Beck »",
+        "[1·j3·12h] institutions et influence du campement « campement n°4 » → le pouvoir se durcit en village « village de Ford »",
+        "[1·j3·16h] recueillement partagé au village n°3 → autel de Keorhar (« le commerce libre ») s'élève"
+      ],
+      "elapsedSec": 71.859
+    },
+    {
+      "seed": 3,
+      "startPop": 26,
+      "startTrees": 30226,
+      "startBush": 65019,
+      "snaps": [
+        {
+          "day": 30,
+          "pop": 36,
+          "births": 10,
+          "deaths": 0,
+          "villages": 4,
+          "institutions": 21,
+          "circles": 22,
+          "faithCircles": 5,
+          "creeds": 18,
+          "creedById": {
+            "partage": 4,
+            "changement": 11,
+            "piete": 3
+          },
+          "shrines": 4,
+          "ritualsLogged": 70,
+          "religionLog": 145,
+          "bands": 0,
+          "bandits": 0,
+          "banditRaids": 0,
+          "deathsByBandit": 0,
+          "fortifyDone": 6,
+          "fortifyOpen": 4,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:stone",
+            "2:stone",
+            "3:stone",
+            "4:none"
+          ],
+          "wallTiles": 153,
+          "hallsDone": 0,
+          "hallsOpen": 0,
+          "treeTiles": 30106,
+          "bushTiles": 65755,
+          "treesClearedVsStart": 120,
+          "trail": 313,
+          "path": 56,
+          "road": 1,
+          "roadTilesStat": 370,
+          "polities": 4,
+          "chiefdoms": 1,
+          "kingdoms": 3,
+          "polityTiers": [
+            "kingdom",
+            "kingdom",
+            "kingdom",
+            "chiefdom"
+          ],
+          "guilds": 2,
+          "houses": 8,
+          "clearLandSamples": 206,
+          "buildWallSamples": 53,
+          "milestones": {
+            "firstHouse": false,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": true,
+            "firstBoatVoyage": true,
+            "firstBirth": true,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": false,
+            "firstRegionalHub": true,
+            "firstStorm": false,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": false,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        },
+        {
+          "day": 60,
+          "pop": 34,
+          "births": 18,
+          "deaths": 6,
+          "villages": 4,
+          "institutions": 28,
+          "circles": 32,
+          "faithCircles": 5,
+          "creeds": 26,
+          "creedById": {
+            "changement": 19,
+            "piete": 7
+          },
+          "shrines": 4,
+          "ritualsLogged": 75,
+          "religionLog": 155,
+          "bands": 1,
+          "bandits": 4,
+          "banditRaids": 1,
+          "deathsByBandit": 0,
+          "fortifyDone": 7,
+          "fortifyOpen": 4,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:stone",
+            "2:stone",
+            "3:stone",
+            "4:none"
+          ],
+          "wallTiles": 168,
+          "hallsDone": 0,
+          "hallsOpen": 0,
+          "treeTiles": 30062,
+          "bushTiles": 66199,
+          "treesClearedVsStart": 164,
+          "trail": 448,
+          "path": 41,
+          "road": 4,
+          "roadTilesStat": 493,
+          "polities": 4,
+          "chiefdoms": 0,
+          "kingdoms": 4,
+          "polityTiers": [
+            "kingdom",
+            "kingdom",
+            "kingdom",
+            "kingdom"
+          ],
+          "guilds": 2,
+          "houses": 6,
+          "clearLandSamples": 368,
+          "buildWallSamples": 53,
+          "milestones": {
+            "firstHouse": false,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": true,
+            "firstBoatVoyage": true,
+            "firstBirth": true,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": true,
+            "firstRegionalHub": true,
+            "firstStorm": false,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": true,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        }
+      ],
+      "end": {
+        "day": 60,
+        "pop": 34,
+        "births": 18,
+        "deaths": 6,
+        "villages": 4,
+        "institutions": 28,
+        "circles": 32,
+        "faithCircles": 5,
+        "creeds": 26,
+        "creedById": {
+          "changement": 19,
+          "piete": 7
+        },
+        "shrines": 4,
+        "ritualsLogged": 75,
+        "religionLog": 155,
+        "bands": 1,
+        "bandits": 4,
+        "banditRaids": 1,
+        "deathsByBandit": 0,
+        "fortifyDone": 7,
+        "fortifyOpen": 4,
+        "fortLabels": [
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin",
+          "palissade / fortin"
+        ],
+        "wallTiers": [
+          "1:stone",
+          "2:stone",
+          "3:stone",
+          "4:none"
+        ],
+        "wallTiles": 168,
+        "hallsDone": 0,
+        "hallsOpen": 0,
+        "treeTiles": 30062,
+        "bushTiles": 66199,
+        "treesClearedVsStart": 164,
+        "trail": 448,
+        "path": 41,
+        "road": 4,
+        "roadTilesStat": 493,
+        "polities": 4,
+        "chiefdoms": 0,
+        "kingdoms": 4,
+        "polityTiers": [
+          "kingdom",
+          "kingdom",
+          "kingdom",
+          "kingdom"
+        ],
+        "guilds": 2,
+        "houses": 6,
+        "clearLandSamples": 368,
+        "buildWallSamples": 53,
+        "milestones": {
+          "firstHouse": false,
+          "firstPath": true,
+          "firstRoad": true,
+          "firstMill": false,
+          "firstPort": false,
+          "firstMarket": true,
+          "firstBoatVoyage": true,
+          "firstBirth": true,
+          "firstMarriage": true,
+          "firstAdoption": false,
+          "firstFamine": true,
+          "firstRegionalHub": true,
+          "firstStorm": false,
+          "firstMasterwork": false,
+          "firstCreed": true,
+          "firstShrine": true,
+          "firstRitual": true,
+          "firstChapel": true,
+          "firstTemple": true,
+          "firstBandits": true,
+          "firstKeep": true,
+          "firstRealm": true
+        }
+      },
+      "chronicle": {
+        "institution": 10,
+        "creed": 155,
+        "shrine": 27,
+        "ritual": 75,
+        "bandit": 0,
+        "fort": 43,
+        "hall": 0,
+        "road": 19,
+        "kingdom": 50,
+        "succession": 6,
+        "territory": 2,
+        "war": 0,
+        "guild": 2,
+        "clear": 0
+      },
+      "samples": [
+        "[1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)",
+        "[1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)",
+        "[1·j1·6h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)",
+        "[1·j1·20h] Une vraie route apparaît",
+        "[1·j2·8h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)",
+        "[1·j3·0h] piété croissante de Tavic → creed : « le partage avant tout »",
+        "[1·j3·0h] Première voie de foi : « le partage avant tout » (portée par Tavic)",
+        "[1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Kareson »",
+        "[1·j3·12h] institutions et influence du campement « campement n°2 » → le pouvoir se durcit en village « village de Bois »",
+        "[1·j3·12h] institutions et influence du campement « campement n°3 » → le pouvoir se durcit en village « village de Bois »",
+        "[1·j3·12h] institutions et influence du campement « campement n°4 » → le pouvoir se durcit en village « village de Val »",
+        "[1·j3·16h] recueillement partagé au village n°4 → autel de Bualbuak (« le partage avant tout ») s'élève"
+      ],
+      "elapsedSec": 110.475
+    },
+    {
+      "seed": 7,
+      "startPop": 26,
+      "startTrees": 14459,
+      "startBush": 31351,
+      "snaps": [
+        {
+          "day": 30,
+          "pop": 27,
+          "births": 1,
+          "deaths": 0,
+          "villages": 4,
+          "institutions": 17,
+          "circles": 18,
+          "faithCircles": 5,
+          "creeds": 15,
+          "creedById": {
+            "partage": 13,
+            "piete": 2
+          },
+          "shrines": 4,
+          "ritualsLogged": 59,
+          "religionLog": 117,
+          "bands": 0,
+          "bandits": 0,
+          "banditRaids": 0,
+          "deathsByBandit": 0,
+          "fortifyDone": 2,
+          "fortifyOpen": 4,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:wood",
+            "2:stone",
+            "3:stone",
+            "4:none"
+          ],
+          "wallTiles": 59,
+          "hallsDone": 0,
+          "hallsOpen": 1,
+          "treeTiles": 14258,
+          "bushTiles": 31888,
+          "treesClearedVsStart": 201,
+          "trail": 305,
+          "path": 75,
+          "road": 0,
+          "roadTilesStat": 380,
+          "polities": 4,
+          "chiefdoms": 1,
+          "kingdoms": 3,
+          "polityTiers": [
+            "kingdom",
+            "kingdom",
+            "kingdom",
+            "chiefdom"
+          ],
+          "guilds": 3,
+          "houses": 8,
+          "clearLandSamples": 320,
+          "buildWallSamples": 35,
+          "milestones": {
+            "firstHouse": true,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": false,
+            "firstBoatVoyage": false,
+            "firstBirth": true,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": false,
+            "firstRegionalHub": false,
+            "firstStorm": false,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": false,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        },
+        {
+          "day": 60,
+          "pop": 28,
+          "births": 6,
+          "deaths": 0,
+          "villages": 4,
+          "institutions": 17,
+          "circles": 24,
+          "faithCircles": 4,
+          "creeds": 16,
+          "creedById": {
+            "partage": 15,
+            "piete": 1
+          },
+          "shrines": 4,
+          "ritualsLogged": 88,
+          "religionLog": 176,
+          "bands": 1,
+          "bandits": 4,
+          "banditRaids": 0,
+          "deathsByBandit": 0,
+          "fortifyDone": 2,
+          "fortifyOpen": 4,
+          "fortLabels": [
+            "palissade / fortin",
+            "palissade / fortin"
+          ],
+          "wallTiers": [
+            "1:wood",
+            "2:stone",
+            "3:stone",
+            "4:none"
+          ],
+          "wallTiles": 68,
+          "hallsDone": 1,
+          "hallsOpen": 0,
+          "treeTiles": 14083,
+          "bushTiles": 32249,
+          "treesClearedVsStart": 376,
+          "trail": 469,
+          "path": 4,
+          "road": 5,
+          "roadTilesStat": 478,
+          "polities": 4,
+          "chiefdoms": 2,
+          "kingdoms": 2,
+          "polityTiers": [
+            "kingdom",
+            "kingdom",
+            "chiefdom",
+            "chiefdom"
+          ],
+          "guilds": 3,
+          "houses": 6,
+          "clearLandSamples": 948,
+          "buildWallSamples": 35,
+          "milestones": {
+            "firstHouse": true,
+            "firstPath": true,
+            "firstRoad": true,
+            "firstMill": false,
+            "firstPort": false,
+            "firstMarket": false,
+            "firstBoatVoyage": false,
+            "firstBirth": true,
+            "firstMarriage": true,
+            "firstAdoption": false,
+            "firstFamine": true,
+            "firstRegionalHub": false,
+            "firstStorm": false,
+            "firstMasterwork": false,
+            "firstCreed": true,
+            "firstShrine": true,
+            "firstRitual": true,
+            "firstChapel": true,
+            "firstTemple": true,
+            "firstBandits": true,
+            "firstKeep": true,
+            "firstRealm": true
+          }
+        }
+      ],
+      "end": {
+        "day": 60,
+        "pop": 28,
+        "births": 6,
+        "deaths": 0,
+        "villages": 4,
+        "institutions": 17,
+        "circles": 24,
+        "faithCircles": 4,
+        "creeds": 16,
+        "creedById": {
+          "partage": 15,
+          "piete": 1
+        },
+        "shrines": 4,
+        "ritualsLogged": 88,
+        "religionLog": 176,
+        "bands": 1,
+        "bandits": 4,
+        "banditRaids": 0,
+        "deathsByBandit": 0,
+        "fortifyDone": 2,
+        "fortifyOpen": 4,
+        "fortLabels": [
+          "palissade / fortin",
+          "palissade / fortin"
+        ],
+        "wallTiers": [
+          "1:wood",
+          "2:stone",
+          "3:stone",
+          "4:none"
+        ],
+        "wallTiles": 68,
+        "hallsDone": 1,
+        "hallsOpen": 0,
+        "treeTiles": 14083,
+        "bushTiles": 32249,
+        "treesClearedVsStart": 376,
+        "trail": 469,
+        "path": 4,
+        "road": 5,
+        "roadTilesStat": 478,
+        "polities": 4,
+        "chiefdoms": 2,
+        "kingdoms": 2,
+        "polityTiers": [
+          "kingdom",
+          "kingdom",
+          "chiefdom",
+          "chiefdom"
+        ],
+        "guilds": 3,
+        "houses": 6,
+        "clearLandSamples": 948,
+        "buildWallSamples": 35,
+        "milestones": {
+          "firstHouse": true,
+          "firstPath": true,
+          "firstRoad": true,
+          "firstMill": false,
+          "firstPort": false,
+          "firstMarket": false,
+          "firstBoatVoyage": false,
+          "firstBirth": true,
+          "firstMarriage": true,
+          "firstAdoption": false,
+          "firstFamine": true,
+          "firstRegionalHub": false,
+          "firstStorm": false,
+          "firstMasterwork": false,
+          "firstCreed": true,
+          "firstShrine": true,
+          "firstRitual": true,
+          "firstChapel": true,
+          "firstTemple": true,
+          "firstBandits": true,
+          "firstKeep": true,
+          "firstRealm": true
+        }
+      },
+      "chronicle": {
+        "institution": 7,
+        "creed": 176,
+        "shrine": 35,
+        "ritual": 88,
+        "bandit": 0,
+        "fort": 43,
+        "hall": 0,
+        "road": 19,
+        "kingdom": 51,
+        "succession": 2,
+        "territory": 6,
+        "war": 0,
+        "guild": 3,
+        "clear": 0
+      },
+      "samples": [
+        "[1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)",
+        "[1·j1·0h] sécurité du village → projet de fort de pierre (sécurité du village) (#2)",
+        "[1·j1·6h] sécurité du village → projet de fort de pierre (sécurité du village) (#3)",
+        "[1·j3·0h] piété croissante de Sawen → creed : « le commerce libre »",
+        "[1·j3·0h] Première voie de foi : « le commerce libre » (portée par Sawen)",
+        "[1·j3·8h] loups / menace → projet de fort de pierre (loups / menace) (#4)",
+        "[1·j3·9h] sécurité du village → palissade / fortin (tours) achevé (#1)",
+        "[1·j3·9h] palissade / fortin (tours) achevé → premier donjon / keep achevé — siège de pouvoir",
+        "[1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Kareeau »",
+        "[1·j3·12h] institutions et influence du campement « campement n°2 » → le pouvoir se durcit en village « village de Val »",
+        "[1·j3·12h] institutions et influence du campement « campement n°3 » → le pouvoir se durcit en village « village de Beck »",
+        "[1·j3·12h] institutions et influence du campement « campement n°4 » → le pouvoir se durcit en village « village de Mont »"
+      ],
+      "elapsedSec": 98.645
+    }
+  ]
+}

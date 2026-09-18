@@ -1,0 +1,115 @@
+Simulation Atlas v1 / nono_simu_2d — emergence proof
+seed=7 days=40 ticks=2880
+started=2026-09-18T08:59:28.846Z
+
+--- day snapshots ---
+d5: pop=26 villages=12 houses=8 polities=8 ch=4 k=0 wars=19 battles=0 coups=0 firms=7 hires=7 fails=0 stages={"camp":8,"hamlet":4,"village":0,"town":0,"city":0} roads=177 mills=0
+d10: pop=26 villages=14 houses=8 polities=7 ch=0 k=2 wars=59 battles=9 coups=1 firms=10 hires=17 fails=0 stages={"camp":10,"hamlet":4,"village":0,"town":0,"city":0} roads=210 mills=0
+d15: pop=27 villages=11 houses=9 polities=8 ch=0 k=2 wars=84 battles=14 coups=1 firms=14 hires=30 fails=0 stages={"camp":7,"hamlet":4,"village":0,"town":0,"city":0} roads=266 mills=0
+d20: pop=29 villages=11 houses=9 polities=4 ch=0 k=2 wars=97 battles=20 coups=1 firms=15 hires=38 fails=0 stages={"camp":7,"hamlet":4,"village":0,"town":0,"city":0} roads=325 mills=0
+d25: pop=26 villages=10 houses=9 polities=2 ch=1 k=1 wars=105 battles=22 coups=2 firms=17 hires=53 fails=2 stages={"camp":6,"hamlet":4,"village":0,"town":0,"city":0} roads=381 mills=0
+d30: pop=25 villages=11 houses=9 polities=3 ch=0 k=1 wars=112 battles=25 coups=2 firms=18 hires=59 fails=2 stages={"camp":7,"hamlet":4,"village":0,"town":0,"city":0} roads=439 mills=0
+d35: pop=23 villages=9 houses=9 polities=1 ch=0 k=1 wars=114 battles=27 coups=2 firms=17 hires=64 fails=3 stages={"camp":6,"hamlet":3,"village":0,"town":0,"city":0} roads=429 mills=0
+d40: pop=21 villages=10 houses=8 polities=2 ch=0 k=1 wars=115 battles=27 coups=3 firms=17 hires=71 fails=4 stages={"camp":8,"hamlet":2,"village":0,"town":0,"city":0} roads=432 mills=0
+
+--- causal / chronicle hits (sample) ---
+  [1·j1·0h] fondation → 2 cabanes pioneer près de (363,910)
+  [1·j1·0h] fondation → 2 cabanes pioneer près de (401,898)
+  [1·j1·0h] fondation → 2 cabanes pioneer près de (428,884)
+  [1·j1·0h] fondation → 2 cabanes pioneer près de (425,873)
+  [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#1)
+  [1·j1·0h] sécurité du village → projet de palissade / fortin (sécurité du village) (#2)
+  [1·j1·1h] sécurité du village → projet de palissade / fortin (sécurité du village) (#3)
+  [1·j1·2h] sécurité du village → projet de palissade / fortin (sécurité du village) (#4)
+  [1·j1·10h] Karen invente → chauffer le bois
+  [1·j1·10h] Ivos invente → empiler la pierre en hauteur
+  [1·j1·20h] Savoir du village → Belmir apprend « chauffer le bois »
+  [1·j2·6h] recueillement partagé → naissance du cercle pieux
+  [1·j2·6h] assemblée des voisins → naissance du assemblée du village
+  [1·j2·6h] recueillement partagé → naissance du cercle pieux
+  [1·j2·6h] assemblée des voisins → naissance du assemblée du village
+  [1·j2·6h] recueillement partagé → naissance du cercle pieux
+  [1·j2·6h] assemblée des voisins → naissance du assemblée du village
+  [1·j2·6h] recueillement partagé → naissance du cercle pieux
+  [1·j2·6h] assemblée des voisins → naissance du assemblée du village
+  [1·j2·8h] recueillement partagé au village n°1 → autel de Reossain (« le commerce libre ») s'élève
+  [1·j2·8h] Premier sanctuaire : autel de Reossain (« le commerce libre »)
+  [1·j2·8h] recueillement partagé au village n°2 → autel de Veonsair (« le commerce libre ») s'élève
+  [1·j2·8h] recueillement partagé au village n°3 → autel de Rimwuak (« garder les usages ») s'élève
+  [1·j2·8h] recueillement partagé au village n°4 → autel de Mairweos (« le commerce libre ») s'élève
+  [1·j3·0h] piété croissante de Drodric → creed : « le commerce libre »
+  [1·j3·3h] Ortho invente → chauffer le bois
+  [1·j3·3h] Fensen invente → empiler la pierre en hauteur
+  [1·j3·11h] misère, chômage ou oppression ressentie par Elana [mixed] → Elana quitte son village et fonde un camp
+  [1·j3·12h] rite du cercle pieux → le cercle pieux honore le sacré près de la place
+  [1·j3·12h] rite du cercle pieux → le cercle pieux honore le sacré près de la place
+  [1·j3·12h] rite du cercle pieux → le cercle pieux honore le sacré près de la place
+  [1·j3·12h] influence de Bralin (charisme) → Bralin mène le assemblée du village
+  [1·j3·12h] regroupement autour du village n°1 → naissance du campement « campement n°1 »
+  [1·j3·12h] regroupement autour du village n°2 → naissance du campement « campement n°2 »
+  [1·j3·12h] regroupement autour du village n°3 → naissance du campement « campement n°3 »
+  [1·j3·12h] regroupement autour du village n°4 → naissance du campement « campement n°4 »
+  [1·j3·12h] regroupement autour du village n°5 → naissance du campement « campement n°5 »
+  [1·j3·12h] institutions et influence du campement « campement n°1 » → le pouvoir se durcit en village « village de Mont »
+  [1·j3·12h] institutions et influence du campement « campement n°2 » → le pouvoir se durcit en village « village de Val »
+  [1·j3·12h] institutions et influence du campement « campement n°3 » → le pouvoir se durcit en village « village de Beck »
+  [1·j3·12h] institutions et influence du campement « campement n°4 » → le pouvoir se durcit en village « village de Donneur »
+  [1·j3·14h] Rilya invente → empiler la pierre en hauteur
+  [1·j3·14h] Savoir du village → Ortho apprend « chauffer le bois »
+  [1·j3·14h] Savoir du village → Drodric apprend « empiler la pierre en hauteur »
+  [1·j4·0h] Belmir invente → empiler la pierre en hauteur
+  [1·j4·0h] Karen invente → empiler la pierre en hauteur
+  [1·j4·4h] misère, chômage ou oppression ressentie par Bralin [mixed] → Bralin quitte son village et fonde un camp
+  [1·j4·7h] misère, chômage ou oppression ressentie par Sawen [mixed] → Sawen quitte son village et fonde un camp
+  [1·j4·8h] rite au autel de Reossain (« le commerce libre ») → le recueillement renforce la foi (3 fidèles)
+  [1·j4·8h] Premier rituel : autel de Reossain (« le commerce libre »)
+  [1·j4·8h] rite au autel de Veonsair (« le commerce libre ») → le recueillement renforce la foi (2 fidèles)
+  [1·j4·10h] Bralin invente → empiler la pierre en hauteur
+  [1·j4·10h] Fensen invente → charbon de bois
+  [1·j4·18h] recueillement partagé → naissance du cercle pieux
+  [1·j4·18h] influence de Ivos (charisme) → Ivos mène le assemblée du village
+  [1·j4·18h] pression des cultivateurs → assemblée du village exige le partage des vivres
+  [1·j4·19h] misère, chômage ou oppression ressentie par Elana [mixed] → Elana quitte son village et fonde un camp
+  [1·j4·20h] misère, chômage ou oppression ressentie par Bralin [mixed] → Bralin quitte son village et fonde un camp
+  [1·j4·23h] misère, chômage ou oppression ressentie par Sawen [mixed] → Sawen quitte son village et fonde un camp
+  [1·j5·4h] sécurité et bois au village n°1 → prospérité montante (100) — les marchés s'animent
+  [1·j5·4h] sécurité et bois au village n°2 → prospérité montante (100) — les marchés s'animent
+  [1·j5·4h] sécurité et bois au village n°3 → prospérité montante (100) — les marchés s'animent
+  [1·j5·4h] sécurité et bois au village n°4 → prospérité montante (100) — les marchés s'animent
+  [1·j5·4h] loups, vols ou disette au village n°5 → prospérité en berne (0) — loyauté fragilisée
+  [1·j5·4h] loups, vols ou disette au village n°6 → prospérité en berne (0) — loyauté fragilisée
+  [1·j5·4h] loups, vols ou disette au village n°7 → prospérité en berne (0) — loyauté fragilisée
+  [1·j5·4h] sécurité et échanges au village n°8 → prospérité montante (100) — les marchés s'animent
+  [1·j5·4h] sécurité et céréales au village n°9 → prospérité montante (99) — les marchés s'animent
+  [1·j5·4h] sécurité et céréales au village n°10 → prospérité montante (99) — les marchés s'animent
+  [1·j5·4h] population 6, maisons et infrastructures → campement devient hameau (foyer #1)
+  [1·j5·4h] population 7, maisons et infrastructures → campement devient hameau (foyer #2)
+  [1·j5·4h] population 5, maisons et infrastructures → campement devient hameau (foyer #3)
+  [1·j5·4h] population 5, maisons et infrastructures → campement devient hameau (foyer #4)
+  [1·j5·4h] metier farmer de Elana → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Ivos → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Bralin → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Sawen → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Ortho → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Nygor → atelier / firme farm fonde
+  [1·j5·4h] metier farmer de Rilya → atelier / firme farm fonde
+  … +435 more
+
+--- final ---
+pop 21 | deaths 0 | births 4 | deserters 9
+houses 8 | fields 1 | mills 0 | markets 0 | roads 432
+polities 2 (camps 1, chiefdoms 0, kingdoms 1) castles 5
+wars active=115 open=90 battles=27 coups=3
+firms=17 hires=71 failures=4
+settlementStages={"camp":8,"hamlet":2,"village":0,"town":0,"city":0}
+professions={"none":4,"forager":1,"farmer":11,"fisher":0,"miller":0,"lumberjack":1,"mason":0,"guard":0,"builder":1,"herder":0,"trader":0,"weaver":0,"blacksmith":0,"miner":3}
+
+--- visual/sim consistency proxies ---
+aliveWithHome=12 shrineVillages=4 fortProjects=15
+nature/engine assumed: tile render via nature packs (runtime UI)
+
+--- verdict ---
+earlyCivChain: PASS
+politicsOrWarEvidence: PASS
+causalLines: 515
+done=2026-09-18T09:01:14.693Z

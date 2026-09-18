@@ -1,0 +1,60 @@
+{
+  "mode": "stress_fill_500",
+  "honesty": "TEST SETUP: cloned founders to target after create (initialVillagers clamp max=120). Not organic grow.",
+  "seed": 7,
+  "wallSec": 8,
+  "adaptWarmSec": 5,
+  "targetPop": 500,
+  "fill": {
+    "before": 120,
+    "after": 500,
+    "added": 380
+  },
+  "popAtMeasureStart": 500,
+  "popEnd": 493,
+  "ticks": 420,
+  "elapsedSec": 8.607,
+  "measuredTps": 48.8,
+  "sliceMinTps": 34.8,
+  "sliceMaxTps": 48.8,
+  "targetTps": 100,
+  "budget": {
+    "deepPeriod": 19,
+    "popScale": 1,
+    "deepShare": 0.18,
+    "lastTps": 67.5792732095241,
+    "headroom": 0.3612805229251722,
+    "preferGpu": true,
+    "pathScale": 0.5433536627510207,
+    "climatePeriodMul": 2,
+    "commercePeriodMul": 1.65,
+    "politicsStagger": true,
+    "uiLight": true,
+    "uiIntervalMs": 650,
+    "drawIntervalMs": 52,
+    "thinkCooldownExtra": 5
+  },
+  "tpsPass": false,
+  "tpsNearTarget": false,
+  "tpsAtTarget": false,
+  "scaleOk": true,
+  "draw": {
+    "villagers": 493,
+    "villages": 8
+  },
+  "stats": {
+    "pop": 493,
+    "villages": 8,
+    "markets": 5,
+    "firms": 21,
+    "kingdoms": 8
+  }
+}
+node.exe : TPS under bar @~500: 48.8 < 80 (target 100)
+Au caractère Ligne:1 : 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (TPS under bar @...80 (target 100):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+

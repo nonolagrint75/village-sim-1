@@ -1,0 +1,47 @@
+﻿/**
+ * Life-type emergence evidence (Atlas v1) — observational, not scripted biographies.
+ */
+import { TICKS_PER_DAY } from '../calendar'
+import { firmsSummary } from '../economy/business'
+import { politicsSummary } from '../politics'
+import { warsSummary } from '../war'
+import { countOf } from '../inventory'
+import type { SimState } from '../types'
+
+export type LifeTypeId =
+  | 'eren' | 'arvid' | 'mira' | 'tomas' | 'samir' | 'alena' | 'boran' | 'kael' | 'lio' | 'nara'
+  | 'daren' | 'elian' | 'soren' | 'yara' | 'malik' | 'ema' | 'rami' | 'lysa' | 'jonas' | 'ayan'
+
+export type LifeTypeVerdict = 'PASS' | 'PARTIAL' | 'FAIL'
+
+export interface LifePathBag {
+  hits: Record<string, number>
+  samples: string[]
+  lastScanTick: number
+  logCursor: number
+}
+
+export const LIFE_TYPE_DEFS: {
+  id: LifeTypeId; name: string; index: number; tags: string[]; passMin: number; partialMin: number
+}[] = [
+  { id: 'eren', name: 'Eren', index: 1, tags: ['farmer_to_trader','horse_owned','grain_arbitrage','firm_hire','merchant_marriage','firm_succession','guild_form','child_career_diverge'], passMin: 5, partialMin: 3 },
+  { id: 'arvid', name: 'Arvid', index: 2, tags: ['farmer_to_guard','bandit_trauma','militia_lead','war_faction','land_inherit','military_dynasty'], passMin: 4, partialMin: 2 },
+  { id: 'mira', name: 'Mira', index: 3, tags: ['cloth_quality','weaver_apprentice','textile_guild','textile_dynasty','firm_hire'], passMin: 3, partialMin: 2 },
+  { id: 'tomas', name: 'Tomas', index: 4, tags: ['heir_firm_risk','firm_bankrupt','house_lost','labor_organize','political_influence','child_career_diverge'], passMin: 4, partialMin: 2 },
+  { id: 'samir', name: 'Samir', index: 5, tags: ['creed_reinterpret','faith_following','famine_charity','faith_schism','regional_creed'], passMin: 3, partialMin: 2 },
+  { id: 'alena', name: 'Alena', index: 6, tags: ['contested_heir','civil_war','merchant_alliance','political_reward','multigen_kin'], passMin: 3, partialMin: 2 },
+  { id: 'boran', name: 'Boran', index: 7, tags: ['herder_caravan','horse_trade','route_blocked','new_trade_route','trade_town'], passMin: 3, partialMin: 2 },
+  { id: 'kael', name: 'Kael', index: 8, tags: ['debt_spiral','petty_theft','caravan_raid','band_organize','zone_control','bandit_deal'], passMin: 4, partialMin: 2 },
+  { id: 'lio', name: 'Lio', index: 9, tags: ['farm_tool_invent','agri_boost','regional_enrich','firm_hire'], passMin: 3, partialMin: 2 },
+  { id: 'nara', name: 'Nara', index: 10, tags: ['baker_carpenter_bond','spouse_death_hire','apprentice_marries_kin','fused_firm','multigen_kin','kin_split_war'], passMin: 4, partialMin: 2 },
+  { id: 'daren', name: 'Daren', index: 11, tags: ['debt_spiral','city_migration','unemployment','petty_theft','caravan_raid','gang_chief','bounty_hunt','parallel_force','bandit_deal'], passMin: 5, partialMin: 3 },
+  { id: 'elian', name: 'Elian', index: 12, tags: ['orphan_migrate','carpenter_apprentice','ethnic_quarter','migrant_institution','multigen_kin'], passMin: 3, partialMin: 2 },
+  { id: 'soren', name: 'Soren', index: 13, tags: ['credit_loan','deposits','finance_caravan','credit_crisis','trust_survives'], passMin: 3, partialMin: 2 },
+  { id: 'yara', name: 'Yara', index: 14, tags: ['herd_expand','wool_boom','wool_bust','quality_specialize','trade_town','firm_hire'], passMin: 4, partialMin: 2 },
+  { id: 'malik', name: 'Malik', index: 15, tags: ['rich_overspend','raise_rents','creditor_seize','dynasty_split','firm_bankrupt'], passMin: 3, partialMin: 2 },
+  { id: 'ema', name: 'Ema', index: 16, tags: ['fisher_voyage','storm_divert','new_trade_route','foreign_goods','culture_copy','trade_network'], passMin: 4, partialMin: 2 },
+  { id: 'rami', name: 'Rami', index: 17, tags: ['worker_hostility','wage_cut_strike','labor_institution','repression','army_refuses','gov_collapse'], passMin: 4, partialMin: 2 },
+  { id: 'lysa', name: 'Lysa', index: 18, tags: ['art_apprentice','patron_buy','art_circle','urban_culture','guild_form'], passMin: 3, partialMin: 2 },
+  { id: 'jonas', name: 'Jonas', index: 19, tags: ['soldier_loyal','friend_dies_war','supply_grievance','refuse_repress','defect_faction','civil_war_command'], passMin: 4, partialMin: 2 },
+  { id: 'ayan', name: 'Ayan', index: 20, tags: ['banal_founder','branch_sectors','multigen_kin','kin_split_war','descendants_reshape'], passMin: 3, partialMin: 2 },
+]

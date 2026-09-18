@@ -1,0 +1,100 @@
+﻿export function paintViewportShoreStrip(
+  ctx: CanvasRenderingContext2D,
+  atlas: AtlasColor,
+  terrain: Uint8Array,
+  worldW: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  camX: number,
+  camY: number,
+  zoom: number,
+  tilePx: number,
+) {
+  const tileS = tilePx * zoom
+  if (tileS < 5.5) return
+  // Edge band r=2 — need one cell of overspill so SDF mid-band isn't clipped to Manhattan.
+  const cells: { gx: number; gy: number }[] = []
+  for (let gy = y0; gy <= y1; gy++) {
+    for (let gx = x0; gx <= x1; gx++) {
+      if (cellTouchesShore(terrain, worldW, gx, gy, 4)) cells.push({ gx, gy })
+    }
+  }
+  if (!cells.length) return
+  let minX = cells[0]!.gx, maxX = minX, minY = cells[0]!.gy, maxY = minY
+  for (const c of cells) {
+    if (c.gx < minX) minX = c.gx
+    if (c.gy < minY) minY = c.gy
+    if (c.gx > maxX) maxX = c.gx
+    if (c.gy > maxY) maxY = c.gy
+  }
+  minX = Math.max(x0, minX - 3)
+  minY = Math.max(y0, minY - 3)
+  maxX = Math.min(x1, maxX + 3)
+  maxY = Math.min(y1, maxY + 3)
+
+  const land = rgbFromPacked(atlas.color32("grass"), [58, 90, 38])
+  const water = rgbFromPacked(atlas.color32("water"), [36, 88, 104])
+  const deep = rgbFromPacked(atlas.color32("water_deep"), [28, 68, 92])
+
+  // Adaptive chunk: at z14 tileS~42, fixed CHUNK=18 → 756² > 200k → every chunk skipped → cyan Manhattan.
+  const BUDGET = 280_000
+  const step = tileS >= 64 ? 2 : 1
+  const maxCells = Math.max(4, Math.floor(Math.sqrt(BUDGET) / (tileS / step)))
+  const CHUNK = Math.min(24, maxCells)
+
+  const prevSmooth = ctx.imageSmoothingEnabled
+  ctx.imageSmoothingEnabled = true
+  for (let cy0 = minY; cy0 <= maxY; cy0 += CHUNK) {
+    for (let cx0 = minX; cx0 <= maxX; cx0 += CHUNK) {
+      const cx1 = Math.min(maxX, cx0 + CHUNK - 1)
+      const cy1 = Math.min(maxY, cy0 + CHUNK - 1)
+      let hit = false
+      for (const c of cells) {
+        if (c.gx >= cx0 - 1 && c.gx <= cx1 + 1 && c.gy >= cy0 - 1 && c.gy <= cy1 + 1) {
+          hit = true
+          break
+        }
+      }
+      if (!hit) continue
+      const cellsW = cx1 - cx0 + 1
+      const cellsH = cy1 - cy0 + 1
+      const pw = Math.max(1, Math.ceil((cellsW * tileS) / step))
+      const ph = Math.max(1, Math.ceil((cellsH * tileS) / step))
+      if (pw * ph > BUDGET) continue
+      const img = stripCanvas(pw, ph).createImageData(pw, ph)
+      const data = img.data
+      const inv = step / tileS
+      for (let j = 0; j < ph; j++) {
+        for (let i = 0; i < pw; i++) {
+          const wx = cx0 + (i + 0.5) * inv
+          const wy = cy0 + (j + 0.5) * inv
+          const f = shoreField(terrain, worldW, wx, wy)
+          const o = (j * pw + i) * 4
+          // BOTH sides of hard 0.5: land overwrites water-cell underlay (else Manhattan water tiles remain).
+          if (shoreAlpha(f, wx, wy) < 1) {
+            data[o] = land[0]
+            data[o + 1] = land[1]
+            data[o + 2] = land[2]
+            data[o + 3] = 255
+          } else {
+            const [r, g, b] = shoreHardRgb(f, water, deep)
+            data[o] = r
+            data[o + 1] = g
+            data[o + 2] = b
+            data[o + 3] = 255
+          }
+        }
+      }
+      const sctx = stripCanvas(pw, ph)
+      sctx.putImageData(img, 0, 0)
+      const dx = (cx0 * tilePx - camX) * zoom
+      const dy = (cy0 * tilePx - camY) * zoom
+      ctx.drawImage(sctx.canvas, 0, 0, pw, ph, dx, dy, cellsW * tileS, cellsH * tileS)
+    }
+  }
+  ctx.imageSmoothingEnabled = prevSmooth
+}
+
+

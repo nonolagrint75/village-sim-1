@@ -1,0 +1,5 @@
+# CONDUCTOR RAISE LOCK — 2026-09-18 ~20:50
+
+Official: ATLAS_V1_TPS_500_PROOF.json measuredTps=89.5 tpsPass=true (dual confirm 90.6).
+Decision: RAISE Performance 83.7 -> 89.5 (severe). Visuel HOLD 69.5. Moyenne 77.1.
+Refuse: soft 93/100 Perf, global 90+, demote on concurrent CONFIRM/RUN FAIL while official PROOF stands.
